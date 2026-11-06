@@ -1,0 +1,57 @@
+{
+  "verifiedAt": "2026-11-06T21:31:21.707809+00:00",
+  "passed": true,
+  "backend": {
+    "automated": {
+      "tests": 44,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "report": "dispatch-backend-tests.json",
+    "runtimeReport": "dispatch-runtime-results.json",
+    "jarSha256": "cf3165322127fc41266d9bad94f31ab57d05159fdbd53fd941c044c822f30021"
+  },
+  "realMySqlDispatchHttp": {
+    "passedGroups": 7,
+    "report": "dispatch-api-results.json"
+  },
+  "web": {
+    "automatedTestsPassed": 12,
+    "buildPassed": true,
+    "inAppBrowserGroupsPassed": 10,
+    "responsiveCombinationsPassed": 6,
+    "reports": [
+      "dispatch-web-results.json",
+      "dispatch-web-responsive.json"
+    ],
+    "screenshot": "dispatch-web-delivery.jpg"
+  },
+  "harmony": {
+    "helperControllerTestsPassed": 18,
+    "nativeBuildErrors": 0,
+    "businessUiGroupsPassed": 12,
+    "finalArtifactSpotCheckPassed": true,
+    "hapPath": "harmony\\entry\\build\\default\\outputs\\default\\entry-default-unsigned.hap",
+    "hapBytes": 1733752,
+    "hapSha256": "6b87ee2fd1f6472b6dafc4d166c32b6bdc20c53a1f3202ec145bbe4c876adccf",
+    "reports": [
+      "dispatch-harmony-ui-results.json",
+      "dispatch-harmony-build.json"
+    ],
+    "screenshot": "dispatch-harmony-final-package.png"
+  },
+  "environment": {
+    "database": "UP",
+    "listeningPorts": {
+      "8080": true,
+      "5173": true,
+      "8081": false,
+      "8901": false
+    },
+    "officialDeepSeekVerified": false,
+    "realAiKeyConfigured": false,
+    "temporaryFixtureServicesStopped": true
+  },
+  "deliveryDocument": "docs/09-动态调度交付与验收.md"
+}

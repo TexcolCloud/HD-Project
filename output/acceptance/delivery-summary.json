@@ -1,0 +1,24 @@
+{
+  "verifiedAt": "2026-11-06T19:47:42.990112+00:00",
+  "backendTests": {
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "realMysqlHttpChecks": 10,
+  "inAppBrowserChecks": 12,
+  "responsiveCombinations": 42,
+  "harmonyUiChecks": 11,
+  "harmonyHapSha256": "4631c2861d8147364b0147a881f55f8e8fdca41d2de7d14ceb4479c302598e25",
+  "reports": [
+    "api-results.json",
+    "web-results.json",
+    "web-responsive.json",
+    "harmony-ui-results.json",
+    "harmony-build-regressions.json"
+  ],
+  "web": "http://127.0.0.1:5173",
+  "api": "http://127.0.0.1:8080/api/v1",
+  "officialDeepSeekCallVerified": false
+}

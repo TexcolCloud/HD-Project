@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-07",
+  "requestedCharacters": 1036,
+  "requiredCjk": 921,
+  "bodyCommonCharacters": 7543,
+  "bodyBytes": 1423824,
+  "fonts": [
+    {
+      "file": "dorm-plex.woff2",
+      "family": "Residence UI",
+      "style": "Regular",
+      "weight": 400,
+      "bytes": 1226816,
+      "glyphs": 10324,
+      "cmapCount": 7543,
+      "missingRequestedCharacters": [],
+      "sha256": "e1a950f4101538241b210e18290b4ef267777a96368db76440b6d0bcba055386",
+      "coverageRole": "Chinese UI and Latin",
+      "requestedCharacterCount": 1036
+    },
+    {
+      "file": "dorm-plex-semibold.woff2",
+      "family": "Residence UI",
+      "style": "SemiBold",
+      "weight": 600,
+      "bytes": 197008,
+      "glyphs": 1844,
+      "cmapCount": 1036,
+      "missingRequestedCharacters": [],
+      "sha256": "ad11f21758cac2be312e8b2b663c7f7f75a718c07f1293185be8d9d341ffad6a",
+      "coverageRole": "Chinese UI and Latin",
+      "requestedCharacterCount": 1036
+    },
+    {
+      "file": "dorm-sign.woff2",
+      "family": "Residence Sign",
+      "style": "Oblique",
+      "weight": 400,
+      "bytes": 131140,
+      "glyphs": 1194,
+      "cmapCount": 1034,
+      "missingRequestedCharacters": [
+        "U+2264",
+        "U+2265"
+      ],
+      "sha256": "8bb0bf11c9ae60223544b2ce0876805232bb43d54a54c8e0ea2f50ecdfb81e30",
+      "coverageRole": "Chinese UI and Latin",
+      "requestedCharacterCount": 1036
+    },
+    {
+      "file": "dorm-chivo.woff2",
+      "family": "Residence Numeral",
+      "style": "Regular",
+      "weight": 500,
+      "bytes": 41788,
+      "glyphs": 564,
+      "cmapCount": 408,
+      "missingRequestedCharacters": [],
+      "sha256": "05cc5f1c0ca19c44ac37cc87438cb0e73cedbcddbea49b95d11d6757f224a779",
+      "axes": {
+        "wght": [
+          100.0,
+          500.0,
+          900.0
+        ]
+      },
+      "coverageRole": "Latin and numerals only",
+      "requestedCharacterCount": 95
+    },
+    {
+      "file": "dorm-serif.woff2",
+      "family": "Residence Editorial",
+      "style": "SemiBold",
+      "weight": 600,
+      "bytes": 227360,
+      "glyphs": 1558,
+      "cmapCount": 1131,
+      "missingRequestedCharacters": [],
+      "sha256": "6cbfe4daab5145a22002803517a1da9a6355f1f711b0817b6837705f54a0b8f5",
+      "coverageRole": "Current UI Chinese display titles and Latin; body fallback for other glyphs",
+      "requestedCharacterCount": 1131,
+      "source": "https://github.com/google/fonts/tree/main/ofl/notoserifsc",
+      "sourceFile": "NotoSerifSC[wght].ttf",
+      "license": "OFL-1.1",
+      "revision": "warm-editorial-r3"
+    }
+  ],
+  "editorialRevisionDate": "2026-11-07"
+}

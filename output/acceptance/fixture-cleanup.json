@@ -1,0 +1,182 @@
+{
+  "startedAt": "2026-11-06T19:37:57.815940+00:00",
+  "database": "dormlink",
+  "reason": "Remove only the uniquely identified initial RED concurrency fixtures from demo navigation; retain all historical business records.",
+  "before": {
+    "buildings": [
+      {
+        "id": "3",
+        "code": "C9858372067800",
+        "name": "并发回归楼栋",
+        "enabled": 1,
+        "version": 2,
+        "floorCount": 4
+      }
+    ],
+    "managerBuildingGrants": [
+      {
+        "buildingId": "3",
+        "managerUserId": "1"
+      },
+      {
+        "buildingId": "3",
+        "managerUserId": "2"
+      }
+    ],
+    "rooms": [
+      {
+        "id": "7",
+        "remark": "",
+        "roomNo": "C9857966216900",
+        "enabled": 1,
+        "floorNo": 1,
+        "version": 1,
+        "capacity": 2,
+        "buildingId": "2"
+      },
+      {
+        "id": "8",
+        "remark": "",
+        "roomNo": "C9858174910500",
+        "enabled": 1,
+        "floorNo": 1,
+        "version": 1,
+        "capacity": 2,
+        "buildingId": "2"
+      }
+    ],
+    "activeResidences": [
+      {
+        "id": "6",
+        "roomId": "7",
+        "version": 0,
+        "studentId": "7",
+        "studentNo": "C9857966216900B",
+        "studentName": "并发回归学生"
+      },
+      {
+        "id": "7",
+        "roomId": "8",
+        "version": 0,
+        "studentId": "8",
+        "studentNo": "C9858174910500A",
+        "studentName": "并发回归学生"
+      },
+      {
+        "id": "8",
+        "roomId": "8",
+        "version": 0,
+        "studentId": "9",
+        "studentNo": "C9858174910500B",
+        "studentName": "并发回归学生"
+      }
+    ],
+    "fixtureBuildingBusinessCounts": {
+      "rooms": 0,
+      "hygiene": 0,
+      "repairs": 0,
+      "visitors": 0,
+      "residences": 0
+    }
+  },
+  "restoreGrantSql": [
+    "INSERT INTO manager_building(manager_user_id,building_id) SELECT 1,3 FROM building b WHERE b.id=3 AND b.code='C9858372067800' AND NOT EXISTS(SELECT 1 FROM manager_building x WHERE x.manager_user_id=1 AND x.building_id=3);",
+    "INSERT INTO manager_building(manager_user_id,building_id) SELECT 2,3 FROM building b WHERE b.id=3 AND b.code='C9858372067800' AND NOT EXISTS(SELECT 1 FROM manager_building x WHERE x.manager_user_id=2 AND x.building_id=3);"
+  ],
+  "actions": [
+    {
+      "action": "check-out via authorized API",
+      "residenceId": "6",
+      "studentId": "7",
+      "roomId": "7",
+      "checkedOutAt": "2026-11-06T19:37:57.910Z",
+      "version": 1
+    },
+    {
+      "action": "check-out via authorized API",
+      "residenceId": "7",
+      "studentId": "8",
+      "roomId": "8",
+      "checkedOutAt": "2026-11-06T19:37:57.941Z",
+      "version": 1
+    },
+    {
+      "action": "check-out via authorized API",
+      "residenceId": "8",
+      "studentId": "9",
+      "roomId": "8",
+      "checkedOutAt": "2026-11-06T19:37:57.958Z",
+      "version": 1
+    },
+    {
+      "action": "disable empty fixture room via authorized API",
+      "roomId": "7",
+      "roomNo": "C9857966216900",
+      "enabled": false,
+      "version": 2
+    },
+    {
+      "action": "disable empty fixture room via authorized API",
+      "roomId": "8",
+      "roomNo": "C9858174910500",
+      "enabled": false,
+      "version": 2
+    },
+    {
+      "action": "disable empty fixture building via authorized API",
+      "buildingId": "3",
+      "enabled": false,
+      "version": 3
+    },
+    {
+      "action": "remove exactly exported fixture grants",
+      "buildingId": "3",
+      "managerUserIds": [
+        "1",
+        "2"
+      ],
+      "removedRows": 2
+    }
+  ],
+  "after": {
+    "manager1BuildingGrants": [
+      {
+        "code": "A",
+        "buildingId": "1"
+      },
+      {
+        "code": "B",
+        "buildingId": "2"
+      }
+    ],
+    "manager2BuildingGrants": [
+      {
+        "code": "B",
+        "buildingId": "2"
+      }
+    ],
+    "fixtureRooms": [
+      {
+        "id": "7",
+        "roomNo": "C9857966216900",
+        "enabled": 0,
+        "activeResidences": 0
+      },
+      {
+        "id": "8",
+        "roomNo": "C9858174910500",
+        "enabled": 0,
+        "activeResidences": 0
+      }
+    ],
+    "fixtureBuilding": [
+      {
+        "id": "3",
+        "code": "C9858372067800",
+        "enabled": 0
+      }
+    ]
+  },
+  "passed": true,
+  "finishedAt": "2026-11-06T19:38:00.076925+00:00"
+}

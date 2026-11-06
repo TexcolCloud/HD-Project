@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "学生公寓报修、访客与卫生服务"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "学生公寓报修、访客与卫生服务"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "寓见公寓"
+    }
+  ]
+}

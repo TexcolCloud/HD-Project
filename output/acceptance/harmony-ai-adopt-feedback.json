@@ -1,0 +1,394 @@
+[
+  {
+    "type": "Button",
+    "text": "‹",
+    "id": "page-back",
+    "bounds": "[56,150][196,318]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "提交报修",
+    "id": "",
+    "bounds": "[238,174][1018,295]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "夜间",
+    "id": "theme-toggle",
+    "bounds": "[1060,150][1264,318]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Scroll",
+    "text": "",
+    "id": "page-scroll",
+    "bounds": "[0,349][1320,2552]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "报修填写助手",
+    "id": "",
+    "bounds": "[112,475][1208,545]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "根据本次描述和最多3张所选图片整理建议，核对后再采纳。",
+    "id": "",
+    "bounds": "[112,587][1208,741]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Checkbox",
+    "text": "analysis-consent",
+    "id": "",
+    "bounds": "[126,825][196,895]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "同意将本次故障描述与所选图片发送给AI服务分析",
+    "id": "",
+    "bounds": "[238,783][1208,937]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "AI 帮我完善",
+    "id": "repair-ai",
+    "bounds": "[112,979][1208,1147]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "AI建议，请核对",
+    "id": "",
+    "bounds": "[112,1189][1208,1246]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "洗手池管道疑似漏水\n水电\n洗手池下方持续滴水，请补充漏点位置与持续时间。",
+    "id": "",
+    "bounds": "[112,1288][1208,1624]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "这是本地协议验收夹具，无法确认真实故障原因。",
+    "id": "",
+    "bounds": "[112,1666][1208,1719]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "待补充：关闭水龙头后是否仍滴水？",
+    "id": "",
+    "bounds": "[112,1761][1208,1814]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "已采纳，可继续修改",
+    "id": "",
+    "bounds": "[112,1856][1208,2024]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Button",
+    "text": "提交报修",
+    "id": "repair-submit",
+    "bounds": "[56,2164][1264,2339]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "确认内容后提交。AI暂不可用时，仍可手动完成报修。",
+    "id": "",
+    "bounds": "[56,2381][1061,2454]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-home",
+    "bounds": "[0,2555][440,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "首页",
+    "id": "",
+    "bounds": "[178,2676][263,2725]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-repairs",
+    "bounds": "[440,2555][880,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "我的报修",
+    "id": "",
+    "bounds": "[576,2673][745,2722]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-profile",
+    "bounds": "[880,2555][1320,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "我的",
+    "id": "",
+    "bounds": "[1058,2673][1143,2722]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "WindowScene",
+    "text": "",
+    "id": "session21",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "__Common__",
+    "text": "",
+    "id": "StatusBarBox",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "__Common__",
+    "text": "",
+    "id": "StatusBarBridgeView",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "status_bar_color_picker",
+    "bounds": "[49,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarView",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "StatusBarBackground_Row_0",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "sbg_left",
+    "bounds": "[49,55][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_clock",
+    "bounds": "[49,55][188,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Flex",
+    "text": "03, :, 44",
+    "id": "ClockStatusView",
+    "bounds": "[49,55][188,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "TextClock",
+    "text": "",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[49,66][111,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "03",
+    "id": "",
+    "bounds": "[49,66][111,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": ":",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[111,71][126,124]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "TextClock",
+    "text": "",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[126,66][188,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "44",
+    "id": "",
+    "bounds": "[126,66][188,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "RelativeContainer",
+    "text": "",
+    "id": "sbg_right",
+    "bounds": "[0,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_ethernet",
+    "bounds": "[995,55][1079,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "StatusBarIconItemEthernetComponent_Image_icon",
+    "bounds": "[1002,69][1079,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_signal",
+    "bounds": "[1079,55][1166,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "SignalComponent-SignalIcon_Image_cellular",
+    "bounds": "[1086,69][1166,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "SignalComponent-SignalIcon_Image_cellularImage",
+    "bounds": "[1086,69][1166,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_battery",
+    "bounds": "[1166,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "BatteryComponent-batteryIcon_Image_batteryIcon",
+    "bounds": "[1173,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "BatteryComponent-batteryIcon_Image_batteryBorder",
+    "bounds": "[1173,69][1271,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "100",
+    "id": "BatteryComponent-batteryIcon_Text_batterySoc",
+    "bounds": "[1182,75][1252,120]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarView_LiveCapsuleListContainer",
+    "bounds": "[520,48][800,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "[Live]LiveCapsuleListView",
+    "bounds": "[520,48][800,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "metaballNode",
+    "text": "",
+    "id": "LiveMetaBallBaseVm",
+    "bounds": "[380,19][940,136]",
+    "enabled": "true",
+    "clickable": "true"
+  }
+]

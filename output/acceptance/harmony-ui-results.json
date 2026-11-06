@@ -1,0 +1,86 @@
+{
+  "verifiedAt": "2026-11-06T19:47:42.982682+00:00",
+  "device": "Pura 90 emulator",
+  "target": "127.0.0.1:5555",
+  "harmonyApi": 24,
+  "bundle": "com.dormlink.residence",
+  "hapSha256": "4631c2861d8147364b0147a881f55f8e8fdca41d2de7d14ceb4479c302598e25",
+  "hapBytes": 1339272,
+  "passed": true,
+  "checks": [
+    {
+      "name": "student_login",
+      "detail": "学生登录、宿舍与入住信息",
+      "passed": true,
+      "evidence": "harmony-student-final.png"
+    },
+    {
+      "name": "report_picker_upload",
+      "detail": "系统相册选图并真实上传报修",
+      "passed": true,
+      "evidence": "harmony-upload-preview-fixed.png"
+    },
+    {
+      "name": "report_complete",
+      "detail": "学生报修、Web处理、原生学生确认完成",
+      "passed": true,
+      "evidence": "harmony-repair-completed.png"
+    },
+    {
+      "name": "manager_report",
+      "detail": "宿管原生接单、开始、提交结果到待确认",
+      "passed": true,
+      "evidence": "harmony-manager-order-pending.png"
+    },
+    {
+      "name": "visitor_arrival_departure",
+      "detail": "原生访客登记及离访，Web同步",
+      "passed": true,
+      "evidence": "harmony-visitor-left.png"
+    },
+    {
+      "name": "hygiene_backfill",
+      "detail": "原生卫生四项评分及实际时刻补录，Web同步",
+      "passed": true,
+      "evidence": "harmony-hygiene-backfill.png"
+    },
+    {
+      "name": "image_remove",
+      "detail": "预览1/1，移除后0/0即时更新",
+      "passed": true,
+      "evidence": "harmony-upload-preview-fixed.png"
+    },
+    {
+      "name": "ai_unconfigured",
+      "detail": "未配置提示后保留手填并成功提交",
+      "passed": true,
+      "evidence": "harmony-ai-unconfigured.png"
+    },
+    {
+      "name": "ai_explicit_adoption_fixture",
+      "detail": "隔离协议fixture：主动采纳前保留手工内容，采纳后更新标题描述分类",
+      "passed": true,
+      "evidence": "harmony-ai-fixture-adopted.png"
+    },
+    {
+      "name": "final_hap_manager_preview",
+      "detail": "最终HAP重新安装，宿管首页仅含未结工单",
+      "passed": true,
+      "evidence": "harmony-manager-final.png"
+    },
+    {
+      "name": "night_theme",
+      "detail": "最终HAP暖黑主题切换及恢复日间",
+      "passed": true,
+      "evidence": "harmony-student-night.png"
+    }
+  ],
+  "restoredApiBase": "http://127.0.0.1:8080/api/v1",
+  "temporaryAiFixtureStopped": true,
+  "officialDeepSeekCallVerified": false,
+  "notExecuted": [
+    "真实手机与发布签名",
+    "原生卫生图片与关联复查分支",
+    "DeepSeek官方账号真实调用"
+  ]
+}

@@ -1,0 +1,27 @@
+# Local credentials and runtime
+.env
+.env.*
+!.env.example
+**/node_modules/
+**/dist/
+**/target/
+**/.hvigor/
+**/oh_modules/
+**/build/
+**/.idea/
+**/local.properties
+**/phoneSettingConfig_*.json
+**/data/
+**/uploads/
+**/*.log
+.playwright-cli/
+.tools/
+output/runtime/
+
+# Downloaded Maven distribution; wrapper bootstrap remains versioned.
+backend/.mvn/apache-maven-*/
+backend/.mvn/*-bin.zip
+backend/.mvn/verified-*.pom
+backend/.mvn/google-java-format.jar
+
+**/__pycache__/

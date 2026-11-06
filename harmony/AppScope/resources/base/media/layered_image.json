@@ -1,0 +1,6 @@
+{
+  "layered-image": {
+    "background": "$media:dorm_background",
+    "foreground": "$media:dorm_foreground"
+  }
+}

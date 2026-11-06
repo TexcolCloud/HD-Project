@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>寓见 DormLink · 三端界面设计预览</title>
+  <link rel="preload" href="assets/fonts/dorm-plex.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/dorm-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="preview.css">
+</head>
+<body data-theme="day">
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <header class="preview-bar">
+    <a class="preview-brand" href="#" aria-label="寓见界面设计首页"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span><strong>寓见 <small>DormLink</small></strong></a>
+    <nav class="device-tabs" aria-label="预览终端">
+      <button data-view="web" aria-pressed="true">Web 管理端</button>
+      <button data-view="student" aria-pressed="false">鸿蒙学生端</button>
+      <button data-view="manager" aria-pressed="false">鸿蒙宿管端</button>
+      <button data-view="tokens" aria-pressed="false">配色规范</button>
+    </nav>
+    <div class="preview-tools">
+      <div class="theme-switch" role="group" aria-label="界面风格">
+        <button type="button" data-theme-choice="day" aria-pressed="true">暖白日间</button>
+        <button type="button" data-theme-choice="night" aria-pressed="false">暖黑夜间</button>
+      </div>
+      <span class="preview-label"><span></span>设计预览 · 示例数据</span>
+    </div>
+  </header>
+  <div id="app"></div>
+  <dialog id="detail-dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="preview.js"></script>
+</body>
+</html>

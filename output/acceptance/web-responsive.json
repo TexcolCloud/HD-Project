@@ -1,0 +1,296 @@
+[
+  {
+    "theme": "暖白日间",
+    "scene": "工作台",
+    "documentWidth": 1440,
+    "heading": "公寓服务工作台",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "宿舍档案",
+    "documentWidth": 1425,
+    "heading": "宿舍档案",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "学生入住",
+    "documentWidth": 1425,
+    "heading": "学生入住",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "报修工单",
+    "documentWidth": 1440,
+    "heading": "报修工单",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "卫生巡检",
+    "documentWidth": 1440,
+    "heading": "卫生巡检",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "访客登记",
+    "documentWidth": 1440,
+    "heading": "访客登记",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "数据统计",
+    "documentWidth": 1425,
+    "heading": "数据统计",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "工作台",
+    "documentWidth": 1440,
+    "heading": "公寓服务工作台",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "宿舍档案",
+    "documentWidth": 1425,
+    "heading": "宿舍档案",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "学生入住",
+    "documentWidth": 1425,
+    "heading": "学生入住",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "报修工单",
+    "documentWidth": 1440,
+    "heading": "报修工单",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "卫生巡检",
+    "documentWidth": 1440,
+    "heading": "卫生巡检",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "访客登记",
+    "documentWidth": 1440,
+    "heading": "访客登记",
+    "width": 1440
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "数据统计",
+    "documentWidth": 1440,
+    "heading": "数据统计",
+    "width": 1440
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "工作台",
+    "documentWidth": 768,
+    "heading": "公寓服务工作台",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "宿舍档案",
+    "documentWidth": 753,
+    "heading": "宿舍档案",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "学生入住",
+    "documentWidth": 753,
+    "heading": "学生入住",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "报修工单",
+    "documentWidth": 768,
+    "heading": "报修工单",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "卫生巡检",
+    "documentWidth": 768,
+    "heading": "卫生巡检",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "访客登记",
+    "documentWidth": 768,
+    "heading": "访客登记",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "数据统计",
+    "documentWidth": 768,
+    "heading": "数据统计",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "工作台",
+    "documentWidth": 768,
+    "heading": "公寓服务工作台",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "宿舍档案",
+    "documentWidth": 753,
+    "heading": "宿舍档案",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "学生入住",
+    "documentWidth": 753,
+    "heading": "学生入住",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "报修工单",
+    "documentWidth": 768,
+    "heading": "报修工单",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "卫生巡检",
+    "documentWidth": 768,
+    "heading": "卫生巡检",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "访客登记",
+    "documentWidth": 768,
+    "heading": "访客登记",
+    "width": 768
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "数据统计",
+    "documentWidth": 768,
+    "heading": "数据统计",
+    "width": 768
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "工作台",
+    "documentWidth": 375,
+    "heading": "公寓服务工作台",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "宿舍档案",
+    "documentWidth": 360,
+    "heading": "宿舍档案",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "学生入住",
+    "documentWidth": 360,
+    "heading": "学生入住",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "报修工单",
+    "documentWidth": 375,
+    "heading": "报修工单",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "卫生巡检",
+    "documentWidth": 375,
+    "heading": "卫生巡检",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "访客登记",
+    "documentWidth": 375,
+    "heading": "访客登记",
+    "width": 375
+  },
+  {
+    "theme": "暖白日间",
+    "scene": "数据统计",
+    "documentWidth": 375,
+    "heading": "数据统计",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "工作台",
+    "documentWidth": 375,
+    "heading": "公寓服务工作台",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "宿舍档案",
+    "documentWidth": 360,
+    "heading": "宿舍档案",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "学生入住",
+    "documentWidth": 360,
+    "heading": "学生入住",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "报修工单",
+    "documentWidth": 375,
+    "heading": "报修工单",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "卫生巡检",
+    "documentWidth": 360,
+    "heading": "卫生巡检",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "访客登记",
+    "documentWidth": 375,
+    "heading": "访客登记",
+    "width": 375
+  },
+  {
+    "theme": "暖黑夜间",
+    "scene": "数据统计",
+    "documentWidth": 375,
+    "heading": "数据统计",
+    "width": 375
+  }
+]

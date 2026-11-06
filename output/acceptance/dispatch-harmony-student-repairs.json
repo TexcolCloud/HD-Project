@@ -1,0 +1,466 @@
+[
+  {
+    "type": "Button",
+    "text": "‹",
+    "id": "page-back",
+    "bounds": "[56,150][196,318]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "我的报修",
+    "id": "",
+    "bounds": "[238,174][1018,295]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "夜间",
+    "id": "theme-toggle",
+    "bounds": "[1060,150][1264,318]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Scroll",
+    "text": "",
+    "id": "page-scroll",
+    "bounds": "[0,349][1320,2552]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "TextInput",
+    "text": "",
+    "id": "repair-search",
+    "bounds": "[56,405][1019,573]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Button",
+    "text": "查询",
+    "id": "",
+    "bounds": "[1047,405][1264,573]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Select",
+    "text": "全部状态",
+    "id": "",
+    "bounds": "[56,615][1264,783]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Button",
+    "text": "＋ 提交报修",
+    "id": "primary-repairs",
+    "bounds": "[56,846][1264,1021]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "共 9 条记录",
+    "id": "",
+    "bounds": "[56,1084][1264,1133]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "BX20261107C23E34C0",
+    "id": "",
+    "bounds": "[122,1251][1015,1300]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "待受理",
+    "id": "",
+    "bounds": "[1015,1241][1198,1310]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "动态插单A-门锁异常-0458",
+    "id": "",
+    "bounds": "[122,1345][1198,1415]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "A栋 302 · 门窗家具",
+    "id": "",
+    "bounds": "[122,1450][1198,1503]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "2026/11/7 04:57:55",
+    "id": "",
+    "bounds": "[122,1540][958,1589]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "查看进度 →",
+    "id": "",
+    "bounds": "[958,1538][1198,1591]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "BX20261107A7851737",
+    "id": "",
+    "bounds": "[122,1775][1015,1824]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "待确认",
+    "id": "",
+    "bounds": "[1015,1765][1198,1834]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "路线联调A-洗手池接头渗水-0455",
+    "id": "",
+    "bounds": "[122,1869][1198,1939]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "A栋 302 · 水电",
+    "id": "",
+    "bounds": "[122,1974][1198,2027]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "2026/11/7 04:54:50",
+    "id": "",
+    "bounds": "[122,2064][958,2113]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "查看进度 →",
+    "id": "",
+    "bounds": "[958,2062][1198,2115]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "BX20261107AA3B8689",
+    "id": "",
+    "bounds": "[122,2299][1015,2348]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "已取消",
+    "id": "",
+    "bounds": "[1015,2289][1198,2358]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "调度验收-20261107044618-A-urgent",
+    "id": "",
+    "bounds": "[122,2393][1198,2463]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "A栋 302 · 水电",
+    "id": "",
+    "bounds": "[122,2498][1198,2551]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-home",
+    "bounds": "[0,2555][440,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "首页",
+    "id": "",
+    "bounds": "[178,2676][263,2725]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-repairs",
+    "bounds": "[440,2555][880,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "我的报修",
+    "id": "",
+    "bounds": "[576,2673][745,2722]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Button",
+    "text": "",
+    "id": "tab-profile",
+    "bounds": "[880,2555][1320,2758]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Text",
+    "text": "我的",
+    "id": "",
+    "bounds": "[1058,2673][1143,2722]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "WindowScene",
+    "text": "",
+    "id": "session21",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "__Common__",
+    "text": "",
+    "id": "StatusBarBox",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "__Common__",
+    "text": "",
+    "id": "StatusBarBridgeView",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "true"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "status_bar_color_picker",
+    "bounds": "[49,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarView",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "StatusBarBackground_Row_0",
+    "bounds": "[0,0][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "sbg_left",
+    "bounds": "[49,55][1320,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_clock",
+    "bounds": "[49,55][188,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Flex",
+    "text": "05, :, 07",
+    "id": "ClockStatusView",
+    "bounds": "[49,55][188,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "TextClock",
+    "text": "",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[49,66][111,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "05",
+    "id": "",
+    "bounds": "[49,66][111,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": ":",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[111,71][126,124]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "TextClock",
+    "text": "",
+    "id": "TimeView_Text_timeText",
+    "bounds": "[126,66][188,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "07",
+    "id": "",
+    "bounds": "[126,66][188,128]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "RelativeContainer",
+    "text": "",
+    "id": "sbg_right",
+    "bounds": "[0,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_ethernet",
+    "bounds": "[995,55][1079,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "StatusBarIconItemEthernetComponent_Image_icon",
+    "bounds": "[1002,69][1079,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_signal",
+    "bounds": "[1079,55][1166,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "SignalComponent-SignalIcon_Image_cellular",
+    "bounds": "[1086,69][1166,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "SignalComponent-SignalIcon_Image_cellularImage",
+    "bounds": "[1086,69][1166,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarIconWrapper_status_bar_battery",
+    "bounds": "[1166,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Row",
+    "text": "",
+    "id": "BatteryComponent-batteryIcon_Image_batteryIcon",
+    "bounds": "[1173,55][1271,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "SymbolGlyph",
+    "text": "",
+    "id": "BatteryComponent-batteryIcon_Image_batteryBorder",
+    "bounds": "[1173,69][1271,125]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Text",
+    "text": "100",
+    "id": "BatteryComponent-batteryIcon_Text_batterySoc",
+    "bounds": "[1182,75][1252,120]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "StatusBarView_LiveCapsuleListContainer",
+    "bounds": "[520,48][800,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "Stack",
+    "text": "",
+    "id": "[Live]LiveCapsuleListView",
+    "bounds": "[520,48][800,136]",
+    "enabled": "true",
+    "clickable": "false"
+  },
+  {
+    "type": "metaballNode",
+    "text": "",
+    "id": "LiveMetaBallBaseVm",
+    "bounds": "[380,19][940,136]",
+    "enabled": "true",
+    "clickable": "true"
+  }
+]

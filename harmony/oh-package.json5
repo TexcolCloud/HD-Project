@@ -1,0 +1,8 @@
+{
+  "modelVersion": "6.1.1",
+  "name": "dormlink",
+  "version": "1.0.0",
+  "description": "学生公寓综合服务管理平台",
+  "dependencies": {},
+  "devDependencies": {}
+}

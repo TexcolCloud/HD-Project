@@ -1,0 +1,59 @@
+{
+  "startedAt": "2026-11-06T20:52:03.917Z",
+  "checks": [
+    {
+      "name": "settings",
+      "passed": true,
+      "detail": "应用内浏览器保存A栋3层、北京时间12:00截止；真实PATCH成功"
+    },
+    {
+      "name": "shared_pause_and_account_dedup",
+      "passed": true,
+      "detail": "Web暂停后参与人数0，原生同账号路线同步暂停；两端在线只计1人"
+    },
+    {
+      "name": "manager_ai_unconfigured",
+      "passed": true,
+      "detail": "值班简报需主动同意，真实接口返回AI尚未配置，人工办理入口保留"
+    },
+    {
+      "name": "dynamic_insert_while_enroute",
+      "passed": true,
+      "detail": "原生出发工单9后，新急单10插入第2站、B栋11第3站，当前工单9仍锁定"
+    },
+    {
+      "name": "native_settings_synced",
+      "passed": true,
+      "detail": "原生保存A4和12:30，Web自动同步，活跃人数仍1"
+    },
+    {
+      "name": "new_staff_rebalances_and_scopes",
+      "passed": true,
+      "detail": "原生manager1执行A9时，Web manager2上线，B11从原推荐移入manager2路线；页面2人在线/参与，仅含B栋"
+    },
+    {
+      "name": "confirmed_visit_arrangement",
+      "passed": true,
+      "detail": "manager2接单B11，界面保存06:00–07:00确认预约与15分钟估算，详情同步显示"
+    },
+    {
+      "name": "dispatch_responsive",
+      "passed": true,
+      "detail": "暖白/暖黑×1440/768/375共6组合无页面外层溢出"
+    },
+    {
+      "name": "student_visit_preference_synced",
+      "passed": true,
+      "detail": "原生学生保存工单10的10:00–11:00，Web显示可协商访问时段，未擅自确认"
+    },
+    {
+      "name": "native_route_repair_closed_loop",
+      "passed": true,
+      "detail": "原生9认领/出发/到达/开始/结果，学生原生确认后Web已完成；原生路线自动转至下一站10"
+    }
+  ],
+  "finishedAt": "2026-11-06T21:24:00.540Z",
+  "passed": true,
+  "consoleAfterFinalNavigation": [],
+  "finalUrl": "http://127.0.0.1:5173/dispatch"
+}

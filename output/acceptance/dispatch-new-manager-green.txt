@@ -1,0 +1,20 @@
+|  ��ӭʹ�� JShell -- �汾 25.0.4
+|  Ҫ�����˽�ð汾, �����: /help intro
+
+jshell> 
+jshell> 
+jshell> 
+jshell> now ==> 2026-11-07T00:00:00Z
+
+jshell> w1 ==> Worker[id=1, buildingIds=[A], acceptingNew=true,  ... oorNo=1], lockedPrefix=[]]
+
+jshell> w2 ==> Worker[id=2, buildingIds=[A], acceptingNew=true,  ... oorNo=1], lockedPrefix=[]]
+
+jshell> jobs ==> []
+
+jshell> 
+jshell> result ==> Result[routes=[Route[managerId=1, stops=[Stop[ord ... 3, maxWorkloadMinutes=22]]
+
+jshell> EXISTING_JOBS_PER_MANAGER=[2, 1]
+
+jshell> |  �ټ�

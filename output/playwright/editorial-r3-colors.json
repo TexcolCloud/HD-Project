@@ -1,0 +1,139 @@
+{
+  "source": "Browser computed CSS variables checked against preview.css, 2026-11-07",
+  "themes": {
+    "day": {
+      "colors": {
+        "primary": "#242622",
+        "primarySoft": "#EDE8DF",
+        "nav": "#242622",
+        "canvas": "#F5F1E8",
+        "surface": "#FFFDF9",
+        "surfaceRaised": "#F7F4EC",
+        "text": "#242622",
+        "textMuted": "#62665C",
+        "border": "#DAD5C9",
+        "borderStrong": "#BFBFB1",
+        "accent": "#A64B2A",
+        "accentSoft": "#F4E6DB",
+        "warning": "#87532A",
+        "warningSoft": "#F7EADD",
+        "info": "#466170",
+        "infoSoft": "#E8EFF1",
+        "danger": "#A13E37",
+        "dangerSoft": "#F7EAE6",
+        "success": "#3A6448",
+        "successSoft": "#EDF1E9",
+        "onPrimary": "#FFFDF8"
+      },
+      "contrast": [
+        {
+          "foreground": "text",
+          "background": "surface",
+          "ratio": 15.03
+        },
+        {
+          "foreground": "textMuted",
+          "background": "canvas",
+          "ratio": 5.21
+        },
+        {
+          "foreground": "onPrimary",
+          "background": "primary",
+          "ratio": 15.02
+        },
+        {
+          "foreground": "warning",
+          "background": "warningSoft",
+          "ratio": 5.38
+        },
+        {
+          "foreground": "info",
+          "background": "infoSoft",
+          "ratio": 5.63
+        },
+        {
+          "foreground": "danger",
+          "background": "dangerSoft",
+          "ratio": 5.48
+        },
+        {
+          "foreground": "success",
+          "background": "successSoft",
+          "ratio": 5.93
+        }
+      ],
+      "studentRepairCta": {
+        "foreground": "#FFFDF8",
+        "background": "#A64B2A",
+        "ratio": 5.64
+      }
+    },
+    "night": {
+      "colors": {
+        "primary": "#EFE9DB",
+        "primarySoft": "#33382F",
+        "nav": "#151815",
+        "canvas": "#1E211E",
+        "surface": "#272B26",
+        "surfaceRaised": "#2D322C",
+        "text": "#ECE6D9",
+        "textMuted": "#BCBBAF",
+        "border": "#454A42",
+        "borderStrong": "#636B5D",
+        "accent": "#E2A183",
+        "accentSoft": "#403029",
+        "warning": "#E5BE8B",
+        "warningSoft": "#40362A",
+        "info": "#BDCFD4",
+        "infoSoft": "#29383B",
+        "danger": "#F1A99C",
+        "dangerSoft": "#442E2B",
+        "success": "#B3CCA0",
+        "successSoft": "#303C2B",
+        "onPrimary": "#232721"
+      },
+      "contrast": [
+        {
+          "foreground": "text",
+          "background": "surface",
+          "ratio": 11.57
+        },
+        {
+          "foreground": "textMuted",
+          "background": "canvas",
+          "ratio": 8.41
+        },
+        {
+          "foreground": "onPrimary",
+          "background": "primary",
+          "ratio": 12.54
+        },
+        {
+          "foreground": "warning",
+          "background": "warningSoft",
+          "ratio": 6.78
+        },
+        {
+          "foreground": "info",
+          "background": "infoSoft",
+          "ratio": 7.57
+        },
+        {
+          "foreground": "danger",
+          "background": "dangerSoft",
+          "ratio": 6.52
+        },
+        {
+          "foreground": "success",
+          "background": "successSoft",
+          "ratio": 6.68
+        }
+      ],
+      "studentRepairCta": {
+        "foreground": "#232721",
+        "background": "#E2A183",
+        "ratio": 6.98
+      }
+    }
+  }
+}
