@@ -1,5 +1,7 @@
 package cn.dormlink;
 
+import cn.dormlink.shared.jdbc.Db;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpServer;

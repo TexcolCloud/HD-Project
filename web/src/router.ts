@@ -11,6 +11,7 @@ export const router=createRouter({history:createWebHistory(),routes:[
   {path:'/housing/residences',redirect:'/housing/students'},
   {path:'/repairs/:id?',component:()=>import('./pages/RepairsPage.vue'),meta:{title:'报修工单'}},
   {path:'/dispatch',component:()=>import('./pages/DispatchPage.vue'),meta:{title:'任务调度'}},
+  {path:'/mobility',component:()=>import('./pages/MobilityPage.vue'),meta:{title:'现场位置'}},
   {path:'/hygiene',component:()=>import('./pages/HygienePage.vue'),meta:{title:'卫生巡检'}},
   {path:'/visitors',component:()=>import('./pages/VisitorsPage.vue'),meta:{title:'访客登记'}},
   {path:'/statistics',component:()=>import('./pages/StatsPage.vue'),meta:{title:'数据统计'}},

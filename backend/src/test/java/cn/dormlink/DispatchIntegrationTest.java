@@ -1,5 +1,10 @@
 package cn.dormlink;
 
+import cn.dormlink.shared.jdbc.Db;
+import cn.dormlink.shared.jdbc.SchemaMigrations;
+import cn.dormlink.dispatch.DispatchRepository;
+import cn.dormlink.dispatch.DispatchSignals;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;

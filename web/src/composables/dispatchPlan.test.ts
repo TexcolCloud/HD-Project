@@ -1,6 +1,14 @@
 import {expect,it} from 'vitest';
 import type {DispatchBoard,DispatchTask} from '../api/dispatch';
 import {selectBoardVersion,describeDispatchChanges,currentDispatchTask,changedDispatchOrders} from './dispatchPlan';
+import {dispatchPositionFields} from './dispatchPlan';
+
+it('只修改接单时段不重新确认位置，未知楼层必须由本人补充',()=>{
+  expect(dispatchPositionFields('b','',false)).toEqual({});
+  expect(()=>dispatchPositionFields('b','',true)).toThrow('请确认当前楼层');
+  expect(dispatchPositionFields('b',3,true)).toEqual({positionBuildingId:'b',positionFloorNo:3});
+  expect(dispatchPositionFields('','',true)).toEqual({positionBuildingId:null,positionFloorNo:null});
+});
 
 it('较旧计划迟到时保留当前新版本与路线变更说明',()=>{
   const current:DispatchBoard={revision:8,generatedAt:'2026-11-07T04:00:00Z',dirty:false,onlineCount:1,participatingCount:1,me:{userId:'m1',displayName:'测试宿管',online:true,acceptingNewTasks:true,buildingIds:['a'],positionBuildingId:null,positionBuildingName:null,positionFloorNo:null,positionUpdatedAt:null,availableUntil:null,version:2},routes:[],unassigned:[],metrics:{totalTasks:0,assignedCount:0,unassignedCount:0,travelMinutes:0,baselineTravelMinutes:0,maxWorkloadMinutes:0},changes:['新增任务已插入剩余路线']};

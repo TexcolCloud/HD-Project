@@ -8,6 +8,29 @@ import java.util.*;
  * Pure planning module: no database, authenticated context, network or mutable application state.
  */
 public final class RoutePlanner {
+  private static final int DEFAULT_SEARCH_UNITS = 5_000_000;
+  private final int searchUnits;
+
+  public RoutePlanner() { this(DEFAULT_SEARCH_UNITS); }
+
+  /** A unit is one stop in a speculative evaluation, shared by the entire solve. */
+  public RoutePlanner(int searchUnits) {
+    if (searchUnits < 1) { throw new IllegalArgumentException("Search budget must be positive"); }
+    this.searchUnits = searchUnits;
+  }
+
+  private static final class Budget {
+    private int remaining;
+    Budget(int remaining) { this.remaining = remaining; }
+    boolean exhausted() { return remaining <= 0; }
+    boolean spend(int routeSize) {
+      int cost = Math.max(1, routeSize);
+      if (remaining < cost) { remaining = 0; return false; }
+      remaining -= cost;
+      return true;
+    }
+  }
+
   public record Node(String buildingId, int floorNo) {}
 
   public record Worker(
@@ -94,17 +117,18 @@ public final class RoutePlanner {
   private static final Comparator<Job> PREVIOUS_ORDER =
       Comparator.comparingInt(Job::previousPosition).thenComparing(Job::orderId);
   private static final Map<String, String> REASONS =
-      Map.of(
-          "NO_AVAILABLE_MANAGER", "暂无接受新任务的活跃宿管",
-          "NO_AUTHORIZED_MANAGER", "当前候选宿管无该楼栋权限",
-          "OWNER_UNAVAILABLE", "原办理宿管暂不可安排，请保留责任并确认交接",
-          "POSITION_REQUIRED", "缺少出发位置，请先设置当前楼栋和楼层",
-          "UNREACHABLE", "缺少楼栋之间的通行时间配置",
-          "TIME_WINDOW_CONFLICT", "无法在已确认的上门时间内完成",
-          "WORKING_TIME_EXCEEDED", "超过本次可用工作时段",
-          "LOCK_CONFLICT", "锁定任务与办理责任或楼栋权限不一致",
-          "NO_FEASIBLE_INSERTION", "现有预约或可用时段内没有可行插入位置",
-          "PRIORITY_DEFERRED", "紧急任务优先，本次未认领任务已移回待安排");
+      Map.ofEntries(
+          Map.entry("NO_AVAILABLE_MANAGER", "暂无接受新任务的活跃宿管"),
+          Map.entry("NO_AUTHORIZED_MANAGER", "当前候选宿管无该楼栋权限"),
+          Map.entry("OWNER_UNAVAILABLE", "原办理宿管暂不可安排，请保留责任并确认交接"),
+          Map.entry("POSITION_REQUIRED", "缺少出发位置，请先设置当前楼栋和楼层"),
+          Map.entry("UNREACHABLE", "缺少楼栋之间的通行时间配置"),
+          Map.entry("TIME_WINDOW_CONFLICT", "无法在已确认的上门时间内完成"),
+          Map.entry("WORKING_TIME_EXCEEDED", "超过本次可用工作时段"),
+          Map.entry("LOCK_CONFLICT", "锁定任务与办理责任或楼栋权限不一致"),
+          Map.entry("NO_FEASIBLE_INSERTION", "现有预约或可用时段内没有可行插入位置"),
+          Map.entry("PRIORITY_DEFERRED", "紧急任务优先，本次未认领任务已移回待安排"),
+          Map.entry("BUDGET_EXHAUSTED", "规划预算已用尽，请稍后重试；已保留当前可验证路线"));
 
   private static final class WorkingRoute {
     final Worker worker;
@@ -126,6 +150,7 @@ public final class RoutePlanner {
   private record Insertion(WorkingRoute route, List<Job> jobs, double cost, List<Job> deferred) {}
 
   public Result plan(Snapshot input) {
+    Budget budget = new Budget(searchUnits);
     Map<String, Job> jobs = new LinkedHashMap<>();
     for (Job j : input.jobs()) {
       if (j.serviceMinutes() < 1
@@ -180,7 +205,7 @@ public final class RoutePlanner {
               j -> {
                 var candidate = new ArrayList<>(r.jobs);
                 candidate.add(j);
-                if (evaluate(input, r.worker, candidate).valid()) {
+                if (tryEvaluate(input, r.worker, candidate, budget).valid()) {
                   r.jobs = candidate;
                   placed.add(j.orderId());
                 }
@@ -206,6 +231,10 @@ public final class RoutePlanner {
         rejected.put(j.orderId(), rejected(j, code));
         continue;
       }
+      if (budget.exhausted()) {
+        rejected.put(j.orderId(), rejected(j, "BUDGET_EXHAUSTED"));
+        continue;
+      }
       Insertion best = null;
       Set<String> failures = new LinkedHashSet<>();
       int oldMax =
@@ -214,22 +243,22 @@ public final class RoutePlanner {
               .max()
               .orElse(0);
       for (WorkingRoute r : candidates) {
-        var insertion = findInsertion(input, r, r.jobs, j, oldMax, List.of(), failures);
+        var insertion = findInsertion(input, r, r.jobs, j, oldMax, List.of(), failures, budget);
         if (insertion != null && (best == null || insertion.cost() < best.cost() - .0001))
           best = insertion;
       }
-      if (best == null && "URGENT".equals(j.priority())) {
+      if (best == null && !budget.exhausted() && "URGENT".equals(j.priority())) {
         for (WorkingRoute r : candidates) {
           var remaining = new ArrayList<>(r.jobs);
           List<Job> deferred = new ArrayList<>();
-          for (int k = remaining.size() - 1; k >= r.lockedCount; k--) {
+          for (int k = remaining.size() - 1; k >= r.lockedCount && !budget.exhausted(); k--) {
             Job existing = remaining.get(k);
             if (existing.ownerId() != null
                 || existing.locked()
                 || existing.hardWindow()
                 || "URGENT".equals(existing.priority())) continue;
             deferred.add(remaining.remove(k));
-            var insertion = findInsertion(input, r, remaining, j, oldMax, deferred, failures);
+            var insertion = findInsertion(input, r, remaining, j, oldMax, deferred, failures, budget);
             if (insertion != null && (best == null || insertion.cost() < best.cost() - .0001))
               best = insertion;
           }
@@ -239,19 +268,19 @@ public final class RoutePlanner {
         rejected.put(
             j.orderId(),
             rejected(
-                j, failures.size() == 1 ? failures.iterator().next() : "NO_FEASIBLE_INSERTION"));
+                j, budget.exhausted() ? "BUDGET_EXHAUSTED" : failures.size() == 1 ? failures.iterator().next() : "NO_FEASIBLE_INSERTION"));
       else {
         best.route().jobs = best.jobs();
         for (Job deferred : best.deferred())
           rejected.put(deferred.orderId(), rejected(deferred, "PRIORITY_DEFERRED"));
       }
     }
-    improveAcrossRoutes(input, routes);
+    improveAcrossRoutes(input, routes, budget);
     List<Route> result = new ArrayList<>();
     int travel = 0, baseline = 0, maximum = 0;
     boolean comparable = true;
     for (WorkingRoute r : routes) {
-      improveSuffix(input, r);
+      improveSuffix(input, r, budget);
       Evaluation e = evaluate(input, r.worker, r.jobs);
       result.add(new Route(r.worker.id(), e.stops(), e.travel(), e.waiting(), e.workload()));
       travel += e.travel();
@@ -282,13 +311,13 @@ public final class RoutePlanner {
       Job job,
       int oldMax,
       List<Job> deferred,
-      Set<String> failures) {
-    Evaluation before = evaluate(input, r.worker, r.jobs);
+      Set<String> failures, Budget budget) {
+    Evaluation before = tryEvaluate(input, r.worker, r.jobs, budget);
     Insertion best = null;
-    for (int position = r.lockedCount; position <= remaining.size(); position++) {
+    for (int position = r.lockedCount; position <= remaining.size() && !budget.exhausted(); position++) {
       var candidate = new ArrayList<>(remaining);
       candidate.add(position, job);
-      Evaluation after = evaluate(input, r.worker, candidate);
+      Evaluation after = tryEvaluate(input, r.worker, candidate, budget);
       if (!after.valid()) {
         failures.add(after.failure());
         continue;
@@ -304,6 +333,10 @@ public final class RoutePlanner {
     return best;
   }
 
+  private Evaluation tryEvaluate(Snapshot input, Worker worker, List<Job> jobs, Budget budget) {
+    return budget.spend(jobs.size()) ? evaluate(input, worker, jobs) : failed("BUDGET_EXHAUSTED");
+  }
+
   private Evaluation evaluate(Snapshot in, Worker worker, List<Job> jobs) {
     Instant time = in.now();
     Node current = worker.start();
@@ -313,6 +346,9 @@ public final class RoutePlanner {
     int travel = 0, waiting = 0;
     double penalty = 0;
     List<Stop> stops = new ArrayList<>();
+    int[] positions = null;
+    int[] seenPositions = null;
+    int previousCount = 0;
     for (int i = 0; i < jobs.size(); i++) {
       Job j = jobs.get(i);
       if (current == null || current.buildingId() == null) return failed("POSITION_REQUIRED");
@@ -345,12 +381,19 @@ public final class RoutePlanner {
       }
       if (j.previousManagerId() != null && !j.previousManagerId().equals(worker.id()))
         penalty += 10;
-      for (int k = 0; k < i; k++) {
-        Job earlier = jobs.get(k);
-        if (worker.id().equals(j.previousManagerId())
-            && worker.id().equals(earlier.previousManagerId())
-            && j.previousPosition() >= 0
-            && earlier.previousPosition() > j.previousPosition()) penalty += 3;
+      if (worker.id().equals(j.previousManagerId()) && j.previousPosition() >= 0) {
+        if (positions == null) {
+          positions = jobs.stream().filter(old -> old.previousPosition() >= 0
+              && worker.id().equals(old.previousManagerId())).mapToInt(Job::previousPosition)
+              .distinct().sorted().toArray();
+          seenPositions = new int[positions.length + 1];
+        }
+        int rank = Arrays.binarySearch(positions, j.previousPosition()) + 1;
+        int noGreater = 0;
+        for (int k = rank; k > 0; k -= k & -k) { noGreater += seenPositions[k]; }
+        penalty += 3.0 * (previousCount - noGreater);
+        for (int k = rank; k < seenPositions.length; k += k & -k) { seenPositions[k]++; }
+        previousCount++;
       }
       // Ordinary stops may fill an appointment's waiting gap, but must not delay urgent access.
       if (!j.locked() && "URGENT".equals(j.priority()) && ordinaryBefore) {
@@ -390,10 +433,10 @@ public final class RoutePlanner {
   private record Relocation(
       WorkingRoute from, List<Job> remaining, WorkingRoute to, List<Job> expanded) {}
 
-  private void improveAcrossRoutes(Snapshot in, List<WorkingRoute> routes) {
+  private void improveAcrossRoutes(Snapshot in, List<WorkingRoute> routes, Budget budget) {
     // ponytail: bounded relocation keeps new online staff useful without a separate fleet solver.
-    int budget = 2000;
-    for (int pass = 0; pass < 3 && budget > 0; pass++) {
+    int relocationCandidates = 2000;
+    for (int pass = 0; pass < 3 && !budget.exhausted() && relocationCandidates > 0; pass++) {
       Map<WorkingRoute, Evaluation> before = new HashMap<>();
       double sum = 0;
       int maximum = 0;
@@ -412,7 +455,7 @@ public final class RoutePlanner {
           if (job.ownerId() != null || job.locked() || job.hardWindow()) continue;
           List<Job> remaining = new ArrayList<>(from.jobs);
           remaining.remove(i);
-          Evaluation reduced = evaluate(in, from.worker, remaining);
+          Evaluation reduced = tryEvaluate(in, from.worker, remaining, budget);
           if (!reduced.valid()) continue;
           for (WorkingRoute to : routes) {
             if (from == to || !eligible(to.worker, job)) continue;
@@ -421,10 +464,10 @@ public final class RoutePlanner {
               if (other != from && other != to)
                 otherMaximum = Math.max(otherMaximum, before.get(other).workload());
             for (int position = to.lockedCount; position <= to.jobs.size(); position++) {
-              if (budget-- <= 0) break search;
+              if (budget.exhausted() || relocationCandidates-- <= 0) break search;
               List<Job> expanded = new ArrayList<>(to.jobs);
               expanded.add(position, job);
-              Evaluation increased = evaluate(in, to.worker, expanded);
+              Evaluation increased = tryEvaluate(in, to.worker, expanded, budget);
               if (!increased.valid()) continue;
               double score =
                   sum
@@ -447,18 +490,17 @@ public final class RoutePlanner {
     }
   }
 
-  private void improveSuffix(Snapshot in, WorkingRoute r) {
+  private void improveSuffix(Snapshot in, WorkingRoute r, Budget budget) {
     // ponytail: bounded 2-opt for course-sized batches; replace the solver if larger batches need
     // it.
-    int budget = 2000;
-    for (int pass = 0; pass < 2; pass++) {
+    for (int pass = 0; pass < 2 && !budget.exhausted(); pass++) {
       double best = evaluate(in, r.worker, r.jobs).score();
       List<Job> selected = null;
-      for (int start = r.lockedCount; start < r.jobs.size() - 1 && budget > 0; start++) {
-        for (int end = start + 1; end < r.jobs.size() && budget-- > 0; end++) {
+      for (int start = r.lockedCount; start < r.jobs.size() - 1 && !budget.exhausted(); start++) {
+        for (int end = start + 1; end < r.jobs.size() && !budget.exhausted(); end++) {
           var proposal = new ArrayList<>(r.jobs);
           Collections.reverse(proposal.subList(start, end + 1));
-          Evaluation e = evaluate(in, r.worker, proposal);
+          Evaluation e = tryEvaluate(in, r.worker, proposal, budget);
           if (e.valid() && e.score() < best - .0001) {
             best = e.score();
             selected = proposal;

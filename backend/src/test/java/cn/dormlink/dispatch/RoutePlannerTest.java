@@ -12,6 +12,21 @@ class RoutePlannerTest {
   final Instant now = Instant.parse("2026-11-07T00:00:00Z");
 
   @Test
+  void exhaustedSearchReturnsOnlyCurrentlyFeasibleWorkAndExplainsEveryRemainingJob() {
+    var worker = new RoutePlanner.Worker("1", Set.of("A"), true,
+        now.plusSeconds(7200), new RoutePlanner.Node("A", 1), List.of());
+    var result = new RoutePlanner(1).plan(new RoutePlanner.Snapshot(now, List.of(worker),
+        List.of(job("old-unauthorized", "B", 1, null, false, "1", 0),
+            job("first", "A", 1, null, false, null, -1),
+            job("second", "A", 1, null, false, null, -1)), Map.of(), 2, 1));
+    assertThat(result.routes().getFirst().stops()).isEmpty();
+    assertThat(result.unassigned()).extracting(RoutePlanner.Unassigned::orderId)
+        .containsExactlyInAnyOrder("old-unauthorized", "first", "second");
+    assertThat(result.unassigned()).filteredOn(u -> !u.orderId().equals("old-unauthorized"))
+        .extracting(RoutePlanner.Unassigned::code).containsOnly("BUDGET_EXHAUSTED");
+  }
+
+  @Test
   void ordinaryWorkCanFillAnUrgentAppointmentGapWithoutDelayingItsVisit() {
     var worker =
         new RoutePlanner.Worker(

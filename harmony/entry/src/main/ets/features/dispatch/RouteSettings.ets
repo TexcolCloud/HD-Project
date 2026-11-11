@@ -23,7 +23,7 @@ export struct RouteSettings {
     if (!this.manager) return;
     this.error = ''; this.availableDay = today(); this.availableClock = '';
     this.expectedVersion = this.manager.version; this.accepting = this.manager.acceptingNewTasks;
-    this.buildingId = this.manager.positionBuildingId || ''; this.floor = String(this.manager.positionFloorNo ?? 0);
+    this.buildingId = this.manager.positionBuildingId || ''; this.floor = this.manager.positionFloorNo === null ? '' : String(this.manager.positionFloorNo);
     if (this.manager.availableUntil) {
       const local = beijingParts(this.manager.availableUntil); this.availableDay = local.day; this.availableClock = local.clock;
     }

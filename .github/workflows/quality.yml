@@ -1,0 +1,38 @@
+name: Quality
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  contracts-web-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix web
+      - run: python scripts/check-contracts.py
+      - run: npm test --prefix web
+      - run: node --test harmony/tests/*.test.mjs
+      - run: npm run build --prefix web
+      - run: mvn -B -f backend/pom.xml verify
+      - run: python scripts/format-java.py
+      - run: python scripts/test-quality.py
+      - run: python scripts/check-java.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-reports
+          path: |
+            output/quality/
+            backend/target/surefire-reports/
+  # openGauss VM and DevEco emulator gates run locally; hosted runners have neither.

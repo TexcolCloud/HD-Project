@@ -1,5 +1,8 @@
 package cn.dormlink;
 
+import cn.dormlink.identity.AuthService;
+import cn.dormlink.shared.jdbc.Db;
+
 import java.sql.Timestamp;
 import java.time.*;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,5 +1,13 @@
 package cn.dormlink;
 
+import cn.dormlink.shared.jdbc.Db;
+import cn.dormlink.shared.application.BusinessSupport;
+import cn.dormlink.housing.HousingService;
+import cn.dormlink.fieldservice.OperationsService;
+
+import cn.dormlink.identity.Actor;
+import cn.dormlink.shared.api.ApiException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.*;
@@ -129,7 +137,7 @@ class MySqlConcurrencyTest {
                       });
                   return 200;
                 } catch (ApiException e) {
-                  return e.status;
+                  return e.status();
                 }
               });
       var enrollment =
@@ -180,7 +188,7 @@ class MySqlConcurrencyTest {
                         });
                     return 200;
                   } catch (ApiException e) {
-                    return e.status;
+                    return e.status();
                   }
                 }));
       }
@@ -250,7 +258,7 @@ class MySqlConcurrencyTest {
                         });
                     return 200;
                   } catch (ApiException e) {
-                    return e.status;
+                    return e.status();
                   }
                 }));
       return List.of(
@@ -325,7 +333,7 @@ class MySqlConcurrencyTest {
                       });
                   return 200;
                 } catch (ApiException e) {
-                  return e.status;
+                  return e.status();
                 }
               });
       try {

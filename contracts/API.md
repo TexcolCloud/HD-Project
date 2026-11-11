@@ -1,6 +1,21 @@
-# HD Platform API 1.1
+# HD Platform API 1.2
 
 实现固定契约，前缀 `/api/v1`，端口 `8080`。所有实体ID为字符串。成功 `{data:T,traceId:string}`；失败 `{error:{code,message,fieldErrors:[]},traceId}` 使用真实HTTP状态。列表 `data={items:T[],total:number,page:number,pageSize:number}`，默认1/20最大100。
+
+1.2 为增量设备能力接口，1.1 公开 schema 与操作保持兼容；可执行检查为 `python scripts/check-contracts.py`。字段以 `generate_openapi.py` 及生成结果为准。
+
+## 现场辅助（1.2）
+
+- `GET /mobility/session` 返回本人工作会话、最新位置、授权地点和采样策略；最新位置不是轨迹。
+- `POST /mobility/sessions` 仅移动端开启，需要确认 `mobility-v1` 用途。同账号已有有效来源时，明确接管并提交旧会话版本。
+- `POST /mobility/sessions/{id}/pause|resume|end` 使用来源代际和预期版本；恢复仅原移动会话允许，Web 可暂停和结束本人会话。
+- `POST /mobility/sessions/{id}/samples` 每批 1–20 条、正文最多 16KB；同来源片段、递增序号、服务器重新判断时序、精度和速度。短 ACK 只含批次计数／序号，`context=null`，最新位置另取 `GET /mobility/session`。
+- `POST /mobility/sessions/{id}/anchor-confirmations` 提交已登记地点、来源 MANUAL／QR 和位置预期版本。扫码内容为 `dormlink-anchor:<scanCode>`，先预览再确认，静态码不是到场证明。
+- `GET /mobility/anchors` 宿管读取负责楼栋地点；学生只读当前入住楼栋的有效地点。`POST /mobility/anchors`、`PATCH /mobility/anchors/{id}` 仅宿管维护负责范围，更新须版本检查。没有核验坐标时留空。
+- `GET /mobility/travel-models` 返回有权查看的共享通行估算及样本依据。至少 5 段、3 个独立工作会话；只采用已确认入口间、显式出发／到达的片段。
+- `POST /mobility/travel-models/{fromId}/{toId}/rollback` 按预期版本停用该方向的学习估算，恢复既有人工基线；需要同时拥有两端楼栋权限。
+
+观测约 60 秒后降级，120 秒来源租约过期；暂停、注销、撤销或结束后不再用于调度。速度未知返回 null，GPS 不证明楼层／房间；缺少实测路径长度时不把分钟数除以速度。位置采集不触发接单、到场、完工或考勤动作，也不默认发送给 AI。
 
 种子账号（仅本地开发）：`manager1`、`manager2`、`student1`、`student2`、`student3`；密码统一 `Demo@123456`。manager1负责A/B栋，manager2仅B栋；student1住A栋302，student2住B栋405，student3未入住。数据持久化。
 

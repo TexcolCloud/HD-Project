@@ -1,5 +1,8 @@
 {
   "string": [
+    { "name": "location_reason", "value": "仅在宿管主动开启本次出行时提供位置与规划参考；拒绝可手工确认地点" },
+    { "name": "background_location_reason", "value": "宿管明确开启后台出行后，通过可见持续任务辅助熄屏途中的位置参考，可随时暂停或结束" },
+    { "name": "motion_reason", "value": "仅在本次出行用计步摘要辅助移动状态，原始传感器数据不上传；拒绝仍可办理工单" },
     {
       "name": "module_desc",
       "value": "学生公寓报修、访客与卫生服务"

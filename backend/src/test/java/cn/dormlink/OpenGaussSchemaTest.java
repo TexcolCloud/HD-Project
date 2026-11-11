@@ -1,5 +1,8 @@
 package cn.dormlink;
 
+import cn.dormlink.shared.jdbc.Db;
+import cn.dormlink.shared.jdbc.SchemaMigrations;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;

@@ -100,6 +100,39 @@ schemas.update({
  'ManagerAdvice':obj(dict(suggestionId='string',summary='string',findings='string[]',suggestedActions='string[]',questions='string[]',uncertainty='string',evidence='AssistEvidence[]',facts='AssistFact[]',generatedAt='string',requiresHumanReview='boolean')),
 })
 
+# Device observations are ephemeral evidence, separate from repair lifecycle facts.
+schemas.update({
+ 'MobilitySessionState':enum('ACTIVE','PAUSED','ENDED','EXPIRED'),
+ 'MobilityStatus':enum('VALID','STALE','UNKNOWN'),
+ 'MobilitySource':enum('MANUAL','QR','GPS','NONE'),
+ 'MobilityMotion':enum('STILL','WALKING','UNKNOWN'),
+ 'MobilityQuality':enum('LOW','MEDIUM','HIGH'),
+ 'MobilitySession':obj(dict(id='string',userId='string',state='MobilitySessionState',sourceEpoch='integer',leaseExpiresAt='string',startedAt='string',lastSampleAt='string?',backgroundRequested='boolean',version='integer')),
+ 'MobilityContext':obj(dict(userId='string',sessionId='string?',status='MobilityStatus',source='MobilitySource',buildingId='string?',buildingName='string?',floorNo='integer?',latitude='number?',longitude='number?',accuracyMeters='number?',speedMps='number?',motion='MobilityMotion',quality='MobilityQuality',observedAt='string?',expiresAt='string?',contextVersion='integer',explanation='string')),
+ 'CampusAnchor':obj(dict(id='string',buildingId='string',buildingName='string',floorNo='integer?',name='string',scanCode='string',latitude='number?',longitude='number?',radiusMeters='number?',enabled='boolean',version='integer')),
+ 'CampusAnchors':obj(dict(items='CampusAnchor[]')),
+ 'MobilityPolicy':obj(dict(consentVersion='string',maxBatchSize='integer',maxBodyBytes='integer',reportIntervalSeconds='integer',contextTtlSeconds='integer',leaseSeconds='integer')),
+ 'MobilityView':obj(dict(session='MobilitySession?',context='MobilityContext?',anchors='CampusAnchor[]',policy='MobilityPolicy')),
+ 'MobilityStartRequest':obj({'clientInstanceId':'string','consentVersion':'string','backgroundRequested?':'boolean','takeover?':'boolean','expectedVersion?':'integer'}),
+ 'MobilityActionRequest':obj(dict(sourceEpoch='integer',expectedVersion='integer')),
+ 'MobilitySample':obj({'sequence':'integer','streamId':'string','observedAt':'string','elapsedMs':'number','latitude?':'number','longitude?':'number','accuracyMeters?':'number','speedMps?':'number','speedAccuracyMps?':'number','stepDelta?':'integer','motion':'MobilityMotion','clientQuality?':'MobilityQuality'}),
+ 'MobilityBatchRequest':obj(dict(sourceEpoch='integer',batchId='string',samples='MobilitySample[]')),
+ 'MobilityBatchAck':obj(dict(batchId='string',acceptedCount='integer',rejectedCount='integer',lastSequence='integer',context='MobilityContext?')),
+ 'MobilityAnchorRequest':obj({'sourceEpoch':'integer','anchorId':'string','source':enum('MANUAL','QR'),'expectedContextVersion':'integer'}),
+ 'CampusAnchorRequest':obj({'buildingId':'string','name':'string','floorNo?':'integer?','latitude?':'number?','longitude?':'number?','radiusMeters?':'number?','enabled?':'boolean','expectedVersion?':'integer'}),
+ 'MobilityTravelModel':obj(dict(fromBuildingId='string',toBuildingId='string',minutes='integer',sampleCount='integer',sessionCount='integer',enabled='boolean',version='integer',updatedAt='string')),
+ 'MobilityTravelModels':obj(dict(items='MobilityTravelModel[]')),
+ 'MobilityModelRollbackRequest':obj(dict(expectedVersion='integer')),
+})
+schemas['MobilityBatchRequest']['properties']['samples'].update(minItems=1,maxItems=20)
+schemas['MobilitySample']['properties']['sequence']['minimum']=1
+schemas['MobilitySample']['properties']['elapsedMs']['minimum']=0
+schemas['MobilitySample']['properties']['streamId'].update(minLength=1,maxLength=80)
+schemas['MobilityBatchRequest']['properties']['batchId'].update(minLength=1,maxLength=80)
+schemas['MobilityStartRequest']['properties']['clientInstanceId'].update(minLength=1,maxLength=80)
+schemas['CampusAnchor']['description']='Scan payload is dormlink-anchor:<scanCode>. Static codes require user confirmation and server authorization; they are not proof of physical presence.'
+schemas['MobilityContext']['description']='Current own-account context, never a raw track. Coordinates expire with the working session. GPS cannot establish a floor or room.'
+
 paths={}
 def add(path, method, output=None, body=None, page=False, binary=False):
     target = {'type':'string','format':'binary'} if binary else (kind(output) if output else {'type':'object','additionalProperties':True})
@@ -152,5 +185,16 @@ add('/dispatch/travel/{fromId}/{toId}','patch','DispatchTravelLink','DispatchTra
 add('/repairs/{id}/visit','patch','Repair','RepairVisitRequest')
 add('/ai/manager/brief','post','ManagerAdvice','ManagerAssistRequest')
 add('/ai/manager/repairs/{id}','post','ManagerAdvice','ManagerAssistRequest')
-doc={'openapi':'3.0.3','info':{'title':'DormLink Student Housing API','version':'1.1.0'},'servers':[{'url':'http://127.0.0.1:8080/api/v1'}],'paths':paths,'components':{'schemas':schemas,'securitySchemes':{'bearerAuth':{'type':'http','scheme':'bearer'},'cookieAuth':{'type':'apiKey','in':'cookie','name':'HD_SESSION'}}},'security':[{'bearerAuth':[]},{'cookieAuth':[]}]}
+add('/mobility/session','get','MobilityView')
+add('/mobility/sessions','post','MobilityView','MobilityStartRequest')
+for action in ('pause','resume','end'):
+    add('/mobility/sessions/{id}/'+action,'post','MobilityView','MobilityActionRequest')
+add('/mobility/sessions/{id}/samples','post','MobilityBatchAck','MobilityBatchRequest')
+add('/mobility/sessions/{id}/anchor-confirmations','post','MobilityContext','MobilityAnchorRequest')
+add('/mobility/anchors','get','CampusAnchors')
+add('/mobility/anchors','post','CampusAnchor','CampusAnchorRequest')
+add('/mobility/anchors/{id}','patch','CampusAnchor','CampusAnchorRequest')
+add('/mobility/travel-models','get','MobilityTravelModels')
+add('/mobility/travel-models/{fromId}/{toId}/rollback','post','MobilityTravelModel','MobilityModelRollbackRequest')
+doc={'openapi':'3.0.3','info':{'title':'DormLink Student Housing API','version':'1.2.0'},'servers':[{'url':'http://127.0.0.1:8080/api/v1'}],'paths':paths,'components':{'schemas':schemas,'securitySchemes':{'bearerAuth':{'type':'http','scheme':'bearer'},'cookieAuth':{'type':'apiKey','in':'cookie','name':'HD_SESSION'}}},'security':[{'bearerAuth':[]},{'cookieAuth':[]}]}
 Path(__file__).with_name('openapi.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2),encoding='utf-8')

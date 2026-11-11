@@ -1,5 +1,7 @@
 package cn.dormlink;
 
+import cn.dormlink.shared.jdbc.Db;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Timestamp;

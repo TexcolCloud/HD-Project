@@ -1,5 +1,6 @@
 import { image } from '@kit.ImageKit';
 import { Api } from '../services/Api';
+import { ResourceSlot } from '../services/ResourceSlot';
 
 @Component
 export struct SecureImage {
@@ -8,11 +9,16 @@ export struct SecureImage {
   @State pixels: image.PixelMap | undefined = undefined;
   @State failed: boolean = false;
   @State expanded: boolean = false;
+  private resources: ResourceSlot<image.PixelMap> = new ResourceSlot<image.PixelMap>((pixels: image.PixelMap) => { pixels.release(); });
   aboutToAppear(): void { this.load(); }
   async load(): Promise<void> {
-    try { this.pixels = await Api.image(this.url); } catch (_) { this.failed = true; }
+    const generation = this.resources.begin();
+    try {
+      const pixels = await Api.image(this.url);
+      if (this.resources.accept(generation, pixels)) this.pixels = pixels;
+    } catch (_) { if (this.resources.current(generation)) this.failed = true; }
   }
-  aboutToDisappear(): void { if (this.pixels) this.pixels.release(); }
+  aboutToDisappear(): void { this.resources.clear(); this.pixels = undefined; this.expanded = false; }
   @Builder
   private Preview() {
     Column({space: 16}) {

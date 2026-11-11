@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "DormLink Student Housing API",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -5619,6 +5619,719 @@
           }
         }
       }
+    },
+    "/mobility/session": {
+      "get": {
+        "operationId": "get_mobility_session",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityView"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/mobility/sessions": {
+      "post": {
+        "operationId": "post_mobility_sessions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityView"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityStartRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/sessions/{id}/pause": {
+      "post": {
+        "operationId": "post_mobility_sessions_id_pause",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityView"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityActionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/sessions/{id}/resume": {
+      "post": {
+        "operationId": "post_mobility_sessions_id_resume",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityView"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityActionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/sessions/{id}/end": {
+      "post": {
+        "operationId": "post_mobility_sessions_id_end",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityView"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityActionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/sessions/{id}/samples": {
+      "post": {
+        "operationId": "post_mobility_sessions_id_samples",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityBatchAck"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityBatchRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/sessions/{id}/anchor-confirmations": {
+      "post": {
+        "operationId": "post_mobility_sessions_id_anchor_confirmations",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityContext"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityAnchorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/anchors": {
+      "get": {
+        "operationId": "get_mobility_anchors",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampusAnchors"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "operationId": "post_mobility_anchors",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampusAnchor"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusAnchorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/anchors/{id}": {
+      "patch": {
+        "operationId": "patch_mobility_anchors_id",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CampusAnchor"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampusAnchorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mobility/travel-models": {
+      "get": {
+        "operationId": "get_mobility_travel_models",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityTravelModels"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/mobility/travel-models/{fromId}/{toId}/rollback": {
+      "post": {
+        "operationId": "post_mobility_travel_models_fromId_toId_rollback",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MobilityTravelModel"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fromId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "toId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobilityModelRollbackRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7746,6 +8459,594 @@
           "facts",
           "generatedAt",
           "requiresHumanReview"
+        ]
+      },
+      "MobilitySessionState": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "PAUSED",
+          "ENDED",
+          "EXPIRED"
+        ]
+      },
+      "MobilityStatus": {
+        "type": "string",
+        "enum": [
+          "VALID",
+          "STALE",
+          "UNKNOWN"
+        ]
+      },
+      "MobilitySource": {
+        "type": "string",
+        "enum": [
+          "MANUAL",
+          "QR",
+          "GPS",
+          "NONE"
+        ]
+      },
+      "MobilityMotion": {
+        "type": "string",
+        "enum": [
+          "STILL",
+          "WALKING",
+          "UNKNOWN"
+        ]
+      },
+      "MobilityQuality": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "MobilitySession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MobilitySessionState"
+          },
+          "sourceEpoch": {
+            "type": "integer"
+          },
+          "leaseExpiresAt": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "lastSampleAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "backgroundRequested": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "state",
+          "sourceEpoch",
+          "leaseExpiresAt",
+          "startedAt",
+          "lastSampleAt",
+          "backgroundRequested",
+          "version"
+        ]
+      },
+      "MobilityContext": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/MobilityStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MobilitySource"
+          },
+          "buildingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "buildingName": {
+            "type": "string",
+            "nullable": true
+          },
+          "floorNo": {
+            "type": "integer",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "accuracyMeters": {
+            "type": "number",
+            "nullable": true
+          },
+          "speedMps": {
+            "type": "number",
+            "nullable": true
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MobilityMotion"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/MobilityQuality"
+          },
+          "observedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "contextVersion": {
+            "type": "integer"
+          },
+          "explanation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "sessionId",
+          "status",
+          "source",
+          "buildingId",
+          "buildingName",
+          "floorNo",
+          "latitude",
+          "longitude",
+          "accuracyMeters",
+          "speedMps",
+          "motion",
+          "quality",
+          "observedAt",
+          "expiresAt",
+          "contextVersion",
+          "explanation"
+        ],
+        "description": "Current own-account context, never a raw track. Coordinates expire with the working session. GPS cannot establish a floor or room."
+      },
+      "CampusAnchor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "buildingId": {
+            "type": "string"
+          },
+          "buildingName": {
+            "type": "string"
+          },
+          "floorNo": {
+            "type": "integer",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "scanCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "radiusMeters": {
+            "type": "number",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "buildingId",
+          "buildingName",
+          "floorNo",
+          "name",
+          "scanCode",
+          "latitude",
+          "longitude",
+          "radiusMeters",
+          "enabled",
+          "version"
+        ],
+        "description": "Scan payload is dormlink-anchor:<scanCode>. Static codes require user confirmation and server authorization; they are not proof of physical presence."
+      },
+      "CampusAnchors": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampusAnchor"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MobilityPolicy": {
+        "type": "object",
+        "properties": {
+          "consentVersion": {
+            "type": "string"
+          },
+          "maxBatchSize": {
+            "type": "integer"
+          },
+          "maxBodyBytes": {
+            "type": "integer"
+          },
+          "reportIntervalSeconds": {
+            "type": "integer"
+          },
+          "contextTtlSeconds": {
+            "type": "integer"
+          },
+          "leaseSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "consentVersion",
+          "maxBatchSize",
+          "maxBodyBytes",
+          "reportIntervalSeconds",
+          "contextTtlSeconds",
+          "leaseSeconds"
+        ]
+      },
+      "MobilityView": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MobilitySession"
+              }
+            ],
+            "nullable": true
+          },
+          "context": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MobilityContext"
+              }
+            ],
+            "nullable": true
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampusAnchor"
+            }
+          },
+          "policy": {
+            "$ref": "#/components/schemas/MobilityPolicy"
+          }
+        },
+        "required": [
+          "session",
+          "context",
+          "anchors",
+          "policy"
+        ]
+      },
+      "MobilityStartRequest": {
+        "type": "object",
+        "properties": {
+          "clientInstanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "consentVersion": {
+            "type": "string"
+          },
+          "backgroundRequested": {
+            "type": "boolean"
+          },
+          "takeover": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clientInstanceId",
+          "consentVersion"
+        ]
+      },
+      "MobilityActionRequest": {
+        "type": "object",
+        "properties": {
+          "sourceEpoch": {
+            "type": "integer"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sourceEpoch",
+          "expectedVersion"
+        ]
+      },
+      "MobilitySample": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "streamId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "observedAt": {
+            "type": "string"
+          },
+          "elapsedMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "accuracyMeters": {
+            "type": "number"
+          },
+          "speedMps": {
+            "type": "number"
+          },
+          "speedAccuracyMps": {
+            "type": "number"
+          },
+          "stepDelta": {
+            "type": "integer"
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MobilityMotion"
+          },
+          "clientQuality": {
+            "$ref": "#/components/schemas/MobilityQuality"
+          }
+        },
+        "required": [
+          "sequence",
+          "streamId",
+          "observedAt",
+          "elapsedMs",
+          "motion"
+        ]
+      },
+      "MobilityBatchRequest": {
+        "type": "object",
+        "properties": {
+          "sourceEpoch": {
+            "type": "integer"
+          },
+          "batchId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MobilitySample"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "sourceEpoch",
+          "batchId",
+          "samples"
+        ]
+      },
+      "MobilityBatchAck": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "acceptedCount": {
+            "type": "integer"
+          },
+          "rejectedCount": {
+            "type": "integer"
+          },
+          "lastSequence": {
+            "type": "integer"
+          },
+          "context": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MobilityContext"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "batchId",
+          "acceptedCount",
+          "rejectedCount",
+          "lastSequence",
+          "context"
+        ]
+      },
+      "MobilityAnchorRequest": {
+        "type": "object",
+        "properties": {
+          "sourceEpoch": {
+            "type": "integer"
+          },
+          "anchorId": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "QR"
+            ]
+          },
+          "expectedContextVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sourceEpoch",
+          "anchorId",
+          "source",
+          "expectedContextVersion"
+        ]
+      },
+      "CampusAnchorRequest": {
+        "type": "object",
+        "properties": {
+          "buildingId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "floorNo": {
+            "type": "integer",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "radiusMeters": {
+            "type": "number",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "buildingId",
+          "name"
+        ]
+      },
+      "MobilityTravelModel": {
+        "type": "object",
+        "properties": {
+          "fromBuildingId": {
+            "type": "string"
+          },
+          "toBuildingId": {
+            "type": "string"
+          },
+          "minutes": {
+            "type": "integer"
+          },
+          "sampleCount": {
+            "type": "integer"
+          },
+          "sessionCount": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromBuildingId",
+          "toBuildingId",
+          "minutes",
+          "sampleCount",
+          "sessionCount",
+          "enabled",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "MobilityTravelModels": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MobilityTravelModel"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MobilityModelRollbackRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expectedVersion"
         ]
       }
     },

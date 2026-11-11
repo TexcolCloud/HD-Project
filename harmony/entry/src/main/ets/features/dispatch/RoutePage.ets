@@ -110,7 +110,8 @@ export struct RoutePage {
           Text('尚未设置有效的本次可用截止时间，暂不参与新任务安排。请打开“接单与位置”填写。').id('route-availability-required')
             .fontSize(14).lineHeight(24).fontColor(palette(this.night).accent).width('100%').padding(14).backgroundColor(palette(this.night).soft).margin({bottom: 14})
         }
-        Text(this.board.me.positionBuildingName ? '当前位置：' + this.board.me.positionBuildingName + ' ' + (this.board.me.positionFloorNo ?? 0) + '层' : '尚未确认当前位置，路线按默认出发点估算。')
+        Text(this.board.me.positionBuildingName ? '当前位置：' + this.board.me.positionBuildingName + ' · ' +
+          (this.board.me.positionFloorNo === null ? '楼层待确认' : this.board.me.positionFloorNo === 0 ? '出入口' : this.board.me.positionFloorNo + '层') : '尚未确认当前位置，路线按默认出发点估算。')
           .fontSize(13).lineHeight(23).fontColor(palette(this.night).muted).width('100%').margin({bottom: 14})
         if (this.board.dirty) { Text('正在合并新的任务变化，当前为最近发布的计划。刷新后再确认新安排。').fontSize(13).lineHeight(22).fontColor(palette(this.night).accent).width('100%').margin({bottom: 14}) }
         if (this.showSettings) {

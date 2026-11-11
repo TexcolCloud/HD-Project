@@ -1,5 +1,11 @@
 import type {DispatchBoard,DispatchTask} from '../api/dispatch';
 import {dateTime} from '../ui';
+export function dispatchPositionFields(buildingId:string,floorNo:number|string,changed:boolean) {
+  if (!changed) return {};
+  if (!buildingId) return {positionBuildingId:null,positionFloorNo:null};
+  if (floorNo === '' || !Number.isInteger(Number(floorNo)) || Number(floorNo) < 1) throw new Error('请确认当前楼层');
+  return {positionBuildingId:buildingId,positionFloorNo:Number(floorNo)};
+}
 export function selectBoardVersion(current:DispatchBoard|null,incoming:DispatchBoard):DispatchBoard{return current&&incoming.revision<current.revision?current:incoming;}
 export function currentDispatchTask(tasks:DispatchTask[]):DispatchTask|undefined{return tasks.find(task=>['EN_ROUTE','ON_SITE'].includes(task.state));}
 export type DispatchRouteChange=Pick<DispatchTask,'orderId'|'title'>&{detail:string};

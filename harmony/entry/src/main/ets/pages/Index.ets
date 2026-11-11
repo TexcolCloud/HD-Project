@@ -1,6 +1,5 @@
 import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
-import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { Api, ApiError, UploadedPhoto } from '../services/Api';
 import { SubmissionKeys, shouldReleaseAiKey } from '../services/SubmissionKeys';
@@ -13,6 +12,12 @@ import { RoutePage } from '../features/dispatch/RoutePage';
 import { VisitWindowFields, VisitWindowDraft } from '../features/visits/VisitWindowFields';
 import { VisitArrangement } from '../features/visits/VisitArrangement';
 import { ManagerAssist } from '../features/assist/ManagerAssist';
+import { MobilityController } from '../features/mobility/MobilityController';
+import { MobilityPage } from '../features/mobility/MobilityPage';
+import { PhotoDraftController, PhotoSnapshot } from '../features/photos/PhotoDraftController';
+import { PhotoAttachments } from '../features/photos/PhotoAttachments';
+import { StudentPlaceCheck } from '../features/mobility/StudentPlaceCheck';
+import { RepairReminders } from '../features/mobility/RepairReminders';
 import { User, Room, RoomPage, Student, StudentPage, Residence, ResidencePage, Repair, RepairPage,
   RepairEvent, FileAsset, Hygiene, HygienePage, Visitor, VisitorPage, Overview, LoginRequest,
   LoginResult, RepairRequest, ActionRequest, VisitorRequest, HygieneRequest, AiRequest, AiSuggestion
@@ -110,12 +115,16 @@ struct Index {
   private submissionKeys: SubmissionKeys = new SubmissionKeys((): string => util.generateRandomUUID());
   private inspectionDraftStarted: boolean = false;
   private aiEpoch: number = 0;
+  private mobility: MobilityController = new MobilityController();
+  private photoDrafts: PhotoDraftController = new PhotoDraftController((error: Error) => this.fail(error));
+  private unsubscribePhotos: () => void = () => {};
 
   aboutToAppear(): void {
+    this.unsubscribePhotos = this.photoDrafts.subscribe((snapshot: PhotoSnapshot) => this.photoChanged(snapshot));
     this.getUIContext().getFont().registerFont({familyName: 'DormSerif', familySrc: $rawfile('dorm-serif.ttf')});
     this.restoreSettings();
   }
-  aboutToDisappear(): void { this.dispatch.stopSession(); }
+  aboutToDisappear(): void { this.unsubscribePhotos(); this.photoDrafts.reset(); this.dispatch.stopSession(); this.mobility.detach(); }
   onBackPress(): boolean {
     if (this.user && this.page !== 'home') {
       this.go(this.page === 'action' ? 'detail' : this.page === 'detail' ? this.repairReturnPage : 'home');
@@ -151,6 +160,8 @@ struct Index {
   }
   private fail(error: Error): void {
     const apiError = error as ApiError;
+    if (apiError.sessionEpoch !== undefined && apiError.sessionEpoch !== Api.epoch) return;
+    if (apiError.code === 'SESSION_REPLACED') return;
     this.error = apiError.message || '操作未完成，请稍后重试';
     if (apiError.traceId) this.error += '\n查询编号：' + apiError.traceId;
     if (apiError.status === 401) { this.clearSession(); }
@@ -160,6 +171,7 @@ struct Index {
   }
 
   private async login(): Promise<void> {
+    let epoch = Api.epoch;
     if (this.busy) return;
     this.error = '';
     if (!this.username.trim() || !this.password) { this.error = '请填写账号和密码'; return; }
@@ -168,25 +180,30 @@ struct Index {
       Api.base = Api.normalizeBase(this.server);
       const request: LoginRequest = {username: this.username.trim(), password: this.password, clientType: 'MOBILE'};
       const result = await Api.post<LoginResult>('/auth/login', request);
+      Api.assertCurrent(epoch);
       this.password = ''; request.password = '';
       if (!result.token) throw new ApiError('未获得移动端会话，请联系管理员');
-      Api.token = result.token; this.user = result.user;
+      Api.token = result.token; epoch = Api.epoch; this.user = result.user;
       this.dispatch.startSession(result.user, result.token, (error: Error) => this.fail(error));
+      this.mobility.attach(result.user, this.getUIContext().getHostContext() as common.UIAbilityContext, (error: Error) => this.fail(error));
       this.contactName = result.user.displayName; this.page = 'home';
-      await this.saveSettings(); await this.loadHome();
-    } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
+      await this.saveSettings(); Api.assertCurrent(epoch); await this.loadHome();
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.busy = false; }
   }
   private async logout(): Promise<void> {
+    const epoch = Api.epoch;
     this.dispatch.stopSession();
+    this.mobility.detach();
     this.password = ''; this.oldPassword = ''; this.newPassword = '';
     this.busy = true;
     try { const request: EmptyRequest = {}; await Api.post<EmptyRequest>('/auth/logout', request); }
     catch (_) { /* Clear local session even after network loss. Server sessions have a fixed expiry. */ }
-    finally { this.clearSession(); this.error = ''; this.busy = false; }
+    finally { if (epoch === Api.epoch || !Api.token) { this.clearSession(); this.error = ''; this.busy = false; } }
   }
   private clearSession(): void {
+    this.mobility.detach(); this.photoDrafts.reset();
     this.dispatch.stopSession(); this.visitDraft = new VisitWindowDraft(); this.repairReturnPage = 'repairs';
-    this.aiEpoch++; this.aiBusy = false;
+    this.aiEpoch++; this.aiBusy = false; this.uploading = false; this.busy = false;
     this.submissionKeys.clear(); this.inspectionDraftStarted = false;
     Api.token = ''; this.user = null; this.room = null; this.rooms = []; this.students = []; this.residences = [];
     this.repairs = []; this.events = []; this.hygiene = []; this.visitors = []; this.selected = null; this.overview = null;
@@ -214,112 +231,88 @@ struct Index {
     else if (page === 'room') this.loadResidences();
   }
   private async loadHome(): Promise<void> {
+    const epoch = Api.epoch;
     this.loading = true;
     try {
       if (this.manager()) {
-        this.overview = await Api.request<Overview>('/statistics/overview');
+        const overview = await Api.request<Overview>('/statistics/overview');
+        Api.assertCurrent(epoch); this.overview = overview;
         const pages = await Promise.all(pendingRepairPaths().map((path: string): Promise<RepairPage> => Api.request<RepairPage>(path)));
-        this.repairs = newestUnique<Repair>(pages.map((page: RepairPage): Repair[] => page.items),
+        Api.assertCurrent(epoch); this.repairs = newestUnique<Repair>(pages.map((page: RepairPage): Repair[] => page.items),
           (order: Repair): string => order.id, (order: Repair): string => order.submittedAt, 3);
       } else {
-        this.room = await Api.request<Room | null>('/me/room');
-        const repairs = await Api.request<RepairPage>('/repairs?pageSize=5'); this.repairs = repairs.items;
-        const hygiene = await Api.request<HygienePage>('/me/hygiene-inspections?pageSize=3'); this.hygiene = hygiene.items;
+        const room = await Api.request<Room | null>('/me/room');
+        Api.assertCurrent(epoch); this.room = room;
+        const repairs = await Api.request<RepairPage>('/repairs?pageSize=5'); Api.assertCurrent(epoch); this.repairs = repairs.items;
+        const hygiene = await Api.request<HygienePage>('/me/hygiene-inspections?pageSize=3'); Api.assertCurrent(epoch); this.hygiene = hygiene.items;
       }
-    } catch (error) { this.fail(error as Error); } finally { this.loading = false; }
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.loading = false; }
   }
   private async loadRepairs(): Promise<void> {
+    const epoch = Api.epoch;
     this.loading = true;
     try {
       const data = await Api.request<RepairPage>('/repairs?page=' + this.repairPage + '&pageSize=10&status=' +
         encodeURIComponent(this.repairFilter) + '&q=' + encodeURIComponent(this.repairSearch));
-      this.repairs = data.items; this.repairTotal = data.total;
-    } catch (error) { this.fail(error as Error); } finally { this.loading = false; }
+      Api.assertCurrent(epoch); this.repairs = data.items; this.repairTotal = data.total;
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.loading = false; }
   }
   private async openRepair(order: Repair): Promise<void> {
+    const epoch = Api.epoch;
     if (!['route', 'detail', 'action'].includes(this.page)) this.repairReturnPage = 'repairs';
     this.loading = true; this.error = ''; this.page = 'detail'; this.scroller.scrollTo({xOffset: 0, yOffset: 0}); this.selected = order; this.events = [];
     try {
-      this.selected = await Api.request<Repair>('/repairs/' + order.id);
-      this.events = await Api.request<RepairEvent[]>('/repairs/' + order.id + '/events');
-    } catch (error) { this.fail(error as Error); } finally { this.loading = false; }
+      const selected = await Api.request<Repair>('/repairs/' + order.id);
+      Api.assertCurrent(epoch); if (this.selected?.id !== order.id) return; this.selected = selected;
+      const events = await Api.request<RepairEvent[]>('/repairs/' + order.id + '/events');
+      Api.assertCurrent(epoch); if (this.selected?.id === order.id) this.events = events;
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.loading = false; }
   }
   private async loadVisitors(): Promise<void> {
+    const epoch = Api.epoch;
     this.loading = true;
     try {
       const data = await Api.request<VisitorPage>('/visitors?page=' + this.visitorPage + '&pageSize=10&q=' +
         encodeURIComponent(this.visitorSearch) + '&status=' + this.visitorFilter);
-      this.visitors = data.items; this.visitorTotal = data.total;
-    } catch (error) { this.fail(error as Error); } finally { this.loading = false; }
+      Api.assertCurrent(epoch); this.visitors = data.items; this.visitorTotal = data.total;
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.loading = false; }
   }
   private async loadStudents(): Promise<void> {
-    try { this.students = (await Api.request<StudentPage>('/students?pageSize=100&q=' + encodeURIComponent(this.targetSearch))).items.filter((s: Student) => !!s.roomId);
+    const epoch = Api.epoch;
+    try { const data = await Api.request<StudentPage>('/students?pageSize=100&q=' + encodeURIComponent(this.targetSearch));
+      Api.assertCurrent(epoch); this.students = data.items.filter((s: Student) => !!s.roomId);
       if (!this.students.some((s: Student): boolean => s.id === this.visitedStudentId)) this.visitedStudentId = this.students.length ? this.students[0].id : '';
     } catch (error) { this.fail(error as Error); }
   }
   private async loadRooms(): Promise<void> {
-    try { this.rooms = (await Api.request<RoomPage>('/rooms?pageSize=100&q=' + encodeURIComponent(this.roomSearch))).items;
+    const epoch = Api.epoch;
+    try { const data = await Api.request<RoomPage>('/rooms?pageSize=100&q=' + encodeURIComponent(this.roomSearch));
+      Api.assertCurrent(epoch); this.rooms = data.items;
       if (!this.rooms.some((r: Room): boolean => r.id === this.inspectionRoomId)) this.inspectionRoomId = this.rooms.length ? this.rooms[0].id : '';
     } catch (error) { this.fail(error as Error); }
   }
   private async loadHygiene(): Promise<void> {
+    const epoch = Api.epoch;
     this.loading = true;
     try {
       const data = await Api.request<HygienePage>((this.manager() ? '/hygiene-inspections' : '/me/hygiene-inspections') +
         '?page=' + this.hygienePage + '&pageSize=10');
-      this.hygiene = data.items; this.hygieneTotal = data.total;
-    } catch (error) { this.fail(error as Error); } finally { this.loading = false; }
+      Api.assertCurrent(epoch); this.hygiene = data.items; this.hygieneTotal = data.total;
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.loading = false; }
   }
   private async loadResidences(): Promise<void> {
-    try { this.residences = (await Api.request<ResidencePage>('/me/residences?pageSize=100')).items; }
+    const epoch = Api.epoch;
+    try { const data = await Api.request<ResidencePage>('/me/residences?pageSize=100'); Api.assertCurrent(epoch); this.residences = data.items; }
     catch (error) { this.fail(error as Error); }
   }
-  private failedPhotos(usage: string): string[] {
-    return usage === 'REPORT' ? this.failedReportPhotos : usage === 'RESULT' ? this.failedResultPhotos : this.failedInspectionPhotos;
-  }
-  private removeFailed(uri: string, usage: string): void {
-    if (usage === 'REPORT') this.failedReportPhotos = this.failedReportPhotos.filter((p: string): boolean => p !== uri);
-    else if (usage === 'RESULT') this.failedResultPhotos = this.failedResultPhotos.filter((p: string): boolean => p !== uri);
-    else this.failedInspectionPhotos = this.failedInspectionPhotos.filter((p: string): boolean => p !== uri);
-  }
-  private async uploadOne(uri: string, usage: string): Promise<void> {
-    try {
-      const uploaded = await Api.upload(uri, usage);
-      if (usage === 'REPORT') this.reportPhotos = this.reportPhotos.concat([uploaded]);
-      else if (usage === 'RESULT') this.resultPhotos = this.resultPhotos.concat([uploaded]);
-      else this.inspectionPhotos = this.inspectionPhotos.concat([uploaded]);
-      this.removeFailed(uri, usage);
-    } catch (error) {
-      if (!this.failedPhotos(usage).includes(uri)) {
-        if (usage === 'REPORT') this.failedReportPhotos = this.failedReportPhotos.concat([uri]);
-        else if (usage === 'RESULT') this.failedResultPhotos = this.failedResultPhotos.concat([uri]);
-        else this.failedInspectionPhotos = this.failedInspectionPhotos.concat([uri]);
-      }
-      this.fail(error as Error);
-    }
-  }
-  private async retryPhoto(uri: string, usage: string): Promise<void> {
-    if (this.uploading) return;
-    this.uploading = true; this.error = '';
-    try { await this.uploadOne(uri, usage); } finally { this.uploading = false; }
-  }
-  private async photos(usage: string): Promise<void> {
-    if (this.uploading) return;
-    const current = usage === 'REPORT' ? this.reportPhotos : usage === 'RESULT' ? this.resultPhotos : this.inspectionPhotos;
-    this.uploading = true; this.error = '';
-    try {
-      const uris = await Api.choose(6 - current.length - this.failedPhotos(usage).length);
-      for (const uri of uris) { await this.uploadOne(uri, usage); }
-    } catch (error) { this.fail(error as Error); } finally { this.uploading = false; }
-  }
-  private async removePhoto(photo: UploadedPhoto, usage: string): Promise<void> {
-    try { await Api.request<EmptyRequest>('/files/' + photo.asset.id, http.RequestMethod.DELETE); }
-    catch (error) { this.fail(error as Error); return; }
-    if (usage === 'REPORT') this.reportPhotos = this.reportPhotos.filter((p: UploadedPhoto) => p.asset.id !== photo.asset.id);
-    else if (usage === 'RESULT') this.resultPhotos = this.resultPhotos.filter((p: UploadedPhoto) => p.asset.id !== photo.asset.id);
-    else this.inspectionPhotos = this.inspectionPhotos.filter((p: UploadedPhoto) => p.asset.id !== photo.asset.id);
+  private photoChanged(snapshot: PhotoSnapshot): void {
+    this.uploading = snapshot.busy;
+    if (snapshot.usage === 'REPORT') { this.reportPhotos = snapshot.draft.uploaded; this.failedReportPhotos = snapshot.draft.failed; }
+    else if (snapshot.usage === 'RESULT') { this.resultPhotos = snapshot.draft.uploaded; this.failedResultPhotos = snapshot.draft.failed; }
+    else { this.inspectionPhotos = snapshot.draft.uploaded; this.failedInspectionPhotos = snapshot.draft.failed; }
   }
   private async submitRepair(): Promise<void> {
+    const epoch = Api.epoch;
     if (this.busy || this.uploading) return;
     this.error = '';
     if (this.failedReportPhotos.length) { this.error = '请重试或移除上传失败的图片后再提交'; return; }
@@ -336,12 +329,14 @@ struct Index {
     this.busy = true;
     try {
       const repair = await Api.post<Repair>('/repairs', request, this.requestKey(request, 'repair'));
+      Api.assertCurrent(epoch);
       this.submissionKeys.complete('repair'); this.visitDraft = new VisitWindowDraft(); this.aiEpoch++; this.aiBusy = false;
-      this.reportPhotos = []; this.repairTitle = ''; this.repairDescription = ''; this.ai = null; this.aiAdopted = false;
+      this.photoDrafts.clear('REPORT'); this.reportPhotos = []; this.repairTitle = ''; this.repairDescription = ''; this.ai = null; this.aiAdopted = false;
       this.repairPriority = 'NORMAL'; this.repairUrgentReason = ''; this.repairPage = 1;
       this.flash('报修已提交，可查看处理进度'); await this.openRepair(repair);
-    } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.busy = false; }
   }
+
   private async suggest(): Promise<void> {
     if (this.aiBusy) return;
     this.aiError = '';
@@ -367,17 +362,19 @@ struct Index {
     } finally { if (epoch === this.aiEpoch) this.aiBusy = false; }
   }
   private async beginAction(action: string): Promise<void> {
+    const epoch = Api.epoch;
     if (action === 'cancel') {
       const answer = await this.getUIContext().getPromptAction().showDialog({title: '取消本次报修？',
         message: '仅待受理工单可取消。取消后再次报修需要新建工单。',
         buttons: [{text: '继续等待', color: this.muted()}, {text: '确认取消', color: this.accent()}]});
-      if (answer.index !== 1) return;
+      if (epoch !== Api.epoch || answer.index !== 1) return;
     }
-    this.action = action; this.actionNote = ''; this.resultPhotos = [];
+    this.action = action; this.actionNote = ''; this.photoDrafts.clear('RESULT'); this.resultPhotos = [];
     if (['accept', 'start', 'confirm', 'cancel'].includes(action)) this.runAction();
     else this.go('action');
   }
   private async runAction(): Promise<void> {
+    const epoch = Api.epoch;
     if (!this.selected || this.busy || this.uploading) return;
     if (this.action === 'finish' && this.failedResultPhotos.length) { this.error = '请重试或移除上传失败的图片'; return; }
     if (['reject', 'rework', 'notes', 'finish'].includes(this.action) && this.actionNote.trim().length < 2) {
@@ -391,11 +388,14 @@ struct Index {
     const path = '/repairs/' + this.selected.id + '/' + this.action;
     try {
       const updated = await Api.post<Repair>(path, request, this.requestKey(request, path));
+      Api.assertCurrent(epoch);
       this.submissionKeys.complete(path);
-      this.resultPhotos = []; this.flash('工单已更新'); await this.openRepair(updated);
-    } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
+      this.photoDrafts.clear('RESULT'); this.resultPhotos = []; this.flash('工单已更新'); await this.openRepair(updated);
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.busy = false; }
   }
+
   private async submitVisitor(confirmDuplicate: boolean = false): Promise<void> {
+    const epoch = Api.epoch;
     if (this.busy) return;
     this.error = '';
     if (!this.visitorName.trim() || !/^[0-9+ ]{7,20}$/.test(this.visitorPhone) || !this.visitedStudentId || !this.visitorPurpose.trim()) {
@@ -406,6 +406,7 @@ struct Index {
     this.busy = true;
     try {
       await Api.post<Visitor>('/visitors', request, this.requestKey(request, 'visitor'));
+      Api.assertCurrent(epoch);
       this.submissionKeys.complete('visitor');
       this.visitorName = ''; this.visitorPhone = ''; this.visitorPurpose = ''; this.visitorRemark = '';
       this.flash('来访登记已保存'); this.visitorPage = 1; this.go('visitors');
@@ -416,19 +417,23 @@ struct Index {
         const response = await this.getUIContext().getPromptAction().showDialog({title: '已有相同电话的在访记录',
           message: '请确认是否为同一访客。确有新的来访需要时可继续登记。',
           buttons: [{text: '返回核对', color: this.muted()}, {text: '继续登记', color: this.accent()}]});
-        if (response.index === 1) this.submitVisitor(true);
+        if (epoch === Api.epoch && response.index === 1) this.submitVisitor(true);
       } else this.fail(error as Error);
-    } finally { this.busy = false; }
+    } finally { if (epoch === Api.epoch) this.busy = false; }
   }
+
   private async leave(visitor: Visitor): Promise<void> {
+    const epoch = Api.epoch;
     if (this.busy) return;
     this.busy = true; this.error = '';
     try { const request: LeaveRequest = {expectedVersion: visitor.version};
       await Api.post<Visitor>('/visitors/' + visitor.id + '/leave', request, this.requestKey(request, 'leave-' + visitor.id));
+      Api.assertCurrent(epoch);
       this.submissionKeys.complete('leave-' + visitor.id);
       this.flash('已记录离开时间'); await this.loadVisitors();
-    } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.busy = false; }
   }
+
   private async contact(visitor: Visitor): Promise<void> {
     try {
       const request: EmptyRequest = {};
@@ -475,20 +480,22 @@ struct Index {
     try {
       const saved = await Api.post<Hygiene>('/hygiene-inspections', request, this.requestKey(request, 'hygiene'));
       this.submissionKeys.complete('hygiene'); this.inspectionDraftStarted = false;
-      this.inspectionPhotos = []; this.inspectionRelated = ''; this.inspectionRound = 'ROUTINE';
+      this.photoDrafts.clear('HYGIENE'); this.inspectionPhotos = []; this.inspectionRelated = ''; this.inspectionRound = 'ROUTINE';
       this.flash('卫生评分' + saved.totalScore + '分已保存'); this.hygienePage = 1; this.go('hygiene');
     } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
   }
   private async changePassword(): Promise<void> {
+    const epoch = Api.epoch;
     if (this.busy) return;
     if (this.newPassword.length < 8 || !this.oldPassword) { this.error = '请填写原密码，新密码至少8位'; return; }
     this.busy = true;
     try {
       const request: PasswordRequest = {oldPassword: this.oldPassword, newPassword: this.newPassword};
       await Api.post<EmptyRequest>('/auth/change-password', request, this.requestKey(request, 'password'));
+      Api.assertCurrent(epoch);
       this.submissionKeys.complete('password');
       this.clearSession(); this.flash('密码已修改，请重新登录');
-    } catch (error) { this.fail(error as Error); } finally { this.busy = false; }
+    } catch (error) { this.fail(error as Error); } finally { if (epoch === Api.epoch) this.busy = false; }
   }
 
   private pageTitle(): string {
@@ -498,6 +505,7 @@ struct Index {
       case 'visitor-create': return '登记访客'; case 'visitors': return '访客记录';
       case 'hygiene-create': return '卫生评分'; case 'hygiene': return '卫生记录';
       case 'route': return '本次路线';
+      case 'mobility': return '出行辅助';
       case 'profile': return '我的'; case 'room': return '入住信息'; case 'password': return '修改密码'; case 'credits': return '图片来源';
       default: return '寓见';
     }
@@ -689,6 +697,8 @@ struct Index {
       Row({space: 12}) { this.Secondary('访客记录', () => this.go('visitors')); this.Secondary('卫生记录', () => this.go('hygiene')) }.margin({top: 12})
       Button('本次路线 · 查看下一站 →').id('open-route').width('100%').height(52).fontSize(16).fontColor(this.onPrimary())
         .backgroundColor(this.ink()).borderRadius(4).margin({top: 18, bottom: 4}).onClick(() => this.go('route'))
+      Button('本次出行辅助 · 位置与设备').id('open-mobility').width('100%').height(48).fontSize(14).fontColor(this.accent())
+        .backgroundColor(this.surface()).borderRadius(4).margin({top: 8}).onClick(() => this.go('mobility'))
       this.Section('待跟进工单', '查看全部', () => { this.repairPage = 1; this.go('repairs'); })
       if (!this.repairs.length) { this.Empty('暂时没有工单。') }
       ForEach(this.repairs.slice(0, 3), (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
@@ -697,33 +707,7 @@ struct Index {
   }
   @Builder
   private Uploads(usage: string) {
-    Column({space: 8}) {
-      Row() {
-        Text(usage === 'REPORT' ? '故障图片' : usage === 'RESULT' ? '处理后图片' : '现场图片').fontSize(15).fontColor(this.ink()).layoutWeight(1)
-        Text((usage === 'REPORT' ? this.reportPhotos.length : usage === 'RESULT' ? this.resultPhotos.length : this.inspectionPhotos.length) + ' 已上传 / ' + ((usage === 'REPORT' ? this.reportPhotos.length : usage === 'RESULT' ? this.resultPhotos.length : this.inspectionPhotos.length) + (usage === 'REPORT' ? this.failedReportPhotos.length : usage === 'RESULT' ? this.failedResultPhotos.length : this.failedInspectionPhotos.length)) + ' 已选').fontSize(12).fontColor(this.muted())
-      }.width('100%')
-      ForEach(usage === 'REPORT' ? this.reportPhotos : usage === 'RESULT' ? this.resultPhotos : this.inspectionPhotos, (photo: UploadedPhoto) => {
-        Row({space: 12}) {
-          Image(photo.uri).width(66).height(66).objectFit(ImageFit.Cover).borderRadius(3)
-          Column({space: 4}) { Text('图片已上传').fontSize(14).fontColor(this.ink()); Text(Math.ceil(photo.asset.sizeBytes / 1024) + ' KB').fontSize(12).fontColor(this.muted()) }
-            .alignItems(HorizontalAlign.Start).layoutWeight(1)
-          Button('移除').fontSize(13).height(48).fontColor(this.accent()).backgroundColor(Color.Transparent).enabled(!this.busy && !this.uploading)
-            .onClick(() => this.removePhoto(photo, usage))
-        }.width('100%').padding(10).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
-      }, (photo: UploadedPhoto) => photo.asset.id)
-      ForEach(usage === 'REPORT' ? this.failedReportPhotos : usage === 'RESULT' ? this.failedResultPhotos : this.failedInspectionPhotos, (uri: string) => {
-        Row({space: 10}) {
-          Image(uri).width(56).height(56).objectFit(ImageFit.Cover).borderRadius(3)
-          Text('上传失败').fontSize(13).fontColor(this.night ? '#F1A99C' : '#A13E37').layoutWeight(1)
-          Button('重试').height(48).fontSize(13).fontColor(this.ink()).backgroundColor(Color.Transparent).enabled(!this.uploading).onClick(() => this.retryPhoto(uri, usage))
-          Button('移除').height(48).fontSize(13).fontColor(this.accent()).backgroundColor(Color.Transparent).enabled(!this.uploading).onClick(() => this.removeFailed(uri, usage))
-        }.width('100%').padding(8).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
-      }, (uri: string) => uri)
-      Button(this.uploading ? '正在上传，请稍候…' : '＋ 从相册选择图片').id(usage === 'REPORT' ? 'repair-add-image' : usage === 'RESULT' ? 'result-add-image' : 'hygiene-add-image').width('100%').height(54).fontSize(15)
-        .fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4).border({width: 1, color: this.line(), style: BorderStyle.Dashed})
-        .enabled(!this.uploading && !this.busy && (usage === 'REPORT' ? this.reportPhotos.length : usage === 'RESULT' ? this.resultPhotos.length : this.inspectionPhotos.length) + (usage === 'REPORT' ? this.failedReportPhotos.length : usage === 'RESULT' ? this.failedResultPhotos.length : this.failedInspectionPhotos.length) < 6).onClick(() => this.photos(usage))
-      Text('最多6张，每张处理后不超过10MB；上传失败会保留已填内容。').fontSize(12).fontColor(this.muted()).lineHeight(21).width('100%')
-    }.width('100%').alignItems(HorizontalAlign.Start).margin({bottom: 22})
+    PhotoAttachments({usage: usage, controller: this.photoDrafts, night: this.night, disabled: this.busy})
   }
   @Builder
   private RepairCreate() {
@@ -731,6 +715,7 @@ struct Index {
       Text('报修房间依据当前入住信息关联，请描述现象和发生位置。').fontSize(14).fontColor(this.muted()).lineHeight(24)
         .width('100%').padding(14).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 22})
       this.DetailLine({label: '报修宿舍', value: this.room ? this.room.buildingName + ' ' + this.room.roomNo : '尚未关联宿舍'})
+      StudentPlaceCheck({room: this.room, night: this.night, onUnauthorized: (error: Error) => this.fail(error)})
       Blank().height(20)
       this.Field({label: '报修标题 *', value: this.repairTitle, change: (v: string) => this.repairTitle = v, placeholder: '例如：洗手池排水缓慢'})
       this.Field({label: '故障描述 *', value: this.repairDescription, change: (v: string) => this.repairDescription = v, placeholder: '说明发生位置、现象和持续时间', multiline: true})
@@ -823,6 +808,7 @@ struct Index {
       this.DetailLine({label: '提交时间', value: dateText(this.selected.submittedAt)})
       VisitArrangement({repair: this.selected, manager: this.manager(), night: this.night,
         onSaved: (repair: Repair) => { this.openRepair(repair); this.dispatch.refresh(false); }, onUnauthorized: (error: Error) => this.fail(error)})
+      RepairReminders({repair: this.selected, night: this.night})
       if (this.manager()) { ManagerAssist({orderId: this.selected.id, night: this.night, onOpenRepair: (repair: Repair) => this.openRepair(repair), onUnauthorized: (error: Error) => this.fail(error)}) }
       this.Section('问题描述')
       Text(this.selected.description).fontSize(16).fontColor(this.ink()).lineHeight(27).width('100%').copyOption(CopyOptions.InApp)
@@ -1089,6 +1075,9 @@ struct Index {
     else if (this.page === 'repair-create' && !this.manager()) { this.RepairCreate() }
     else if (this.page === 'route' && this.manager()) {
       RoutePage({controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => { this.repairReturnPage = 'route'; this.openRepair(repair); }})
+    }
+    else if (this.page === 'mobility' && this.manager()) {
+      MobilityPage({controller: this.mobility, dispatch: this.dispatch, night: this.night, onOpenRoute: () => this.go('route')})
     }
     else if (this.page === 'repairs') { this.Repairs() }
     else if (this.page === 'detail' && this.selected) { this.RepairDetail() }

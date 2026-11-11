@@ -3,7 +3,7 @@ import {ref,onMounted,onBeforeUnmount} from 'vue';import {useRoute,useRouter} fr
 import {useManagerPresence} from './composables/useManagerPresence';
 useManagerPresence(()=>session.user);
 const route=useRoute(),router=useRouter();const theme=ref(localStorage.getItem('dormlink-theme')==='night'?'night':'day');
-const links=[['/dashboard','home','工作台'],['/housing/rooms','building','宿舍档案'],['/housing/students','people','学生入住'],['/repairs','tool','报修工单'],['/dispatch','route','任务调度'],['/hygiene','shield','卫生巡检'],['/visitors','clipboard','访客登记'],['/statistics','chart','数据统计']];
+const links=[['/dashboard','home','工作台'],['/housing/rooms','building','宿舍档案'],['/housing/students','people','学生入住'],['/repairs','tool','报修工单'],['/dispatch','route','任务调度'],['/mobility','building','现场位置'],['/hygiene','shield','卫生巡检'],['/visitors','clipboard','访客登记'],['/statistics','chart','数据统计']];
 function applyTheme(value:string){theme.value=value;document.documentElement.dataset.theme=value;localStorage.setItem('dormlink-theme',value);}applyTheme(theme.value);
 async function signOut(){try{await logout();await router.replace('/login');}catch(e){notify(errorText(e),'error');}}
 function expired(){session.user=null;session.checked=true;clearCsrf();notify('登录已过期，请重新登录后继续办理','error');void router.replace({path:'/login',query:{redirect:route.fullPath}});}

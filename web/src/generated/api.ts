@@ -996,6 +996,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mobility/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_mobility_session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions_id_pause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions_id_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions_id_end"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions/{id}/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions_id_samples"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/sessions/{id}/anchor-confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_sessions_id_anchor_confirmations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/anchors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_mobility_anchors"];
+        put?: never;
+        post: operations["post_mobility_anchors"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/anchors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["patch_mobility_anchors_id"];
+        trace?: never;
+    };
+    "/mobility/travel-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_mobility_travel_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/travel-models/{fromId}/{toId}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_mobility_travel_models_fromId_toId_rollback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1515,6 +1691,148 @@ export interface components {
             facts: components["schemas"]["AssistFact"][];
             generatedAt: string;
             requiresHumanReview: boolean;
+        };
+        /** @enum {string} */
+        MobilitySessionState: "ACTIVE" | "PAUSED" | "ENDED" | "EXPIRED";
+        /** @enum {string} */
+        MobilityStatus: "VALID" | "STALE" | "UNKNOWN";
+        /** @enum {string} */
+        MobilitySource: "MANUAL" | "QR" | "GPS" | "NONE";
+        /** @enum {string} */
+        MobilityMotion: "STILL" | "WALKING" | "UNKNOWN";
+        /** @enum {string} */
+        MobilityQuality: "LOW" | "MEDIUM" | "HIGH";
+        MobilitySession: {
+            id: string;
+            userId: string;
+            state: components["schemas"]["MobilitySessionState"];
+            sourceEpoch: number;
+            leaseExpiresAt: string;
+            startedAt: string;
+            lastSampleAt: string | null;
+            backgroundRequested: boolean;
+            version: number;
+        };
+        /** @description Current own-account context, never a raw track. Coordinates expire with the working session. GPS cannot establish a floor or room. */
+        MobilityContext: {
+            userId: string;
+            sessionId: string | null;
+            status: components["schemas"]["MobilityStatus"];
+            source: components["schemas"]["MobilitySource"];
+            buildingId: string | null;
+            buildingName: string | null;
+            floorNo: number | null;
+            latitude: number | null;
+            longitude: number | null;
+            accuracyMeters: number | null;
+            speedMps: number | null;
+            motion: components["schemas"]["MobilityMotion"];
+            quality: components["schemas"]["MobilityQuality"];
+            observedAt: string | null;
+            expiresAt: string | null;
+            contextVersion: number;
+            explanation: string;
+        };
+        /** @description Scan payload is dormlink-anchor:<scanCode>. Static codes require user confirmation and server authorization; they are not proof of physical presence. */
+        CampusAnchor: {
+            id: string;
+            buildingId: string;
+            buildingName: string;
+            floorNo: number | null;
+            name: string;
+            scanCode: string;
+            latitude: number | null;
+            longitude: number | null;
+            radiusMeters: number | null;
+            enabled: boolean;
+            version: number;
+        };
+        CampusAnchors: {
+            items: components["schemas"]["CampusAnchor"][];
+        };
+        MobilityPolicy: {
+            consentVersion: string;
+            maxBatchSize: number;
+            maxBodyBytes: number;
+            reportIntervalSeconds: number;
+            contextTtlSeconds: number;
+            leaseSeconds: number;
+        };
+        MobilityView: {
+            session: components["schemas"]["MobilitySession"] | null;
+            context: components["schemas"]["MobilityContext"] | null;
+            anchors: components["schemas"]["CampusAnchor"][];
+            policy: components["schemas"]["MobilityPolicy"];
+        };
+        MobilityStartRequest: {
+            clientInstanceId: string;
+            consentVersion: string;
+            backgroundRequested?: boolean;
+            takeover?: boolean;
+            expectedVersion?: number;
+        };
+        MobilityActionRequest: {
+            sourceEpoch: number;
+            expectedVersion: number;
+        };
+        MobilitySample: {
+            sequence: number;
+            streamId: string;
+            observedAt: string;
+            elapsedMs: number;
+            latitude?: number;
+            longitude?: number;
+            accuracyMeters?: number;
+            speedMps?: number;
+            speedAccuracyMps?: number;
+            stepDelta?: number;
+            motion: components["schemas"]["MobilityMotion"];
+            clientQuality?: components["schemas"]["MobilityQuality"];
+        };
+        MobilityBatchRequest: {
+            sourceEpoch: number;
+            batchId: string;
+            samples: components["schemas"]["MobilitySample"][];
+        };
+        MobilityBatchAck: {
+            batchId: string;
+            acceptedCount: number;
+            rejectedCount: number;
+            lastSequence: number;
+            context: components["schemas"]["MobilityContext"] | null;
+        };
+        MobilityAnchorRequest: {
+            sourceEpoch: number;
+            anchorId: string;
+            /** @enum {string} */
+            source: "MANUAL" | "QR";
+            expectedContextVersion: number;
+        };
+        CampusAnchorRequest: {
+            buildingId: string;
+            name: string;
+            floorNo?: number | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            radiusMeters?: number | null;
+            enabled?: boolean;
+            expectedVersion?: number;
+        };
+        MobilityTravelModel: {
+            fromBuildingId: string;
+            toBuildingId: string;
+            minutes: number;
+            sampleCount: number;
+            sessionCount: number;
+            enabled: boolean;
+            version: number;
+            updatedAt: string;
+        };
+        MobilityTravelModels: {
+            items: components["schemas"]["MobilityTravelModel"][];
+        };
+        MobilityModelRollbackRequest: {
+            expectedVersion: number;
         };
     };
     responses: never;
@@ -4430,6 +4748,459 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ManagerAdvice"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_mobility_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityView"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityView"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions_id_pause: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityView"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions_id_resume: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityView"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions_id_end: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityView"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions_id_samples: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityBatchAck"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_sessions_id_anchor_confirmations: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityAnchorRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityContext"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_mobility_anchors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampusAnchors"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_anchors: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampusAnchorRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampusAnchor"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    patch_mobility_anchors_id: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampusAnchorRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CampusAnchor"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_mobility_travel_models: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityTravelModels"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_mobility_travel_models_fromId_toId_rollback: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                fromId: string;
+                toId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobilityModelRollbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityTravelModel"];
                         traceId: string;
                     };
                 };

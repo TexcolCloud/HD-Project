@@ -4,6 +4,33 @@ import {heartbeat} from './dispatch';
 
 afterEach(() => {vi.unstubAllGlobals();clearCsrf();});
 
+it('换号后拒绝旧成功响应，迟到401不能清除新会话', async () => {
+  let complete!: (response: Response) => void;
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { complete = resolve; })));
+  const success = request('/mobility/session');
+  clearCsrf();
+  complete(new Response(JSON.stringify({data:{session:{id:'old'}}})));
+  await expect(success).rejects.toMatchObject({code:'STALE_SESSION'});
+  const dispatch = vi.fn();
+  vi.stubGlobal('window', {dispatchEvent: dispatch});
+  const expired = request('/repairs');
+  clearCsrf();
+  complete(new Response(JSON.stringify({error:{code:'UNAUTHORIZED',message:'expired'}}), {status:401}));
+  await expect(expired).rejects.toMatchObject({code:'STALE_SESSION'});
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+it('旧CSRF读取不能覆盖新会话或继续发出写请求', async () => {
+  let complete!: (response: Response) => void;
+  const fetcher = vi.fn(() => new Promise<Response>(resolve => { complete = resolve; }));
+  vi.stubGlobal('fetch', fetcher);
+  const write = request('/rooms', {method:'POST',body:{roomNo:'306'}});
+  clearCsrf();
+  complete(new Response(JSON.stringify({data:{token:'old',headerName:'X-XSRF-TOKEN'}})));
+  await expect(write).rejects.toMatchObject({code:'STALE_SESSION'});
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
 it('编码组合筛选并忽略空值，保留第一页与零值', () => {
   expect(queryString({ keyword: '2 栋&306', status: '', buildingId: undefined, page: 1, minimum: 0 })).toBe('?keyword=2+%E6%A0%8B%26306&page=1&minimum=0');
 });
