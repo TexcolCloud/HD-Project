@@ -1,0 +1,52 @@
+{
+  "verifiedAt": "2026-11-11T10:30:48.033058+00:00",
+  "engine": "Codex in-app browser",
+  "backendDatabase": "VM openGauss dormlink / PG",
+  "passed": true,
+  "orderId": "21",
+  "checks": [
+    {
+      "name": "manager_login_and_migrated_dashboard",
+      "passed": true,
+      "evidence": "opengauss-web-history.png"
+    },
+    {
+      "name": "migrated_repair_history_and_attachment_links",
+      "passed": true,
+      "evidence": "opengauss-web-historical-attachments.png",
+      "orderId": "3"
+    },
+    {
+      "name": "native_photo_repair_visible_in_web",
+      "passed": true,
+      "evidence": "opengauss-web-completed.png",
+      "orderId": "21",
+      "reportImageId": "9"
+    },
+    {
+      "name": "accept_start_finish_with_uploaded_result",
+      "passed": true,
+      "evidence": "opengauss-web-completed.png",
+      "resultImageId": "10"
+    },
+    {
+      "name": "native_confirmation_visible_as_completed",
+      "passed": true,
+      "evidence": "opengauss-web-completed.png"
+    },
+    {
+      "name": "route_and_expired_confirmed_appointment_explanation",
+      "passed": true,
+      "evidence": "opengauss-harmony-delivery-route.json",
+      "detail": "Web observed next A302/10 and B405/11 unavailable because its preserved confirmed appointment was on 2026-11-07."
+    },
+    {
+      "name": "native_patch_shared_setting_survives_web_reload",
+      "passed": true,
+      "evidence": "opengauss-harmony-settings-saved.json",
+      "detail": "Native saved available-until 2026-11-11 23:00 Beijing; Web automatically displayed it; final reload retained it; same account counted once."
+    }
+  ],
+  "consoleAfterFinalReload": [],
+  "finalUrl": "http://127.0.0.1:5173/dispatch"
+}

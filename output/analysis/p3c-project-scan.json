@@ -1,0 +1,561 @@
+{
+  "verifiedAt": "2026-11-11T14:41:56.689622+00:00",
+  "scope": "Static standards and cross-client/build/contract audit of current working tree including uncommitted openGauss migration. No production changes or full P3C execution.",
+  "projectBusinessTestsNotRerun": true,
+  "p3cAutomaticScanExecuted": false,
+  "remoteBranchProtectionInspected": false,
+  "localGithubWorkflowDirectoryPresent": false,
+  "manualBasis": "Official Alibaba GitBook/P3C rule definitions were inspected; Huangshan PDF is identified in official repository but was not text-extracted in this subtask. Final implementation must pin and map the chosen handbook edition.",
+  "sources": [
+    {
+      "title": "Alibaba P3C official repository snapshot",
+      "url": "https://github.com/alibaba/p3c/tree/6c59c8c36ecd8722c712d5685b8c3822c1c8b030"
+    },
+    {
+      "title": "Official P3C-PMD dependency pins",
+      "url": "https://github.com/alibaba/p3c/blob/6c59c8c36ecd8722c712d5685b8c3822c1c8b030/p3c-pmd/pom.xml",
+      "fact": "p3c-pmd2.1.1 / PMD6.15.0"
+    },
+    {
+      "title": "Official P3C-PMD implemented rules",
+      "url": "https://github.com/alibaba/p3c/blob/6c59c8c36ecd8722c712d5685b8c3822c1c8b030/p3c-pmd/README.md",
+      "fact": "54 implemented rules, not the full handbook"
+    },
+    {
+      "title": "Official Alibaba code-format section",
+      "url": "https://github.com/alibaba/p3c/blob/6c59c8c36ecd8722c712d5685b8c3822c1c8b030/p3c-gitbook/编程规约/代码格式.md"
+    },
+    {
+      "title": "Official Alibaba NeedBrace rule",
+      "url": "https://github.com/alibaba/p3c/blob/6c59c8c36ecd8722c712d5685b8c3822c1c8b030/p3c-pmd/src/main/resources/rulesets/java/ali-flowcontrol.xml"
+    },
+    {
+      "title": "PMD7 Java21 support",
+      "url": "https://pmd.github.io/2024/03/22/PMD-7-is-here/"
+    },
+    {
+      "title": "PMD7 migration guide",
+      "url": "https://pmd.github.io/pmd/pmd_userdocs_migrating_to_pmd7.html"
+    },
+    {
+      "title": "PMD7.29.0 stable release, candidate for later compatibility checks",
+      "url": "https://github.com/pmd/pmd/releases/tag/pmd_releases%2F7.29.0",
+      "released": "2026-10-30"
+    }
+  ],
+  "findings": [
+    {
+      "id": "STD-01",
+      "severity": "P2",
+      "classification": "confirmed-manual-rule-example",
+      "title": "Java formatting does not yet follow selected Alibaba rules",
+      "evidence": [
+        {
+          "path": "backend/src/main/java/cn/dormlink/Db.java",
+          "line": 11,
+          "detail": "two-space member indentation"
+        },
+        {
+          "path": "backend/src/main/java/cn/dormlink/Db.java",
+          "line": 38,
+          "detail": "nonempty single-line if without braces"
+        }
+      ],
+      "impact": "A default Google Java Format pass does not establish P3C conformance.",
+      "recommendation": "Separate a no-behavior formatting commit; evaluate four-space formatter mode and a Java21-capable brace rule, then review the selected handbook mapping.",
+      "sourceRule": "Alibaba official code-format mandatory four-space indentation; P3C NeedBraceRule"
+    },
+    {
+      "id": "STD-02",
+      "severity": "P1",
+      "classification": "toolchain-compatibility-risk",
+      "title": "Historical P3C engine cannot be treated as a Java21 compliance gate",
+      "evidence": [
+        {
+          "path": "backend/pom.xml",
+          "line": 5,
+          "detail": "Java21 baseline"
+        },
+        {
+          "path": "backend/src/main/java/cn/dormlink/AiCommand.java",
+          "line": 6,
+          "detail": "record syntax"
+        }
+      ],
+      "impact": "Official p3c-pmd2.1.1 pins PMD6.15.0; modern source parsing and old custom AST rules must be validated before claiming coverage.",
+      "recommendation": "Pin manual version and rule mapping; use a Java21-capable PMD7 candidate after fixture validation, port/review custom rules rather than dependency-forcing. Parse failures fail the gate.",
+      "notClaimed": "No complete P3C engine run was executed."
+    },
+    {
+      "id": "STR-01",
+      "severity": "P2",
+      "classification": "confirmed-source-readability",
+      "title": "Web source is compressed into very long physical lines",
+      "evidence": [
+        {
+          "path": "web/src/pages/RepairsPage.vue",
+          "line": 14,
+          "detail": "6174-character line"
+        },
+        {
+          "path": "web/src/style.css",
+          "line": 4,
+          "detail": "11396-character line"
+        }
+      ],
+      "impact": "Few physical lines hide multiple responsibilities and reduce review/locality; this is not evidence of runtime slowness.",
+      "recommendation": "Expand formatting separately, retain approved R3 tokens/visual behavior, then extract cohesive form/query/workflow modules where responsibilities differ.",
+      "standardAttribution": "Project engineering convention; Alibaba Java rules do not directly govern Vue/CSS."
+    },
+    {
+      "id": "STR-02",
+      "severity": "P2",
+      "classification": "confirmed-module-concentration",
+      "title": "Native Index combines numerous workflows and UI builders",
+      "evidence": [
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 162,
+          "detail": "login and session handling"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 216,
+          "detail": "home reads and shared page state"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 285,
+          "detail": "image uploads"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 1131,
+          "detail": "root build"
+        }
+      ],
+      "impact": "Adding device subscriptions here would couple permissions, timers and unrelated business drafts in a 1152-line file.",
+      "recommendation": "Preserve existing dispatch/visits/assist modules; add a session-scoped device module with a small interface and move existing workflow controllers/pages gradually."
+    },
+    {
+      "id": "LIFE-01",
+      "severity": "P1",
+      "classification": "static-race-risk-not-reproduced",
+      "title": "Several native reads can deliver successful old-session results after account change",
+      "evidence": [
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 187,
+          "detail": "clearSession resets state but does not invalidate all ordinary read completions"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 216,
+          "detail": "loadHome awaits then directly assigns state"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/pages/Index.ets",
+          "line": 239,
+          "detail": "openRepair directly writes selected/events after awaits"
+        },
+        {
+          "path": "harmony/entry/src/main/ets/services/Api.ets",
+          "line": 68,
+          "detail": "decode protects 401 token clearing but does not reject successful old-session responses"
+        }
+      ],
+      "trigger": "Start a slow read, sign out and sign in as another account before it succeeds.",
+      "impact": "Old data may repopulate shared state; no live reproduction was performed.",
+      "existingProtection": "DispatchController epoch/token guards and AI epoch checks already address their own paths.",
+      "recommendation": "Use a shared session epoch/cancel seam for reads, errors and device callbacks; add a public-interface race regression before implementation."
+    },
+    {
+      "id": "CON-01",
+      "severity": "P2",
+      "classification": "confirmed-build-gap",
+      "title": "No repository gate verifies the full contract-generation chain",
+      "evidence": [
+        {
+          "path": "contracts/generate_openapi.py",
+          "line": 1,
+          "detail": "maintenance source emits OpenAPI JSON"
+        },
+        {
+          "path": "web/package.json",
+          "line": 10,
+          "detail": "build generates TS from existing OpenAPI JSON only"
+        },
+        {
+          "path": "harmony/generate-models.py",
+          "line": 6,
+          "detail": "ArkTS generator reads existing OpenAPI JSON"
+        }
+      ],
+      "impact": "A DSL change without regenerating JSON can leave both clients building against stale types.",
+      "recommendation": "Document one maintenance source; gate DSL -> OpenAPI -> TS/ArkTS regeneration and git diff; test Java wire shapes and API1.1 compatibility before adding optional device endpoints."
+    },
+    {
+      "id": "GATE-01",
+      "severity": "P2",
+      "classification": "confirmed-local-configuration-gap",
+      "title": "P3C/formatting/contract drift checks are not declared in current build",
+      "evidence": [
+        {
+          "path": "backend/pom.xml",
+          "line": 17,
+          "detail": "only Spring Boot build plugin declared"
+        },
+        {
+          "path": "web/package.json",
+          "line": 7,
+          "detail": "test/build scripts exist, no lint/format check script"
+        }
+      ],
+      "impact": "Current passing behavior tests do not establish coding-standard conformance.",
+      "recommendation": "Introduce versioned rule/config checks gradually, baseline existing debt and reject new findings on changed code; keep tests separate from style report.",
+      "notClaimed": "Remote branch-protection configuration was not inspected; absence of local .github is not proof of all remote CI settings."
+    },
+    {
+      "id": "TEST-01",
+      "severity": "P2",
+      "classification": "confirmed-test-harness-coupling",
+      "title": "Native controller tests depend on source text rewriting",
+      "evidence": [
+        {
+          "path": "harmony/tests/dispatch-recovery.test.mjs",
+          "line": 16,
+          "detail": "imports removed by regex before constructing controller with new Function"
+        }
+      ],
+      "impact": "A valid import/refactor can break the harness without changing behavior; this does not invalidate its existing behavior coverage.",
+      "recommendation": "Keep existing guards and tests during extraction; favor platform-free computation/provider interfaces and a supported test compilation path for new device math, plus SDK/physical-device verification for adapters."
+    }
+  ],
+  "sourceMetrics": [
+    {
+      "path": "web/src/style.css",
+      "physicalLines": 12,
+      "maxLineCharacters": 11396
+    },
+    {
+      "path": "web/src/pages/DispatchPage.vue",
+      "physicalLines": 30,
+      "maxLineCharacters": 7567
+    },
+    {
+      "path": "web/src/styles/dispatch.css",
+      "physicalLines": 7,
+      "maxLineCharacters": 6903
+    },
+    {
+      "path": "web/src/pages/RepairsPage.vue",
+      "physicalLines": 14,
+      "maxLineCharacters": 6174
+    },
+    {
+      "path": "web/src/pages/RoomsPage.vue",
+      "physicalLines": 14,
+      "maxLineCharacters": 5543
+    },
+    {
+      "path": "web/src/pages/HygienePage.vue",
+      "physicalLines": 16,
+      "maxLineCharacters": 5423
+    },
+    {
+      "path": "web/src/pages/StudentsPage.vue",
+      "physicalLines": 14,
+      "maxLineCharacters": 5261
+    },
+    {
+      "path": "web/src/pages/VisitorsPage.vue",
+      "physicalLines": 15,
+      "maxLineCharacters": 4490
+    },
+    {
+      "path": "web/src/pages/DashboardPage.vue",
+      "physicalLines": 7,
+      "maxLineCharacters": 4063
+    },
+    {
+      "path": "web/src/components/dispatch/RepairVisitPanel.vue",
+      "physicalLines": 22,
+      "maxLineCharacters": 3447
+    },
+    {
+      "path": "web/src/pages/StatsPage.vue",
+      "physicalLines": 10,
+      "maxLineCharacters": 3364
+    },
+    {
+      "path": "web/src/styles/managerAssist.css",
+      "physicalLines": 2,
+      "maxLineCharacters": 2565
+    },
+    {
+      "path": "web/src/App.vue",
+      "physicalLines": 14,
+      "maxLineCharacters": 2452
+    },
+    {
+      "path": "web/src/components/ManagerAssist.vue",
+      "physicalLines": 9,
+      "maxLineCharacters": 2396
+    },
+    {
+      "path": "web/src/components/dispatch/DispatchTaskCard.vue",
+      "physicalLines": 7,
+      "maxLineCharacters": 1944
+    },
+    {
+      "path": "web/src/components/dispatch/DispatchTravelEditor.vue",
+      "physicalLines": 11,
+      "maxLineCharacters": 1300
+    },
+    {
+      "path": "web/src/components/dispatch/DispatchAvailability.vue",
+      "physicalLines": 10,
+      "maxLineCharacters": 1219
+    },
+    {
+      "path": "web/src/pages/LoginPage.vue",
+      "physicalLines": 6,
+      "maxLineCharacters": 1216
+    },
+    {
+      "path": "web/src/components/UploadField.vue",
+      "physicalLines": 13,
+      "maxLineCharacters": 1206
+    },
+    {
+      "path": "web/src/components/Icon.vue",
+      "physicalLines": 5,
+      "maxLineCharacters": 888
+    },
+    {
+      "path": "web/src/components/LookupSelect.vue",
+      "physicalLines": 11,
+      "maxLineCharacters": 690
+    },
+    {
+      "path": "web/src/pages/RepairsPage.close.test.ts",
+      "physicalLines": 48,
+      "maxLineCharacters": 661
+    },
+    {
+      "path": "web/src/components/dispatch/RepairVisitPanel.test.ts",
+      "physicalLines": 60,
+      "maxLineCharacters": 661
+    },
+    {
+      "path": "web/src/components/DataBars.vue",
+      "physicalLines": 2,
+      "maxLineCharacters": 512
+    },
+    {
+      "path": "web/src/composables/dispatchPlan.test.ts",
+      "physicalLines": 31,
+      "maxLineCharacters": 504
+    },
+    {
+      "path": "harmony/entry/src/main/ets/pages/Index.ets",
+      "physicalLines": 1152,
+      "maxLineCharacters": 475
+    },
+    {
+      "path": "web/src/components/Drawer.vue",
+      "physicalLines": 9,
+      "maxLineCharacters": 469
+    },
+    {
+      "path": "web/src/composables/useDispatchBoard.ts",
+      "physicalLines": 17,
+      "maxLineCharacters": 393
+    },
+    {
+      "path": "web/src/components/Pagination.vue",
+      "physicalLines": 2,
+      "maxLineCharacters": 316
+    },
+    {
+      "path": "web/src/ui.ts",
+      "physicalLines": 11,
+      "maxLineCharacters": 301
+    },
+    {
+      "path": "web/src/api/dispatch.ts",
+      "physicalLines": 21,
+      "maxLineCharacters": 264
+    },
+    {
+      "path": "web/src/composables/useManagerPresence.ts",
+      "physicalLines": 27,
+      "maxLineCharacters": 263
+    },
+    {
+      "path": "web/src/composables/useManagerPresence.test.ts",
+      "physicalLines": 24,
+      "maxLineCharacters": 240
+    },
+    {
+      "path": "web/src/router.ts",
+      "physicalLines": 19,
+      "maxLineCharacters": 231
+    },
+    {
+      "path": "web/src/api/client.test.ts",
+      "physicalLines": 57,
+      "maxLineCharacters": 219
+    },
+    {
+      "path": "web/src/composables/dispatchPlan.ts",
+      "physicalLines": 33,
+      "maxLineCharacters": 198
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/visits/VisitArrangement.ets",
+      "physicalLines": 106,
+      "maxLineCharacters": 193
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/RoutePage.ets",
+      "physicalLines": 160,
+      "maxLineCharacters": 186
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/assist/ManagerAssist.ets",
+      "physicalLines": 122,
+      "maxLineCharacters": 183
+    },
+    {
+      "path": "web/src/api/client.ts",
+      "physicalLines": 54,
+      "maxLineCharacters": 178
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/RouteTaskCard.ets",
+      "physicalLines": 72,
+      "maxLineCharacters": 174
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/RouteSettings.ets",
+      "physicalLines": 96,
+      "maxLineCharacters": 172
+    },
+    {
+      "path": "web/src/session.ts",
+      "physicalLines": 13,
+      "maxLineCharacters": 170
+    },
+    {
+      "path": "harmony/entry/src/main/ets/services/Labels.ets",
+      "physicalLines": 95,
+      "maxLineCharacters": 170
+    },
+    {
+      "path": "harmony/entry/src/main/ets/services/Api.ets",
+      "physicalLines": 176,
+      "maxLineCharacters": 163
+    },
+    {
+      "path": "web/src/api/managerAssist.ts",
+      "physicalLines": 7,
+      "maxLineCharacters": 159
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/DispatchController.ets",
+      "physicalLines": 181,
+      "maxLineCharacters": 155
+    },
+    {
+      "path": "web/src/api/types.ts",
+      "physicalLines": 15,
+      "maxLineCharacters": 147
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/visits/VisitWindowFields.ets",
+      "physicalLines": 68,
+      "maxLineCharacters": 144
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/AppVisibility.ets",
+      "physicalLines": 16,
+      "maxLineCharacters": 132
+    },
+    {
+      "path": "web/src/api/managerAssist.test.ts",
+      "physicalLines": 8,
+      "maxLineCharacters": 120
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/ForegroundPoll.ets",
+      "physicalLines": 57,
+      "maxLineCharacters": 119
+    },
+    {
+      "path": "harmony/entry/src/main/ets/components/FormInput.ets",
+      "physicalLines": 29,
+      "maxLineCharacters": 115
+    },
+    {
+      "path": "harmony/entry/src/main/ets/entryability/EntryAbility.ets",
+      "physicalLines": 48,
+      "maxLineCharacters": 109
+    },
+    {
+      "path": "harmony/entry/src/main/ets/components/SecureImage.ets",
+      "physicalLines": 38,
+      "maxLineCharacters": 103
+    },
+    {
+      "path": "web/src/components/StatusBadge.vue",
+      "physicalLines": 2,
+      "maxLineCharacters": 100
+    },
+    {
+      "path": "harmony/entry/src/main/ets/services/SubmissionKeys.ets",
+      "physicalLines": 25,
+      "maxLineCharacters": 99
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/RequestFlight.ets",
+      "physicalLines": 14,
+      "maxLineCharacters": 99
+    },
+    {
+      "path": "harmony/entry/src/main/ets/components/Palette.ets",
+      "physicalLines": 21,
+      "maxLineCharacters": 96
+    },
+    {
+      "path": "harmony/entry/src/main/ets/services/PendingRepairs.ets",
+      "physicalLines": 13,
+      "maxLineCharacters": 83
+    },
+    {
+      "path": "harmony/entry/src/main/ets/features/dispatch/RouteRevision.ets",
+      "physicalLines": 9,
+      "maxLineCharacters": 77
+    },
+    {
+      "path": "web/src/main.ts",
+      "physicalLines": 7,
+      "maxLineCharacters": 41
+    }
+  ],
+  "gatePlan": [
+    "Pin handbook source/version/commit and selected rules; distinguish mandatory/recommended/reference and project-specific rules.",
+    "Prove Java21 record/text-block/pattern fixtures parse with selected engine. Old P3C custom rules require an explicit mapping or migration, not blind PMD7 substitution.",
+    "Generate one current baseline with rule IDs, tool versions, paths, fingerprints and justified scoped suppressions; parse/infrastructure errors never count as zero violations.",
+    "Use a separate formatting commit; reject added violations in changed code and gradually remove old debt. Generated artifacts and third-party license files have dedicated exclusions.",
+    "Gate contract regeneration and Java HTTP compatibility tests; new device features are additive/optional and must preserve existing API1.1 fields, roles, versions, errors and idempotency.",
+    "Run native adapter/device verification separately from pure algorithm helpers; hardware accuracy/energy results cannot be inferred from simulator builds."
+  ],
+  "notAlibabaMandates": [
+    "Microservices",
+    "Mandatory interface+Impl for every internal class",
+    "Replacing JDBC with an ORM",
+    "Treating Map DTOs as a violation without a mapped rule",
+    "Applying Java source-format rules verbatim to Vue/ArkTS/CSS"
+  ]
+}

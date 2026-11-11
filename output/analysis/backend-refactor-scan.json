@@ -1,0 +1,693 @@
+{
+  "scannedAt": "2026-11-11T14:41:38.989131+00:00",
+  "scope": "Current working tree, static read-only Java production source/resources and related tests; includes preceding uncommitted openGauss migration.",
+  "baselineCommit": "aa86debb3d7bdb993abe06336520eab319bb1fa0",
+  "productionJavaFiles": 31,
+  "physicalJavaLines": 5476,
+  "rootPackageJavaFiles": 30,
+  "packages": [
+    "cn.dormlink",
+    "cn.dormlink.dispatch"
+  ],
+  "countsAre": "Literal source occurrence counts and physical line counts, not AST complexity, performance measurements or P3C scanner verdicts.",
+  "files": [
+    {
+      "path": "backend/src/main/java/cn/dormlink/AiCommand.java",
+      "physicalLines": 10,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 1,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AiController.java",
+      "physicalLines": 37,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 4,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AiGateway.java",
+      "physicalLines": 135,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 5,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AiRequestLedger.java",
+      "physicalLines": 224,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 9,
+      "jdbcWrapperCallSites": {
+        "rows": 1,
+        "one": 3,
+        "find": 1,
+        "count": 2,
+        "update": 4,
+        "insert": 2
+      },
+      "wildcardImportLines": 3
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AiService.java",
+      "physicalLines": 69,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 1,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/ApiSupport.java",
+      "physicalLines": 194,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 11,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 3
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/Application.java",
+      "physicalLines": 15,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 0
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AuthController.java",
+      "physicalLines": 78,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 4,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 1,
+        "find": 0,
+        "count": 1,
+        "update": 2,
+        "insert": 0
+      },
+      "wildcardImportLines": 3
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/AuthService.java",
+      "physicalLines": 212,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 4,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 2,
+        "find": 4,
+        "count": 0,
+        "update": 1,
+        "insert": 1
+      },
+      "wildcardImportLines": 3
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/BusinessSupport.java",
+      "physicalLines": 162,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 4,
+      "jdbcWrapperCallSites": {
+        "rows": 1,
+        "one": 1,
+        "find": 1,
+        "count": 2,
+        "update": 0,
+        "insert": 2
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/Db.java",
+      "physicalLines": 97,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 5,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/dispatch/RoutePlanner.java",
+      "physicalLines": 484,
+      "package": "cn.dormlink.dispatch",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchController.java",
+      "physicalLines": 83,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 7,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchCoordinator.java",
+      "physicalLines": 73,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 0
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchPresence.java",
+      "physicalLines": 142,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 4,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 4,
+        "find": 1,
+        "count": 2,
+        "update": 3,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchRepository.java",
+      "physicalLines": 383,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 16,
+      "jdbcWrapperCallSites": {
+        "rows": 11,
+        "one": 5,
+        "find": 5,
+        "count": 2,
+        "update": 6,
+        "insert": 1
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchService.java",
+      "physicalLines": 448,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 17,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 4,
+        "find": 1,
+        "count": 1,
+        "update": 4,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/DispatchSignals.java",
+      "physicalLines": 95,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 1,
+        "update": 2,
+        "insert": 1
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/FileService.java",
+      "physicalLines": 227,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 6,
+      "jdbcWrapperCallSites": {
+        "rows": 1,
+        "one": 6,
+        "find": 0,
+        "count": 2,
+        "update": 4,
+        "insert": 1
+      },
+      "wildcardImportLines": 4
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/HousingController.java",
+      "physicalLines": 118,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 10,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/HousingService.java",
+      "physicalLines": 410,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 16,
+      "jdbcWrapperCallSites": {
+        "rows": 2,
+        "one": 21,
+        "find": 1,
+        "count": 5,
+        "update": 7,
+        "insert": 5
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/ManagerAssistService.java",
+      "physicalLines": 237,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 8,
+      "jdbcWrapperCallSites": {
+        "rows": 2,
+        "one": 0,
+        "find": 0,
+        "count": 6,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/OperationsController.java",
+      "physicalLines": 89,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 7,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/OperationsService.java",
+      "physicalLines": 364,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 13,
+      "jdbcWrapperCallSites": {
+        "rows": 1,
+        "one": 6,
+        "find": 1,
+        "count": 1,
+        "update": 4,
+        "insert": 2
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/RepairController.java",
+      "physicalLines": 88,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 3,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 3
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/RepairService.java",
+      "physicalLines": 391,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 12,
+      "jdbcWrapperCallSites": {
+        "rows": 1,
+        "one": 6,
+        "find": 3,
+        "count": 0,
+        "update": 6,
+        "insert": 2
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/SchemaMigrations.java",
+      "physicalLines": 87,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/SecurityConfig.java",
+      "physicalLines": 107,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 5
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/Seed.java",
+      "physicalLines": 162,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 1,
+        "update": 3,
+        "insert": 10
+      },
+      "wildcardImportLines": 1
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/StatisticsController.java",
+      "physicalLines": 35,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 0,
+      "jdbcWrapperCallSites": {
+        "rows": 0,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    },
+    {
+      "path": "backend/src/main/java/cn/dormlink/StatisticsService.java",
+      "physicalLines": 220,
+      "package": "cn.dormlink",
+      "mapStringObjectTextOccurrences": 15,
+      "jdbcWrapperCallSites": {
+        "rows": 4,
+        "one": 0,
+        "find": 0,
+        "count": 0,
+        "update": 0,
+        "insert": 0
+      },
+      "wildcardImportLines": 2
+    }
+  ],
+  "openGaussDdl": [
+    {
+      "path": "backend/src/main/resources/db/opengauss/schema.sql",
+      "createTableStatements": 15,
+      "explicitCreateIndexStatements": 0
+    },
+    {
+      "path": "backend/src/main/resources/db/opengauss/V2__dynamic_dispatch.sql",
+      "createTableStatements": 6,
+      "explicitCreateIndexStatements": 0
+    }
+  ],
+  "schemaMigrationLedgerTable": "Created by SchemaMigrations.java in addition to DDL tables.",
+  "priorValidationReport": "output/acceptance/opengauss-backend-tests.json",
+  "testsRunThisScan": false,
+  "databaseQueriesRunThisScan": true,
+  "productionChangesMade": false,
+  "evidenceAnchors": {
+    "globalBoardReadLock": "backend/src/main/java/cn/dormlink/DispatchRepository.java:82",
+    "managerNPlusOne": "backend/src/main/java/cn/dormlink/DispatchRepository.java:119",
+    "managerReadExpansion": "backend/src/main/java/cn/dormlink/DispatchPresence.java:51",
+    "repairListNPlusOne": "backend/src/main/java/cn/dormlink/RepairService.java:34",
+    "fullHistoryStatistics": "backend/src/main/java/cn/dormlink/StatisticsService.java:28",
+    "unboundedSignalQueue": "backend/src/main/java/cn/dormlink/DispatchSignals.java:25",
+    "plannerInsertion": "backend/src/main/java/cn/dormlink/dispatch/RoutePlanner.java:278",
+    "plannerPairPenalty": "backend/src/main/java/cn/dormlink/dispatch/RoutePlanner.java:348",
+    "passwordNonAtomic": "backend/src/main/java/cn/dormlink/AuthController.java:63",
+    "idempotencyReplayAuthorization": "backend/src/main/java/cn/dormlink/BusinessSupport.java:108",
+    "fullImageThumbnail": "backend/src/main/java/cn/dormlink/RepairController.java:75"
+  },
+  "databaseQueryScope": "Only public pg_indexes metadata, no business rows, no EXPLAIN/ANALYZE/load/write.",
+  "runtimeIndexes": {
+    "database": "dormlink",
+    "schema": "public",
+    "count": 35,
+    "entries": [
+      {
+        "table": "ai_invocation",
+        "name": "ai_invocation_pkey",
+        "definition": "CREATE UNIQUE INDEX ai_invocation_pkey ON ai_invocation USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "audit_event",
+        "name": "audit_event_pkey",
+        "definition": "CREATE UNIQUE INDEX audit_event_pkey ON audit_event USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "auth_session",
+        "name": "auth_session_pkey",
+        "definition": "CREATE UNIQUE INDEX auth_session_pkey ON auth_session USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "auth_session",
+        "name": "auth_session_token_hash_key",
+        "definition": "CREATE UNIQUE INDEX auth_session_token_hash_key ON auth_session USING btree (token_hash) TABLESPACE pg_default"
+      },
+      {
+        "table": "building",
+        "name": "building_code_key",
+        "definition": "CREATE UNIQUE INDEX building_code_key ON building USING btree (code) TABLESPACE pg_default"
+      },
+      {
+        "table": "building",
+        "name": "building_pkey",
+        "definition": "CREATE UNIQUE INDEX building_pkey ON building USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_event",
+        "name": "dispatch_event_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_event_pkey ON dispatch_event USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_manager",
+        "name": "dispatch_manager_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_manager_pkey ON dispatch_manager USING btree (user_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_plan",
+        "name": "dispatch_plan_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_plan_pkey ON dispatch_plan USING btree (revision) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_revision",
+        "name": "dispatch_revision_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_revision_pkey ON dispatch_revision USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_task",
+        "name": "dispatch_task_active_order_id_key",
+        "definition": "CREATE UNIQUE INDEX dispatch_task_active_order_id_key ON dispatch_task USING btree (active_order_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_task",
+        "name": "dispatch_task_next_user_id_key",
+        "definition": "CREATE UNIQUE INDEX dispatch_task_next_user_id_key ON dispatch_task USING btree (next_user_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_task",
+        "name": "dispatch_task_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_task_pkey ON dispatch_task USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dispatch_travel",
+        "name": "dispatch_travel_pkey",
+        "definition": "CREATE UNIQUE INDEX dispatch_travel_pkey ON dispatch_travel USING btree (from_building_id, to_building_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "dorm_room",
+        "name": "dorm_room_building_id_room_no_key",
+        "definition": "CREATE UNIQUE INDEX dorm_room_building_id_room_no_key ON dorm_room USING btree (building_id, room_no) TABLESPACE pg_default"
+      },
+      {
+        "table": "dorm_room",
+        "name": "dorm_room_pkey",
+        "definition": "CREATE UNIQUE INDEX dorm_room_pkey ON dorm_room USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "file_asset",
+        "name": "file_asset_pkey",
+        "definition": "CREATE UNIQUE INDEX file_asset_pkey ON file_asset USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "file_asset",
+        "name": "file_asset_storage_key_key",
+        "definition": "CREATE UNIQUE INDEX file_asset_storage_key_key ON file_asset USING btree (storage_key) TABLESPACE pg_default"
+      },
+      {
+        "table": "hygiene_inspection",
+        "name": "hygiene_inspection_pkey",
+        "definition": "CREATE UNIQUE INDEX hygiene_inspection_pkey ON hygiene_inspection USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "hygiene_inspection",
+        "name": "hygiene_inspection_room_id_inspection_date_round_active_gua_key",
+        "definition": "CREATE UNIQUE INDEX hygiene_inspection_room_id_inspection_date_round_active_gua_key ON hygiene_inspection USING btree (room_id, inspection_date, round, active_guard) TABLESPACE pg_default"
+      },
+      {
+        "table": "idempotency_record",
+        "name": "idempotency_record_pkey",
+        "definition": "CREATE UNIQUE INDEX idempotency_record_pkey ON idempotency_record USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "idempotency_record",
+        "name": "idempotency_record_user_id_route_key_request_key_key",
+        "definition": "CREATE UNIQUE INDEX idempotency_record_user_id_route_key_request_key_key ON idempotency_record USING btree (user_id, route_key, request_key) TABLESPACE pg_default"
+      },
+      {
+        "table": "manager_building",
+        "name": "manager_building_pkey",
+        "definition": "CREATE UNIQUE INDEX manager_building_pkey ON manager_building USING btree (manager_user_id, building_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "repair_event",
+        "name": "repair_event_pkey",
+        "definition": "CREATE UNIQUE INDEX repair_event_pkey ON repair_event USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "repair_order",
+        "name": "repair_order_order_no_key",
+        "definition": "CREATE UNIQUE INDEX repair_order_order_no_key ON repair_order USING btree (order_no) TABLESPACE pg_default"
+      },
+      {
+        "table": "repair_order",
+        "name": "repair_order_pkey",
+        "definition": "CREATE UNIQUE INDEX repair_order_pkey ON repair_order USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "residence",
+        "name": "residence_active_student_id_key",
+        "definition": "CREATE UNIQUE INDEX residence_active_student_id_key ON residence USING btree (active_student_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "residence",
+        "name": "residence_pkey",
+        "definition": "CREATE UNIQUE INDEX residence_pkey ON residence USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "schema_migration",
+        "name": "schema_migration_pkey",
+        "definition": "CREATE UNIQUE INDEX schema_migration_pkey ON schema_migration USING btree (version) TABLESPACE pg_default"
+      },
+      {
+        "table": "student",
+        "name": "student_pkey",
+        "definition": "CREATE UNIQUE INDEX student_pkey ON student USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "student",
+        "name": "student_student_no_key",
+        "definition": "CREATE UNIQUE INDEX student_student_no_key ON student USING btree (student_no) TABLESPACE pg_default"
+      },
+      {
+        "table": "student",
+        "name": "student_user_id_key",
+        "definition": "CREATE UNIQUE INDEX student_user_id_key ON student USING btree (user_id) TABLESPACE pg_default"
+      },
+      {
+        "table": "sys_user",
+        "name": "sys_user_pkey",
+        "definition": "CREATE UNIQUE INDEX sys_user_pkey ON sys_user USING btree (id) TABLESPACE pg_default"
+      },
+      {
+        "table": "sys_user",
+        "name": "sys_user_username_key",
+        "definition": "CREATE UNIQUE INDEX sys_user_username_key ON sys_user USING btree (username) TABLESPACE pg_default"
+      },
+      {
+        "table": "visitor_registration",
+        "name": "visitor_registration_pkey",
+        "definition": "CREATE UNIQUE INDEX visitor_registration_pkey ON visitor_registration USING btree (id) TABLESPACE pg_default"
+      }
+    ]
+  }
+}

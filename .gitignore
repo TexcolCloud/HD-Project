@@ -17,6 +17,7 @@
 .playwright-cli/
 .tools/
 output/runtime/
+output/acceptance/harmony-current-layout.json
 
 # Downloaded Maven distribution; wrapper bootstrap remains versioned.
 backend/.mvn/apache-maven-*/

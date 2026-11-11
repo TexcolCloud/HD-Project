@@ -59,12 +59,13 @@ def require(condition, message):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--base', default='http://127.0.0.1:8080/api/v1')
+    parser.add_argument('--report', type=Path, help='Save a separate report for this database/environment.')
     args = parser.parse_args()
     report = {'base':args.base,'startedAt':datetime.now(timezone.utc).isoformat(),'checks':[]}
     def passed(name):
         report['checks'].append({'name':name,'passed':True})
         print('PASS', name)
-    output = Path(__file__).resolve().parents[1] / 'output/acceptance/api-results.json'
+    output = args.report or Path(__file__).resolve().parents[1] / 'output/acceptance/api-results.json'
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         anon = Api(args.base)

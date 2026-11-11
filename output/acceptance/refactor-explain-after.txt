@@ -1,0 +1,14 @@
+                                                                        QUERY PLAN
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..8.27 rows=1 width=36) (actual time=0.021..0.021 rows=1 loops=1)
+   ->  Index Scan Backward using idx_repair_event_order_time on repair_event  (cost=0.00..8.27 rows=1 width=36) (actual time=0.020..0.020 rows=1 loops=1)
+         Index Cond: (order_id = 1100000)
+ Total runtime: 0.064 ms
+(4 rows)
+
+ version |          description
+---------+--------------------------------
+       2 | Dynamic multi-manager dispatch
+       3 | query indexes
+       4 | mobility
+(3 rows)

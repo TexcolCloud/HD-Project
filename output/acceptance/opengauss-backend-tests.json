@@ -1,0 +1,185 @@
+{
+  "verifiedAt": "2026-11-11T10:11:40.346659+00:00",
+  "passed": true,
+  "totals": {
+    "tests": 47,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "executionCounts": {
+    "openGaussVmBehaviorAndConcurrencyTests": 36,
+    "h2JdbcAndSchemaTests": 3,
+    "pureJavaRoutePlannerTests": 8
+  },
+  "target": {
+    "driver": "org.opengauss:opengauss-jdbc:6.0.6-og",
+    "driverClass": "org.opengauss.Driver",
+    "databaseCompatibility": "PG",
+    "schema": "public",
+    "databases": [
+      "dormlink_ai_test",
+      "dormlink_dispatch_test",
+      "dormlink_concurrency_test",
+      "dormlink_platform_test"
+    ],
+    "host": "192.168.65.129",
+    "port": 15432,
+    "ordinaryApplicationRole": true
+  },
+  "suites": [
+    {
+      "name": "cn.dormlink.AiAdapterTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 4.024,
+      "execution": "openGauss VM",
+      "cases": [
+        "failedAndUnconfirmedKeysNeverSilentlyRepeatTheProviderCall",
+        "managerAnalysisUsesAuthorizedEvidenceAndServerFactsWithoutChangingTheOrder",
+        "concurrentSameKeyDoesNotStartAnotherProviderRequestAndDifferentBodyIsRejected",
+        "managerBriefCannotExposeAnotherBuildingOrAcceptStudentRequests",
+        "sendsRealHttpProtocolAndReturnsHumanReviewedSuggestionWithoutCreatingOrder",
+        "malformedModelJsonFailsClosedAndKeepsAnAttemptRecord",
+        "managerProviderNeverReceivesFormattedPhoneOrStudentIdentityInActualFreeText",
+        "sameAiRequestKeyReturnsTheCompleteCachedResultWithoutAnotherProviderCall",
+        "cachedManagerBriefIsNotReturnedAfterItsAuthorizedBuildingRangeChanges"
+      ]
+    },
+    {
+      "name": "cn.dormlink.DbJdbcCompatibilityTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.148,
+      "execution": "H2 JDBC/PG-emulation regression",
+      "cases": [
+        "timestampReadsAndWritesUseUtcIndependentlyOfTheJvmTimeZone",
+        "insertReturnsOnlyTheIdentityWhenOtherColumnsAlsoHaveGeneratedValues"
+      ]
+    },
+    {
+      "name": "cn.dormlink.dispatch.RoutePlannerTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.019,
+      "execution": "pure Java",
+      "cases": [
+        "satisfiesConfirmedWindowAndDoesNotClaimSavingsAgainstAnInfeasibleBaseline",
+        "usesRemainingDurationToShareWorkAcrossTwoManagers",
+        "urgentArrivalCannotEvictAnAlreadyConfirmedAppointment",
+        "urgentArrivalCanDisplaceAnUnacceptedRecommendationWhenShiftIsFull",
+        "ordinaryWorkCanFillAnUrgentAppointmentGapWithoutDelayingItsVisit",
+        "offlineOwnerKeepsCurrentTaskPastShiftEndButReceivesNoNewWork",
+        "aNewlyOnlineManagerCanShareExistingUnclaimedWorkWithoutMovingOwnedTasks",
+        "insertsNewJobAfterLockedCurrentAndNeverBreaksBuildingScope"
+      ]
+    },
+    {
+      "name": "cn.dormlink.DispatchIntegrationTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 3.499,
+      "execution": "openGauss VM",
+      "cases": [
+        "planningIsScopedClaimsAreUniqueAndLockedTravelDoesNotSkipRepairStates",
+        "studentCanSubmitWindowPreferenceWhilePreservingUnchangedResponsibilityFields",
+        "oneManagerCannotStartOrDepartAnotherTaskUntilCurrentIsBlockedOrFinished",
+        "workPeriodExpiryDuringCalculationInvalidatesPublication",
+        "rolledBackBusinessDoesNotEmitACommittedDirtySignal",
+        "additiveMigrationReplaysWithoutLosingExistingBusinessRecords",
+        "zeroActiveManagersKeepsNewWorkExplicitlyUnassigned",
+        "heartbeatIsPerSessionAndDeduplicatesManagersAcrossTwoClients",
+        "pauseIsSharedByAccountAndExpirationUsesServerHeartbeatTime",
+        "staleCalculatedPlanCannotPublishOverANewerOrderEvenWithoutADirtyEvent",
+        "explicitHandoffPreservesAuditAndRejectsTargetWithoutBuildingScope"
+      ]
+    },
+    {
+      "name": "cn.dormlink.MySqlConcurrencyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.756,
+      "execution": "openGauss VM",
+      "cases": [
+        "studentScopeIsRecheckedAfterWaitingForConcurrentTransfer",
+        "visitorDepartureCannotBeOverwrittenByAnotherSameVersionDeparture",
+        "roomMutationMustObserveAnEnrollmentCommittedAfterCommandSnapshot(boolean)[1]",
+        "roomMutationMustObserveAnEnrollmentCommittedAfterCommandSnapshot(boolean)[2]",
+        "twoBuildingEditsWithTheSameVersionCannotBothCommit"
+      ]
+    },
+    {
+      "name": "cn.dormlink.OpenGaussSchemaTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.115,
+      "execution": "H2 JDBC/PG-emulation regression",
+      "cases": [
+        "pgSchemaAndMigrationPreserveChineseCharactersEmptyStringsAndReplaySafety"
+      ]
+    },
+    {
+      "name": "cn.dormlink.PlatformIntegrationTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1.822,
+      "execution": "openGauss VM",
+      "cases": [
+        "concurrentManagersCannotOverbookLastRoomPlace",
+        "studentCannotReadRoomManagement",
+        "logoutImmediatelyRevokesDatabaseSession",
+        "hygieneRequiresUniqueRoundAndTracesCorrection",
+        "repairStateMachinePreservesHistoryAndOwnership",
+        "disabledRoomFilterExcludesEnabledRooms",
+        "newlyCreatedInactiveStudentCannotAuthenticate",
+        "nativeWebpMultipartUsesImageIoSpiAndIsReencodedWithoutClientConversion",
+        "uploadsAreReencodedAndPrivateUntilAndAfterBinding",
+        "corruptedPngReturnsReadableUnsupportedMediaInsteadOfInternalError",
+        "mobileLoginCreatesRevocablePersistentSession"
+      ]
+    }
+  ],
+  "package": {
+    "passed": true,
+    "path": "backend\\target\\dormlink-backend-1.0.0.jar",
+    "bytes": 33823109,
+    "sha256": "6c878dd2d49c9af7c5a5616eb3feee3d9cff56a87af227dda2dd36924f9da22c",
+    "log": "backend/target/opengauss-final-package.log"
+  },
+  "regressionProof": [
+    {
+      "behavior": "Generated IDs remain correct when JDBC returns other generated columns",
+      "red": "getKey() rejected {id=1,calculated=1001} before requesting only id",
+      "green": true
+    },
+    {
+      "behavior": "Timestamp storage preserves UTC independently of Asia/Shanghai JVM timezone",
+      "red": "Expected 2026-11-07T05:00:00.123Z; received 2026-11-07T13:00:00.123Z before explicit UTC binding",
+      "green": true
+    },
+    {
+      "behavior": "Concurrent student edit really waits for a row lock and then rechecks building permission",
+      "red": "MySQL-only SHOW FULL PROCESSLIST failed on real openGauss",
+      "green": "Uses editor transaction backend PID and pg_stat_activity waiting=TRUE; observed wait, transfer commits, edit returns404 and student remainsACTIVE"
+    }
+  ],
+  "historicalMySqlMigrationSha256": "6d49976b0ce6f0bc473bf66848a9df72099cfe4ad040f140dad4d15c9120b952",
+  "notClaimed": [
+    "Official DeepSeek provider execution; AI tests use a local HTTP provider fixture",
+    "Database-free tests are not counted as direct openGauss VM executions"
+  ]
+}

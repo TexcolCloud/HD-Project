@@ -14,9 +14,10 @@ Api, require = helpers['Api'], helpers['require']
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--base', default='http://127.0.0.1:8080/api/v1')
+    parser.add_argument('--report', type=Path, help='Save a separate report for this database/environment.')
     args = parser.parse_args()
     report = {'base':args.base,'startedAt':datetime.now(timezone.utc).isoformat(),'checks':[],'orderIds':[]}
-    output = Path(__file__).resolve().parents[1] / 'output/acceptance/dispatch-api-results.json'
+    output = args.report or Path(__file__).resolve().parents[1] / 'output/acceptance/dispatch-api-results.json'
     managers, students, initial = [], [], []
     created=[]
 
@@ -153,7 +154,11 @@ def main():
         for manager,old in initial:
             try:
                 current=manager.ok('GET','/dispatch/board')['me']
-                manager.ok('PATCH','/dispatch/me',{'expectedVersion':current['version'],'acceptingNewTasks':old['acceptingNewTasks'],'availableUntil':old['availableUntil'],'positionBuildingId':old['positionBuildingId'],'positionFloorNo':old['positionFloorNo']})
+                until=old['availableUntil']
+                expired=bool(until and datetime.fromisoformat(until.replace('Z','+00:00'))<=datetime.now(timezone.utc))
+                # Both an expired cutoff and no cutoff exclude new assignments. The API rejects past cutoffs.
+                manager.ok('PATCH','/dispatch/me',{'expectedVersion':current['version'],'acceptingNewTasks':old['acceptingNewTasks'],'availableUntil':None if expired else until,'positionBuildingId':old['positionBuildingId'],'positionFloorNo':old['positionFloorNo']})
+                cleanup.append({'managerId':manager.user['id'],'settingsRestored':True,'expiredAvailabilityCleared':expired})
             except Exception as error: cleanup.append({'settingsRestored':False,'error':str(error)})
         for api in managers+students:
             try: api.request('POST','/auth/logout',{})

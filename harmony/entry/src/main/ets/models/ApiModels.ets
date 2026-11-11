@@ -512,6 +512,145 @@ export interface ManagerAdvice {
   generatedAt: string;
   requiresHumanReview: boolean;
 }
+/** Values: ACTIVE, PAUSED, ENDED, EXPIRED */
+export type MobilitySessionState = string;
+/** Values: VALID, STALE, UNKNOWN */
+export type MobilityStatus = string;
+/** Values: MANUAL, QR, GPS, NONE */
+export type MobilitySource = string;
+/** Values: STILL, WALKING, UNKNOWN */
+export type MobilityMotion = string;
+/** Values: LOW, MEDIUM, HIGH */
+export type MobilityQuality = string;
+export interface MobilitySession {
+  id: string;
+  userId: string;
+  state: MobilitySessionState;
+  sourceEpoch: number;
+  leaseExpiresAt: string;
+  startedAt: string;
+  lastSampleAt: string | null;
+  backgroundRequested: boolean;
+  version: number;
+}
+export interface MobilityContext {
+  userId: string;
+  sessionId: string | null;
+  status: MobilityStatus;
+  source: MobilitySource;
+  buildingId: string | null;
+  buildingName: string | null;
+  floorNo: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMeters: number | null;
+  speedMps: number | null;
+  motion: MobilityMotion;
+  quality: MobilityQuality;
+  observedAt: string | null;
+  expiresAt: string | null;
+  contextVersion: number;
+  explanation: string;
+}
+export interface CampusAnchor {
+  id: string;
+  buildingId: string;
+  buildingName: string;
+  floorNo: number | null;
+  name: string;
+  scanCode: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number | null;
+  enabled: boolean;
+  version: number;
+}
+export interface CampusAnchors {
+  items: CampusAnchor[];
+}
+export interface MobilityPolicy {
+  consentVersion: string;
+  maxBatchSize: number;
+  maxBodyBytes: number;
+  reportIntervalSeconds: number;
+  contextTtlSeconds: number;
+  leaseSeconds: number;
+}
+export interface MobilityView {
+  session: MobilitySession | null;
+  context: MobilityContext | null;
+  anchors: CampusAnchor[];
+  policy: MobilityPolicy;
+}
+export interface MobilityStartRequest {
+  clientInstanceId: string;
+  consentVersion: string;
+  backgroundRequested?: boolean;
+  takeover?: boolean;
+  expectedVersion?: number;
+}
+export interface MobilityActionRequest {
+  sourceEpoch: number;
+  expectedVersion: number;
+}
+export interface MobilitySample {
+  sequence: number;
+  streamId: string;
+  observedAt: string;
+  elapsedMs: number;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
+  speedMps?: number;
+  speedAccuracyMps?: number;
+  stepDelta?: number;
+  motion: MobilityMotion;
+  clientQuality?: MobilityQuality;
+}
+export interface MobilityBatchRequest {
+  sourceEpoch: number;
+  batchId: string;
+  samples: MobilitySample[];
+}
+export interface MobilityBatchAck {
+  batchId: string;
+  acceptedCount: number;
+  rejectedCount: number;
+  lastSequence: number;
+  context: MobilityContext | null;
+}
+export interface MobilityAnchorRequest {
+  sourceEpoch: number;
+  anchorId: string;
+  source: string;
+  expectedContextVersion: number;
+}
+export interface CampusAnchorRequest {
+  buildingId: string;
+  name: string;
+  floorNo?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusMeters?: number | null;
+  enabled?: boolean;
+  expectedVersion?: number;
+}
+export interface MobilityTravelModel {
+  fromBuildingId: string;
+  toBuildingId: string;
+  minutes: number;
+  sampleCount: number;
+  sessionCount: number;
+  enabled: boolean;
+  version: number;
+  updatedAt: string;
+}
+export interface MobilityTravelModels {
+  items: MobilityTravelModel[];
+}
+export interface MobilityModelRollbackRequest {
+  expectedVersion: number;
+}
 export interface ErrorError {
   code: string;
   message: string;

@@ -1,0 +1,33 @@
+{
+  "label": "ca4cb44-before",
+  "at": "2026-11-11T15:17:08.863064+00:00",
+  "concurrency": 4,
+  "requestsPerEndpoint": 60,
+  "warmupPerWorker": 2,
+  "endpoints": {
+    "/repairs?page=1&pageSize=20": {
+      "p50Ms": 1760.15,
+      "p95Ms": 1889.85,
+      "p99Ms": 1941.11,
+      "maxMs": 1952.68,
+      "errors": 0,
+      "throughputPerSecond": 2.24
+    },
+    "/statistics/repairs": {
+      "p50Ms": 812.51,
+      "p95Ms": 941.49,
+      "p99Ms": 1001.16,
+      "maxMs": 1004.0,
+      "errors": 0,
+      "throughputPerSecond": 4.75
+    },
+    "/dispatch/board": {
+      "p50Ms": 124.28,
+      "p95Ms": 136.38,
+      "p99Ms": 140.42,
+      "maxMs": 143.17,
+      "errors": 0,
+      "throughputPerSecond": 31.95
+    }
+  }
+}
