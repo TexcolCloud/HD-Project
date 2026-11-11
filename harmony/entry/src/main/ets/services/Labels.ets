@@ -41,7 +41,13 @@ export function actionLabel(value: string): string {
 }
 export function dateText(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' });
+  if (Number.isNaN(date.getTime())) return value;
+  // The school uses fixed UTC+8. Format UTC parts explicitly: some Harmony Intl
+  // implementations choose h24 despite hour12:false and display midnight as 24:xx.
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return local.getUTCFullYear() + '/' + (local.getUTCMonth() + 1) + '/' + local.getUTCDate() + ' ' +
+    String(local.getUTCHours()).padStart(2, '0') + ':' + String(local.getUTCMinutes()).padStart(2, '0') + ':' +
+    String(local.getUTCSeconds()).padStart(2, '0');
 }
 export function today(): string {
   const d = new Date(Date.now() + 8 * 60 * 60 * 1000);

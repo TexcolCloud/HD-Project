@@ -12,6 +12,14 @@ test('service timestamps use the school timezone even when the device is on UTC'
   assert.match(dateText('2026-11-06T16:05:00Z'), /^2026\/11\/7\s+00:05:00$/);
 });
 
+test('Harmony SDK h24 midnight formatting cannot display 24 as the next day hour', t => {
+  t.mock.method(Date.prototype, 'toLocaleString', () => '2026/11/12 24:19:44');
+  assert.equal(dateText('2026-11-11T16:19:44Z'), '2026/11/12 00:19:44');
+  assert.equal(dateText('2026-12-31T16:00:00Z'), '2027/1/1 00:00:00');
+  assert.equal(dateText('2026-11-11T15:59:59Z'), '2026/11/11 23:59:59');
+  assert.equal(dateText('unavailable'), 'unavailable');
+});
+
 test('a backfilled inspection sends the chosen date and clock in Beijing time', () => {
   assert.equal(inspectionTimestamp('2026-11-06', '18:30', Date.parse('2026-11-07T02:00:00Z')), '2026-11-06T18:30:00+08:00');
 });

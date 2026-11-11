@@ -35,7 +35,7 @@ const summary = computed(() =>
   contextSummary(view.value?.context ?? null, now.value),
 );
 const stateLabels = {
-  ACTIVE: "正在采集",
+  ACTIVE: "工作进行中",
   PAUSED: "已暂停",
   ENDED: "已结束",
   EXPIRED: "已过期",
@@ -186,7 +186,7 @@ onBeforeUnmount(() => clearInterval(clock));
   <template v-if="view">
     <section class="mobility-overview panel">
       <div class="mobility-place">
-        <p class="section-note">我的最近确认位置</p>
+        <p class="section-note">本次出行位置</p>
         <h2>{{ summary.place }}</h2>
         <p :class="summary.fresh ? 'mobility-valid' : 'muted'">
           {{ summary.fresh ? "在有效期内" : "当前位置待确认" }} ·
