@@ -1,0 +1,11 @@
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: Begin scanning database.
+Progress: [                                                  ] 0% (0/38, cur_step/total_step). reading schemas
+Progress: [==================================================] 100% (38/38, cur_step/total_step). finish scanning database
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: Finish scanning database.
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: Start dumping objects
+Progress: [                                                  ] 0% (0/5366, dumpObjNums/totalObjNums). dump objects
+Progress: [==================================================] 100% (5366/5366, dumpObjNums/totalObjNums). dump objects
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: Finish dumping objects
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: dump database dormlink successfully
+gs_dump[port='5432'][dormlink][2026-11-11 23:21:34]: total time: 608  ms
+25dec141f8858f25ff7b752b597352f01a7c2fda00af65a13a2e9228806f7f74  /var/lib/opengauss/data/backups/dormlink-before-device-refactor-20261111.dump

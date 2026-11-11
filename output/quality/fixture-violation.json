@@ -1,0 +1,48 @@
+{
+  "formatVersion": 0,
+  "pmdVersion": "7.29.0",
+  "timestamp": "2026-11-11T23:18:01.941+08:00",
+  "files": [
+    {
+      "filename": "D:\\CodingProjects\\HD-Project\\.tools\\quality-fixtures\\violation\\Fixture.java",
+      "violations": [
+        {
+          "beginline": 1,
+          "begincolumn": 7,
+          "endline": 1,
+          "endcolumn": 15,
+          "description": "The class name \u0027bad_name\u0027 doesn\u0027t match \u0027[A-Z][a-zA-Z0-9]*\u0027",
+          "rule": "ClassNamingConventions",
+          "ruleset": "Code Style",
+          "priority": 1,
+          "externalInfoUrl": "https://docs.pmd-code.org/snapshot/pmd_rules_java_codestyle.html#classnamingconventions"
+        },
+        {
+          "beginline": 1,
+          "begincolumn": 23,
+          "endline": 1,
+          "endcolumn": 33,
+          "description": "The instance method name \u0027bad_method\u0027 doesn\u0027t match \u0027[a-z][a-zA-Z0-9]*\u0027",
+          "rule": "MethodNamingConventions",
+          "ruleset": "Code Style",
+          "priority": 1,
+          "externalInfoUrl": "https://docs.pmd-code.org/snapshot/pmd_rules_java_codestyle.html#methodnamingconventions"
+        },
+        {
+          "beginline": 1,
+          "begincolumn": 48,
+          "endline": 1,
+          "endcolumn": 74,
+          "description": "This statement should have braces",
+          "rule": "ControlStatementBraces",
+          "ruleset": "Code Style",
+          "priority": 3,
+          "externalInfoUrl": "https://docs.pmd-code.org/snapshot/pmd_rules_java_codestyle.html#controlstatementbraces"
+        }
+      ]
+    }
+  ],
+  "suppressedViolations": [],
+  "processingErrors": [],
+  "configurationErrors": []
+}

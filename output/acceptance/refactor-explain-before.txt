@@ -1,0 +1,19 @@
+                                                       QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2975.02..2975.03 rows=1 width=36) (actual time=10.128..10.128 rows=1 loops=1)
+   ->  Sort  (cost=2975.02..2975.03 rows=1 width=36) (actual time=10.127..10.127 rows=1 loops=1)
+         Sort Key: id DESC
+         Sort Method: quicksort  Memory: 25kB
+         ->  Seq Scan on repair_event  (cost=0.00..2975.01 rows=1 width=36) (actual time=10.098..10.098 rows=1 loops=1)
+               Filter: (order_id = 1100000)
+               Rows Removed by Filter: 100000
+ Total runtime: 10.202 ms
+(8 rows)
+
+                                                                       QUERY PLAN
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..1.40 rows=20 width=8) (actual time=0.018..0.024 rows=20 loops=1)
+   ->  Index Scan Backward using repair_order_pkey on repair_order  (cost=0.00..7024.27 rows=100001 width=8) (actual time=0.016..0.021 rows=20 loops=1)
+         Filter: (building_id = ANY ('{1,2}'::bigint[]))
+ Total runtime: 0.070 ms
+(4 rows)

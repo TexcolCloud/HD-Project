@@ -1,0 +1,106 @@
+{
+  "at": "2026-11-11T16:22:57.261529+00:00",
+  "backendSource": "e1555cb",
+  "device": "DevEco API24 Pura90 127.0.0.1:5555",
+  "backendJar": {
+    "sha256": "68126eae32aeda4b87c34eeb78733a922c96beebcd555d84b54652e2a8fd5685",
+    "bytes": 33919616
+  },
+  "hap": {
+    "sha256": "ab91267984e6a0ad4a29625da4231cc3c1e059ab4b6741541f6627aa2acca87e",
+    "bytes": 1995363
+  },
+  "automated": {
+    "backendRealDatabaseRun": {
+      "total": 79,
+      "failures": 0,
+      "realOpenGauss": 60,
+      "h2JdbcSchema": 5,
+      "pureJava": 14
+    },
+    "web": 16,
+    "harmonyReplay": 52,
+    "pmdMappedRules": 6,
+    "pmdViolations": 0
+  },
+  "checks": [
+    {
+      "id": "web-register-anchor",
+      "status": "PASS",
+      "observation": "IAB manager1 registered a scoped A-floor-3 place with no GPS coordinates"
+    },
+    {
+      "id": "native-denied-location",
+      "status": "PASS",
+      "observation": "Real OS permission dialog denied; manual workflow and unknown speed remain available"
+    },
+    {
+      "id": "native-manual-confirmation",
+      "status": "PASS",
+      "observation": "Selected place, previewed and explicitly confirmed; A building floor 3 shown"
+    },
+    {
+      "id": "cross-client-position-and-pause",
+      "status": "PASS",
+      "observation": "Web received native confirmed place; Web pause reflected on native refresh"
+    },
+    {
+      "id": "manager-scope",
+      "status": "PASS",
+      "observation": "IAB manager2 only B scope; A validation anchor absent; manager1 restored"
+    },
+    {
+      "id": "web-statistics-and-themes",
+      "status": "PASS",
+      "observation": "Aggregates and Beijing-date trend rendered; day/night screenshots; no captured browser console errors"
+    },
+    {
+      "id": "native-route",
+      "status": "PASS",
+      "observation": "Same account deduplicated; next room/title/description/ETA rendered; midnight uses 00 hour"
+    },
+    {
+      "id": "native-calendar",
+      "status": "PASS",
+      "observation": "System event editor opened with confirmed time; canceled without saving a calendar event"
+    },
+    {
+      "id": "native-notification",
+      "status": "PASS",
+      "observation": "Real notification permission accepted and local test notification submitted"
+    },
+    {
+      "id": "native-scan-ui",
+      "status": "PASS",
+      "observation": "System scan UI opened; cancel returned to same residence-derived room; physical code not scanned"
+    },
+    {
+      "id": "native-camera-picker",
+      "status": "ENVIRONMENT_LIMIT",
+      "observation": "CameraPicker invoked; system UI extension failed with 2097152 and vendor camera bundle absent; readable error and album entry retained"
+    },
+    {
+      "id": "fixture-cleanup",
+      "status": "PASS",
+      "observation": "Fictional order 22 canceled; route updated to version 94 and removed the canceled task"
+    },
+    {
+      "id": "physical-sensors-and-background",
+      "status": "NOT_TESTED",
+      "observation": "Only emulator available; real GPS/steps/screen-off survival/battery and campus calibration require hardware/site data"
+    }
+  ],
+  "screenshots": [
+    "refactor-web-final.png",
+    "refactor-web-mobility-confirmed.png",
+    "refactor-web-mobility-night.png",
+    "refactor-web-statistics-night.png",
+    "refactor-harmony-manual-location.png",
+    "refactor-harmony-route.png",
+    "refactor-harmony-final-route.png",
+    "refactor-harmony-calendar.png",
+    "refactor-harmony-notification.png",
+    "refactor-harmony-camera.png",
+    "refactor-harmony-scan.png"
+  ]
+}

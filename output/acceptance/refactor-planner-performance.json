@@ -1,0 +1,77 @@
+{
+  "baseline": "ca4cb44",
+  "repeats": 7,
+  "jvmHeap": "512m",
+  "cases": {
+    "before": [
+      {
+        "workers": 5,
+        "jobs": 20,
+        "samples": 7,
+        "p50Ms": 1.889,
+        "maxMs": 2.536,
+        "assigned": 20,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 61
+      },
+      {
+        "workers": 20,
+        "jobs": 100,
+        "samples": 7,
+        "p50Ms": 9.368,
+        "maxMs": 13.221,
+        "assigned": 100,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 218
+      },
+      {
+        "workers": 50,
+        "jobs": 500,
+        "samples": 7,
+        "p50Ms": 124.557,
+        "maxMs": 139.916,
+        "assigned": 500,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 648
+      }
+    ],
+    "after": [
+      {
+        "workers": 5,
+        "jobs": 20,
+        "samples": 7,
+        "p50Ms": 2.051,
+        "maxMs": 2.355,
+        "assigned": 20,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 61
+      },
+      {
+        "workers": 20,
+        "jobs": 100,
+        "samples": 7,
+        "p50Ms": 9.202,
+        "maxMs": 11.213,
+        "assigned": 100,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 218
+      },
+      {
+        "workers": 50,
+        "jobs": 500,
+        "samples": 7,
+        "p50Ms": 111.245,
+        "maxMs": 117.874,
+        "assigned": 500,
+        "unassigned": 0,
+        "budgetDeferred": 0,
+        "travelMinutes": 648
+      }
+    ]
+  }
+}
