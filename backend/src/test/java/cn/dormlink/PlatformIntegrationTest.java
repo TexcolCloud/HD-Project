@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
-@org.springframework.test.context.ActiveProfiles("local")
+@org.springframework.test.context.ActiveProfiles(resolver = OpenGaussTestDatabase.class)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
@@ -23,6 +23,11 @@ import org.springframework.boot.test.web.server.LocalServerPort;
       "app.files=target/test-uploads"
     })
 class PlatformIntegrationTest {
+  @org.springframework.test.context.DynamicPropertySource
+  static void database(org.springframework.test.context.DynamicPropertyRegistry registry) {
+    OpenGaussTestDatabase.configure(registry, "platform");
+  }
+
   @LocalServerPort int port;
   final HttpClient http = HttpClient.newHttpClient();
   final tools.jackson.databind.json.JsonMapper json = new tools.jackson.databind.json.JsonMapper();

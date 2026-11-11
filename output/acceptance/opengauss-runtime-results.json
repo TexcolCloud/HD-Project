@@ -1,0 +1,168 @@
+{
+  "verifiedAt": "2026-11-11T10:30:55.297690+00:00",
+  "passed": true,
+  "scope": "Read-only final runtime proof; order21 and file9/file10 were added by post-migration UI tests. The 567-row comparison is the migration-time snapshot, not the current openGauss row total.",
+  "backend": {
+    "pid": 31388,
+    "runningJar": "output\\runtime\\backend-8080-20261111181202536.jar",
+    "jarBytes": 33823109,
+    "runningJarSha256": "6c878dd2d49c9af7c5a5616eb3feee3d9cff56a87af227dda2dd36924f9da22c",
+    "targetJarSha256": "6c878dd2d49c9af7c5a5616eb3feee3d9cff56a87af227dda2dd36924f9da22c",
+    "sameArtifact": true,
+    "activeProfile": "opengauss",
+    "logErrorCount": 0,
+    "profileLog": "output/runtime/opengauss-backend.log"
+  },
+  "postMigrationUiOrder": {
+    "orderId": "21",
+    "status": "COMPLETED",
+    "eventCount": 5,
+    "events": [
+      {
+        "id": "93",
+        "action": "submit",
+        "fromStatus": null,
+        "toStatus": "SUBMITTED"
+      },
+      {
+        "id": "94",
+        "action": "accept",
+        "fromStatus": "SUBMITTED",
+        "toStatus": "ACCEPTED"
+      },
+      {
+        "id": "95",
+        "action": "start",
+        "fromStatus": "ACCEPTED",
+        "toStatus": "PROCESSING"
+      },
+      {
+        "id": "96",
+        "action": "finish",
+        "fromStatus": "PROCESSING",
+        "toStatus": "PENDING_CONFIRMATION"
+      },
+      {
+        "id": "97",
+        "action": "confirm",
+        "fromStatus": "PENDING_CONFIRMATION",
+        "toStatus": "COMPLETED"
+      }
+    ],
+    "newBoundFiles": [
+      {
+        "id": "9",
+        "state": "BOUND",
+        "businessType": "REPAIR",
+        "businessId": "21",
+        "repairEventId": "93",
+        "sizeBytes": 281329,
+        "mime": "image/jpeg"
+      },
+      {
+        "id": "10",
+        "state": "BOUND",
+        "businessType": "REPAIR",
+        "businessId": "21",
+        "repairEventId": "96",
+        "sizeBytes": 283566,
+        "mime": "image/jpeg"
+      }
+    ],
+    "newRecordsCreatedByUiTests": true,
+    "resultImageMatchesResultEvent": true
+  },
+  "actualDatabaseConnections": {
+    "database": "dormlink",
+    "databaseUser": "dormlink",
+    "windowsHostConnectionConfirmed": true,
+    "connections": [
+      {
+        "clientAddress": "192.168.65.1",
+        "state": "idle",
+        "applicationName": "PostgreSQL JDBC Driver",
+        "count": 10,
+        "matchesWindowsHostInterface": true
+      }
+    ],
+    "queryTextOrCredentialsRecorded": false
+  },
+  "originalMySqlPreserved": {
+    "tableCount": 22,
+    "snapshotRowCount": 567,
+    "currentRowCount": 567,
+    "everyTableCountUnchanged": true,
+    "order21Absent": true,
+    "tableRows": {
+      "sys_user": 13,
+      "building": 3,
+      "manager_building": 3,
+      "student": 11,
+      "dorm_room": 9,
+      "residence": 9,
+      "visitor_registration": 5,
+      "repair_order": 11,
+      "repair_event": 49,
+      "hygiene_inspection": 5,
+      "file_asset": 7,
+      "audit_event": 137,
+      "idempotency_record": 116,
+      "ai_invocation": 0,
+      "auth_session": 45,
+      "dispatch_manager": 2,
+      "dispatch_revision": 1,
+      "dispatch_task": 5,
+      "dispatch_plan": 45,
+      "dispatch_event": 88,
+      "dispatch_travel": 2,
+      "schema_migration": 1
+    },
+    "queriesReadOnly": true
+  },
+  "httpHealth": {
+    "status": 200,
+    "database": "UP"
+  },
+  "ownVerificationSessionLoggedOut": true,
+  "authorizedImageDownloads": [
+    {
+      "fileId": "3",
+      "fromMigrationSnapshot": true,
+      "httpStatus": 200,
+      "bytes": 281329,
+      "contentType": "image/jpeg",
+      "jpegSignatureVerified": true,
+      "metadataSizeMatched": true
+    },
+    {
+      "fileId": "4",
+      "fromMigrationSnapshot": true,
+      "httpStatus": 200,
+      "bytes": 283566,
+      "contentType": "image/jpeg",
+      "jpegSignatureVerified": true,
+      "metadataSizeMatched": true
+    },
+    {
+      "fileId": "9",
+      "fromMigrationSnapshot": false,
+      "httpStatus": 200,
+      "bytes": 281329,
+      "contentType": "image/jpeg",
+      "jpegSignatureVerified": true,
+      "metadataSizeMatched": true
+    },
+    {
+      "fileId": "10",
+      "fromMigrationSnapshot": false,
+      "httpStatus": 200,
+      "bytes": 283566,
+      "contentType": "image/jpeg",
+      "jpegSignatureVerified": true,
+      "metadataSizeMatched": true
+    }
+  ],
+  "otherBrowserOrEmulatorSessionsTouched": false,
+  "businessWritesPerformedByThisCheck": false,
+  "finishedAt": "2026-11-11T10:30:59.789541+00:00"
+}

@@ -3,9 +3,12 @@ package cn.dormlink;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.time.Instant;
+import java.util.Calendar;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -15,9 +18,14 @@ import org.springframework.stereotype.Component;
 @DependsOnDatabaseInitialization
 class SchemaMigrations implements InitializingBean {
   private final DataSource source;
+  private final String migrationLocation;
 
-  SchemaMigrations(DataSource source) {
+  SchemaMigrations(
+      DataSource source,
+      @Value("${app.migration-location:db/migration/V2__dynamic_dispatch.sql}")
+          String migrationLocation) {
     this.source = source;
+    this.migrationLocation = migrationLocation;
   }
 
   @Override
@@ -29,8 +37,7 @@ class SchemaMigrations implements InitializingBean {
               + " VARCHAR(100) NOT NULL, checksum CHAR(64) NOT NULL, applied_at TIMESTAMP(3) NOT"
               + " NULL)");
       String script =
-          new ClassPathResource("db/migration/V2__dynamic_dispatch.sql")
-              .getContentAsString(StandardCharsets.UTF_8);
+          new ClassPathResource(migrationLocation).getContentAsString(StandardCharsets.UTF_8);
       String checksum = AuthService.hash(script);
       try (var find =
           connection.prepareStatement("SELECT checksum FROM schema_migration WHERE version=2")) {
@@ -61,7 +68,8 @@ class SchemaMigrations implements InitializingBean {
           connection.prepareStatement(
               "INSERT INTO dispatch_revision(id,updated_at) SELECT 1,? WHERE NOT EXISTS(SELECT 1"
                   + " FROM dispatch_revision WHERE id=1)")) {
-        revision.setTimestamp(1, Timestamp.from(Instant.now()));
+        revision.setTimestamp(
+            1, Timestamp.from(Instant.now()), Calendar.getInstance(TimeZone.getTimeZone("UTC")));
         revision.executeUpdate();
       }
       try (var insert =
@@ -70,7 +78,8 @@ class SchemaMigrations implements InitializingBean {
                   + " VALUES(2,?,?,?)")) {
         insert.setString(1, "Dynamic multi-manager dispatch");
         insert.setString(2, checksum);
-        insert.setTimestamp(3, Timestamp.from(Instant.now()));
+        insert.setTimestamp(
+            3, Timestamp.from(Instant.now()), Calendar.getInstance(TimeZone.getTimeZone("UTC")));
         insert.executeUpdate();
       }
     }

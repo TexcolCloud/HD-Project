@@ -13,7 +13,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.json.JsonMapper;
 
-@ActiveProfiles("local")
+@ActiveProfiles(resolver = OpenGaussTestDatabase.class)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
@@ -29,6 +29,11 @@ import tools.jackson.databind.json.JsonMapper;
       "app.files=target/dispatch-uploads"
     })
 class DispatchIntegrationTest {
+  @org.springframework.test.context.DynamicPropertySource
+  static void database(org.springframework.test.context.DynamicPropertyRegistry registry) {
+    OpenGaussTestDatabase.configure(registry, "dispatch");
+  }
+
   @LocalServerPort int port;
   final HttpClient http = HttpClient.newHttpClient();
   final JsonMapper json = new JsonMapper();

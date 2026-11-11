@@ -1,0 +1,48 @@
+{
+  "base": "http://127.0.0.1:8080/api/v1",
+  "startedAt": "2026-11-11T10:12:32.571367+00:00",
+  "checks": [
+    {
+      "name": "SQL health and anonymous authorization",
+      "passed": true
+    },
+    {
+      "name": "student role and cross-building resource scope",
+      "passed": true
+    },
+    {
+      "name": "multipart image upload and private attachment access",
+      "passed": true
+    },
+    {
+      "name": "repair creation, deduplication and object authorization",
+      "passed": true
+    },
+    {
+      "name": "concurrent acceptance, repair, rework and student confirmation",
+      "passed": true
+    },
+    {
+      "name": "concurrent room capacity and check-out",
+      "passed": true
+    },
+    {
+      "name": "hygiene totals, duplicate round and traced correction",
+      "passed": true
+    },
+    {
+      "name": "visitor arrival and departure",
+      "passed": true
+    },
+    {
+      "name": "real statistics and configurable AI availability",
+      "passed": true
+    },
+    {
+      "name": "Web Cookie, CSRF and session revocation",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "finishedAt": "2026-11-11T10:12:34.061482+00:00"
+}

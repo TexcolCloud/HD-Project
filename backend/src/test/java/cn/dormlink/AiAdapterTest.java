@@ -18,7 +18,7 @@ import org.springframework.test.context.*;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Protocol fixture, not a claim that a real supplier/key has been exercised. */
-@ActiveProfiles("local")
+@ActiveProfiles(resolver = OpenGaussTestDatabase.class)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
@@ -87,6 +87,7 @@ class AiAdapterTest {
 
   @DynamicPropertySource
   static void endpoint(DynamicPropertyRegistry r) {
+    OpenGaussTestDatabase.configure(r, "ai");
     r.add("app.ai.base-url", () -> "http://127.0.0.1:" + MODEL.getAddress().getPort());
   }
 

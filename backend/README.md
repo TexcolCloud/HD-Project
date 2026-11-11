@@ -14,16 +14,18 @@ Spring Boot **4.1.2**，Java 编译基线21，已使用本机JDK25编译运行�
 
 默认 `local` profile 使用H2文件库 `data/dormlink.mv.db`，重启保留业务数据，附件位于 `data/uploads/`。默认API为 `http://127.0.0.1:8080/api/v1`。健康接口 `/health` 会实际访问SQL。
 
-项目已配套MySQL8.4 Docker环境，可从项目根目录运行：
+正常三端运行现以VMware／openEuler中的openGauss为目标。将 `deploy/opengauss.env.example` 复制为被忽略的 `deploy/.env.opengauss`，在项目根目录运行：
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/compose.yaml up -d
+.\scripts\start-database.ps1
 .\scripts\run-backend.ps1
 ```
 
-也可手动设置 `SPRING_PROFILES_ACTIVE=mysql`、`DB_URL`、`DB_USER`、`DB_PASSWORD` 后运行JAR。默认URL为 `jdbc:mysql://127.0.0.1:13306/dormlink?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC`，默认用户dormlink，密码必须通过环境变量提供。不要把实际凭据提交到版本库。
+第一个脚本只检查目标TCP端口，不代表SQL登录成功。后端使用 `org.opengauss:opengauss-jdbc:6.0.6-og`／`org.opengauss.Driver`，运行profile为 `opengauss`；URL结构为 `jdbc:opengauss://<host>:<port>/<database>?stringtype=unspecified&use_boolean=true&currentSchema=public`。应用账号必须具有目标项目数据库所需权限，密码只通过环境文件或进程环境提供。手动运行时设置 `SPRING_PROFILES_ACTIVE=opengauss`、`DB_URL`、`DB_USER`、`DB_PASSWORD`；实际切换状态见[迁移与验收](../docs/10-openGauss迁移与验收.md)。
 
-初始建表脚本为 `src/main/resources/schema.sql`。新增结构由 `SchemaMigrations` 在初始建表后按版本应用，当前 `db/migration/V2__dynamic_dispatch.sql` 增加会话心跳、预约字段和调度表，`schema_migration` 保存版本与SHA-256。迁移只增列/建表；部分DDL失败后重启按元数据跳过已经添加的列，完成后才记录版本。已应用文件校验和改变会中止启动，不能静默重写历史迁移。旧库不清空，既有工单和入住保留。
+旧MySQL8.4 Docker环境及数据保留，可显式运行 `start-database.ps1 -Database mysql`、`run-backend.ps1 -Database mysql`。`run-backend.ps1 -Database local`使用独立H2；不同数据库不是同一份业务，切换profile不等同数据迁移。`-BuildOnly`无需环境文件，`-SkipBuild`仅运行已成功构建的产物。
+
+openGauss初始结构为 `src/main/resources/db/opengauss/schema.sql`，采用PG兼容模式的BIGSERIAL、BOOLEAN与TIMESTAMP(3)，V2位于同目录。MySQL／H2继续使用原 `schema.sql` 与 `db/migration/V2__dynamic_dispatch.sql`，不改写其历史校验和。`SchemaMigrations`按profile选择脚本并保存版本与SHA-256；部分DDL失败后重启按元数据跳过已存在列，完成后才记录版本。已应用校验和改变会中止启动，旧数据迁移须使用独立迁移工具，不能靠建表或种子重建。
 
 ## 本地账号和会话
 
@@ -80,17 +82,20 @@ AI请求使用 `Idempotency-Key`：`AiCommand`保存路由、提交标识和请�
 
 ```powershell
 .\mvnw.cmd test
-# 根目录，运行中的真实MySQL后端HTTP验收
-python scripts/acceptance-api.py
+# 根目录，针对正在运行的真实后端执行HTTP验收；数据库身份另存报告
+python scripts/acceptance-api.py --report output/acceptance/opengauss-api-results.json
+python scripts/acceptance-dispatch.py --report output/acceptance/opengauss-dispatch-api-results.json
 ```
 
-Java测试使用独立H2内存库和随机端口，不读取真实AI密钥。原业务集成测试覆盖登录/撤销、角色/跨楼栋/他人资源、房间筛选、并发最后一个名额、完整工单状态、重复检查与修正审计、上传绑定前后权限、损坏PNG的415错误、新建停用学生禁止登录，以及原始WebP直接multipart上传和JPEG重编码。AI协议测试使用明确的本地HTTP fixture，验证多模态组包、管理研判授权、完整结果缓存、同key并发只调用一次、失败/未知结果不静默重调，以及实际含身份文本的脱敏；它们不代表已经调用真实DeepSeek账号。调度集成测试覆盖presence去重/过期、共享暂停、唯一claim、执行互斥、显式交接和旧计划拒绝发布。`target/red-*.log` 与 `target/green-*.log` 保留本次Red→Green开发记录，实际测试数量及结果在 `target/surefire-reports/`。
+Java测试默认使用独立H2内存库和随机端口，不读取真实AI密钥。原业务集成测试覆盖登录/撤销、角色/跨楼栋/他人资源、房间筛选、并发最后一个名额、完整工单状态、重复检查与修正审计、上传绑定前后权限、损坏PNG的415错误、新建停用学生禁止登录，以及原始WebP直接multipart上传和JPEG重编码。AI协议测试使用明确的本地HTTP fixture，验证多模态组包、管理研判授权、完整结果缓存、同key并发只调用一次、失败/未知结果不静默重调，以及实际含身份文本的脱敏；它们不代表已经调用真实DeepSeek账号。调度集成测试覆盖presence去重/过期、共享暂停、唯一claim、执行互斥、显式交接和旧计划拒绝发布。`target/red-*.log` 与 `target/green-*.log` 保留本次Red→Green开发记录，实际测试数量及结果在 `target/surefire-reports/`。
+
+真实openGauss测试复用原业务、调度、AI与并发测试边界。先建立独立的 `dormlink_platform_test`、`dormlink_dispatch_test`、`dormlink_ai_test`、`dormlink_concurrency_test` 四个PG库，再从被忽略环境文件加载测试账号，设置 `OPENGAUSS_TEST_USER`、`OPENGAUSS_TEST_PASSWORD` 和带 `{suite}` 占位的 `OPENGAUSS_TEST_URL`（例如 `jdbc:opengauss://<host>:15432/dormlink_{suite}_test?stringtype=unspecified&use_boolean=true&currentSchema=public`），然后执行 `mvnw.cmd test`。测试拒绝指向主库；未设置该URL时仍使用默认H2／可选MySQL路径。类名 `MySqlConcurrencyTest` 保留以兼容原复现命令，设置上述变量后实际连接openGauss的concurrency测试库。
 
 真实MySQL并发回归在单独的 `dormlink_concurrency_test` 库运行。先由本机数据库维护账号建此库并授予开发用户权限，然后从被忽略环境文件设置 `DB_USER`、`DB_PASSWORD`，设置 `MYSQL_TEST_URL` 指向该测试库，执行 `mvnw.cmd -Dtest=MySqlConcurrencyTest test`。不设置此变量时默认跳过，且测试拒绝指向正在演示的dormlink库。
 
 该回归使用不同宿管、独立事务和明确同步点，验证入住与房间停用/缩容、同版本楼栋编辑、重复离访，以及等待跨楼栋调宿后重新校验学生编辑权限。命令事务显式READ_COMMITTED，先锁业务行再读取权限/版本，带版本条件写入；住房操作按学生→楼栋→房间的稳定顺序取锁。测试不清表、不修改种子数据。
 
-根任务的 `output/acceptance/api-results.json` 记录真实MySQL HTTP验收，不等同浏览器或鸿蒙真机UI验收。测试和演示会增加标有测试名称的虚构记录，不删除已有业务数据。
+`output/acceptance/api-results.json` 保留此前MySQL HTTP基线；本轮openGauss报告及环境身份见[10](../docs/10-openGauss迁移与验收.md)，HTTP结果不等同浏览器或鸿蒙模拟器UI验收。测试和演示会增加标有测试名称的虚构记录，不删除已有业务数据。
 
 ## 代码入口
 

@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,13 +15,24 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.*;
 
-/** Optional real-MySQL regressions; fixtures are unique and never delete existing data. */
-@ActiveProfiles("mysql")
-@EnabledIfEnvironmentVariable(named = "MYSQL_TEST_URL", matches = ".+")
+/**
+ * Optional real-MySQL/openGauss regressions; fixtures are unique and never delete existing data.
+ */
+@ActiveProfiles(resolver = OpenGaussTestDatabase.class)
+@EnabledIf("databaseConfigured")
 @SpringBootTest(properties = {"app.seed=true", "app.ai.api-key="})
 class MySqlConcurrencyTest {
+  static boolean databaseConfigured() {
+    return OpenGaussTestDatabase.configured()
+        || (System.getenv("MYSQL_TEST_URL") != null && !System.getenv("MYSQL_TEST_URL").isBlank());
+  }
+
   @DynamicPropertySource
   static void database(DynamicPropertyRegistry r) {
+    if (OpenGaussTestDatabase.configured()) {
+      OpenGaussTestDatabase.configure(r, "concurrency");
+      return;
+    }
     if (!System.getenv("MYSQL_TEST_URL").contains("dormlink_concurrency_test"))
       throw new IllegalArgumentException("Use the isolated dormlink_concurrency_test schema");
     r.add("spring.datasource.url", () -> System.getenv("MYSQL_TEST_URL"));
@@ -284,6 +295,7 @@ class MySqlConcurrencyTest {
             0);
     var transferredButUncommitted = new CountDownLatch(1);
     var allowTransferCommit = new CountDownLatch(1);
+    var editorPid = new java.util.concurrent.atomic.AtomicLong();
     try (var workers = Executors.newFixedThreadPool(2)) {
       var transfer =
           workers.submit(
@@ -306,7 +318,11 @@ class MySqlConcurrencyTest {
                   command(
                       oldBuildingManager,
                       edit,
-                      () -> housing.saveStudent(student.get("id").toString(), edit));
+                      () -> {
+                        if (OpenGaussTestDatabase.configured())
+                          editorPid.set(db.count("SELECT pg_backend_pid()"));
+                        return housing.saveStudent(student.get("id").toString(), edit);
+                      });
                   return 200;
                 } catch (ApiException e) {
                   return e.status;
@@ -317,19 +333,30 @@ class MySqlConcurrencyTest {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
         while (System.nanoTime() < deadline) {
           blockedOnStudent =
-              db.rows("SHOW FULL PROCESSLIST").stream()
-                  .anyMatch(
-                      row -> {
-                        String info = Objects.toString(row.get("info"), "");
-                        return info.contains("FROM student WHERE id=")
-                            && info.contains(student.get("id").toString())
-                            && info.contains("FOR UPDATE");
-                      });
+              OpenGaussTestDatabase.configured()
+                  ? db
+                      .rows(
+                          "SELECT query AS info FROM pg_stat_activity WHERE pid=? AND waiting=TRUE",
+                          editorPid.get())
+                      .stream()
+                      .anyMatch(
+                          row ->
+                              Objects.toString(row.get("info"), "")
+                                      .contains("FROM student WHERE id=")
+                                  && Objects.toString(row.get("info"), "").contains("FOR UPDATE"))
+                  : db.rows("SHOW FULL PROCESSLIST").stream()
+                      .anyMatch(
+                          row -> {
+                            String info = Objects.toString(row.get("info"), "");
+                            return info.contains("FROM student WHERE id=")
+                                && info.contains(student.get("id").toString())
+                                && info.contains("FOR UPDATE");
+                          });
           if (blockedOnStudent) break;
           Thread.sleep(25);
         }
         assertThat(blockedOnStudent)
-            .as("editor reaches the actual MySQL row lock before transfer commits")
+            .as("editor reaches the actual database row lock before transfer commits")
             .isTrue();
       } finally {
         allowTransferCommit.countDown();

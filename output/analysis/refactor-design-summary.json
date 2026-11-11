@@ -1,0 +1,33 @@
+{
+  "verifiedAt": "2026-11-11T14:56:45.717069+00:00",
+  "scope": "Scan and design only, confirmed by user",
+  "deliverables": [
+    "docs/11-全项目扫描与后端重构设计.md",
+    "docs/12-鸿蒙设备能力需求与方案.md",
+    "docs/13-P3C规范与重构质量门禁.md"
+  ],
+  "sourceTreeUnchanged": true,
+  "existingOpenGaussChangesPreserved": true,
+  "productionCodeChanged": false,
+  "permissionsOrContractsChanged": false,
+  "fullP3cEngineExecuted": false,
+  "performanceBenchmarkExecuted": false,
+  "businessTestsRerun": false,
+  "readOnlyDatabaseScope": "pg_indexes metadata only",
+  "checkedDocuments": 16,
+  "brokenLocalLinks": [],
+  "invalidSourceLineAnchors": [],
+  "reviewedBy": [
+    "backend_refactor_scan",
+    "harmony_device_design",
+    "p3c_project_scan"
+  ],
+  "reviewCorrections": [
+    "revalidate stale fallback plans",
+    "anchor building and expiry",
+    "auth-session-bound source lease",
+    "server-controlled observation quality",
+    "restart-scoped counters",
+    "portable source anchors"
+  ]
+}

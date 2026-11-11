@@ -1,0 +1,36 @@
+{
+  "verifiedAt": "2026-11-11T10:09:29.601941+00:00",
+  "hostOs": "openEuler 24.03 (LTS-SP4)",
+  "hypervisor": "VMware Workstation",
+  "database": "dormlink",
+  "build": "10d38387",
+  "compiledAt": "2025-03-21 18:39:45",
+  "deployment": "Existing Docker container OpenGauss inside openEuler VM",
+  "containerImageId": "sha256:a10ed4705e783a321aa9ebc49294e03e760c54ddc35e8187c9ba723f20ce72b6",
+  "databaseCompatibility": "PG",
+  "hostPort": 15432,
+  "containerPort": 5432,
+  "persistentDataDirectory": "/data/OpenGauss",
+  "restartPolicy": "always",
+  "projectDatabases": [
+    "dormlink",
+    "dormlink_platform_test",
+    "dormlink_dispatch_test",
+    "dormlink_ai_test",
+    "dormlink_concurrency_test"
+  ],
+  "applicationRole": {
+    "name": "dormlink",
+    "sysadmin": false,
+    "createdb": false,
+    "createrole": false,
+    "schema": "public",
+    "hostAccess": "Windows VMware host /32 only, project database allowlist",
+    "authentication": "md5, retained existing instance password encryption setting"
+  },
+  "previousMySqlPreserved": true,
+  "sourceApiWasStopped": true,
+  "credentialsIncluded": false,
+  "engine": "openGauss-lite",
+  "engineVersion": "7.0.0-RC1"
+}
