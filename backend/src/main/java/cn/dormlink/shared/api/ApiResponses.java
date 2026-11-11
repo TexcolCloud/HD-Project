@@ -1,6 +1,7 @@
 package cn.dormlink.shared.api;
 
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.UUID;
 
 /** Shared success envelope and request trace propagation for API modules. */
