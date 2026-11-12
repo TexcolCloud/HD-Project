@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-11-12T15:17:46.645211+00:00",
+  "provider": "DeepSeek official",
+  "model": "deepseek-flash",
+  "repairId": "23",
+  "scope": "Fictional QA text only; no images or contact fields",
+  "imagesIncluded": false,
+  "credentialOrTokenRecorded": false,
+  "interfaceAcceptanceStillPaused": true,
+  "httpStatus": 200,
+  "latencyMs": 3168.02,
+  "contractValidated": true,
+  "suggestionId": "1",
+  "summaryCharacters": 132,
+  "findingCount": 4,
+  "actionCount": 4,
+  "questionCount": 3,
+  "serverEvidenceRepairIds": [
+    "23"
+  ],
+  "sameRequestReplayMatched": true,
+  "replayLatencyMs": 53.23,
+  "providerFinishReason": "Not exposed by application gateway; complete JSON and all required fields validated",
+  "passed": true,
+  "feedbackId": "1",
+  "feedbackDecision": "IGNORED",
+  "feedbackReplaySingleRow": true,
+  "repairAndProgressUnchanged": true
+}

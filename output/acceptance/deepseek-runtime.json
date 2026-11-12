@@ -1,0 +1,9 @@
+{
+  "pid": 40324,
+  "port": 8080,
+  "runtimeJar": "output/runtime/backend-8080-20261112200829783.jar",
+  "bytes": 33995290,
+  "sha256": "d03d2d5e99d866a0471fe3fa18bcf08aed711e445af2523a0577edb495d0144d",
+  "databaseHealth": "UP",
+  "credentialOrTokenRecorded": false
+}

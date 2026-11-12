@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-11-12T12:21:59.403745+00:00",
+  "recordedAt": "2026-11-12T15:19:34.896465+00:00",
   "branch": "codex/service-closure",
   "status": "IMPLEMENTED_AUTOMATION_PASSED_UI_INTERRUPTED",
   "backend": {
@@ -83,7 +83,7 @@
   },
   "runtime": {
     "port": 8080,
-    "pid": 57116,
+    "pid": 40324,
     "databaseHealth": "UP",
     "isolated8081Stopped": true,
     "isolated8082Stopped": true
@@ -103,7 +103,7 @@
     "remediationStateAndMessageReadFactsPreserved": true
   },
   "externalConditions": {
-    "deepSeekOfficialCall": "No key configured; requested privately, manual fallback retained",
+    "deepSeekOfficialCall": "Official text-only manager advice and provenance-bound feedback verified; images, brief and UI not yet verified",
     "physicalHardware": "Simulator and replay only",
     "campusCoordinates": "Not field verified",
     "productionHosting": "Templates only, no public HTTPS validation"
@@ -116,5 +116,17 @@
     "remediationId": "1",
     "sourceInspectionId": "10",
     "state": "OPEN during UI interruption"
+  },
+  "aiOfficial": {
+    "authentication": "deepseek-official-auth.json",
+    "applicationIntegration": "deepseek-official-integration.json",
+    "model": "deepseek-flash",
+    "httpStatus": 200,
+    "latencyMs": 3168.02,
+    "sameRequestReplayMatched": true,
+    "feedbackReplaySingleRow": true,
+    "repairAndProgressUnchanged": true,
+    "imagesIncluded": false,
+    "credentialOrTokenRecorded": false
   }
 }
