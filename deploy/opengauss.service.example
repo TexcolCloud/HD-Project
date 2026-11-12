@@ -1,0 +1,24 @@
+[Unit]
+Description=DormLink apartment services
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=dormlink
+Group=dormlink
+WorkingDirectory=/var/lib/dormlink
+EnvironmentFile=/etc/dormlink/backend.env
+ExecStart=/usr/bin/java -jar /opt/dormlink/backend.jar
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dormlink
+
+[Install]
+WantedBy=multi-user.target

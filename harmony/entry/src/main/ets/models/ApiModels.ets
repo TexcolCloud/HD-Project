@@ -176,6 +176,7 @@ export interface User {
   buildingIds: string[];
   studentId: string | null;
   currentRoom: Room | null;
+  mustChangePassword?: boolean;
 }
 export interface LoginRequest {
   username: string;
@@ -472,6 +473,11 @@ export interface DispatchHandoffRequest {
   expectedOrderVersion: number;
   expectedTaskVersion: number;
 }
+export interface DispatchTakeoverRequest {
+  reason: string;
+  expectedOrderVersion: number;
+  expectedTaskVersion: number;
+}
 export interface RepairVisitRequest {
   expectedVersion: number;
   windowStart?: string | null;
@@ -661,6 +667,117 @@ export interface MobilityTravelModels {
 }
 export interface MobilityModelRollbackRequest {
   expectedVersion: number;
+}
+export interface MobilityEfficiency {
+  sampleCount: number;
+  measuredCount: number;
+  meanAbsoluteErrorMinutes: number | null;
+  predictedMinutes: number | null;
+  actualMinutes: number | null;
+  personalModelCount: number;
+  explanation: string;
+}
+export interface ServiceMessage {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  businessType: string;
+  businessId: string;
+  createdAt: string;
+  readAt: string | null;
+  version: number;
+}
+export interface ServiceMessagePage {
+  items: ServiceMessage[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+export interface ServiceMessageSummary {
+  unreadCount: number;
+  deliveryPending: number;
+  deliveryFailed: number;
+}
+export interface ServiceMessageReadRequest {
+  expectedVersion: number;
+}
+/** Values: OPEN, SUBMITTED, CLOSED, CANCELLED */
+export type RemediationStatus = string;
+export interface Remediation {
+  id: string;
+  inspectionId: string;
+  roomId: string;
+  roomNo: string;
+  buildingId: string;
+  buildingName: string;
+  responsibleStudentId: string;
+  responsibleName: string;
+  issueNote: string;
+  dueAt: string;
+  status: RemediationStatus;
+  feedbackNote: string;
+  reviewNote: string;
+  relatedRecheckId: string | null;
+  createdAt: string;
+  submittedAt: string | null;
+  closedAt: string | null;
+  version: number;
+  overdue: boolean;
+  evidenceImages: FileAsset[];
+}
+export interface RemediationPage {
+  items: Remediation[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+export interface RemediationRequest {
+  inspectionId: string;
+  responsibleStudentId: string;
+  dueAt: string;
+  issueNote: string;
+}
+export interface RemediationAssignmentRequest {
+  expectedVersion: number;
+  responsibleStudentId: string;
+  dueAt: string;
+  reason: string;
+}
+export interface RemediationCancelRequest {
+  expectedVersion: number;
+  reason: string;
+}
+export interface RemediationFeedbackRequest {
+  expectedVersion: number;
+  feedbackNote: string;
+  imageIds: string[];
+}
+export interface RemediationReviewRequest {
+  expectedVersion: number;
+  approved: boolean;
+  reviewNote: string;
+  relatedRecheckId?: string;
+}
+export interface AssistFeedback {
+  id: string;
+  orderId: string;
+  suggestionId: string;
+  decision: string;
+  reason: string;
+  outcome: string;
+  operatorName: string;
+  createdAt: string;
+  canFollowUp: boolean;
+}
+export interface AssistFeedbackList {
+  items: AssistFeedback[];
+}
+export interface AssistFeedbackRequest {
+  suggestionId: string;
+  decision: string;
+  reason: string;
+  outcome: string;
 }
 export interface ErrorError {
   code: string;

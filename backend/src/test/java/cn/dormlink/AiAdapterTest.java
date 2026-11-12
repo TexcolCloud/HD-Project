@@ -473,6 +473,97 @@ class AiAdapterTest {
     }
 
     @Test
+    void managerCanRecordOnlyOwnSuccessfulAdviceWithIdempotentFeedback() throws Exception {
+        ANSWER.set(
+                JSON.writeValueAsString(
+                        Map.of(
+                                "summary",
+                                "核对门锁情况",
+                                "findings",
+                                List.of("需现场核对"),
+                                "suggestedActions",
+                                List.of("联系学生"),
+                                "questions",
+                                List.of(),
+                                "uncertainty",
+                                "仅为建议")));
+        String token = login("manager1");
+        var generated =
+                post("/ai/manager/repairs/1", Map.of("consentToExternalAnalysis", true), token);
+        assertThat(generated.statusCode()).as(generated.body()).isEqualTo(200);
+        String suggestion =
+                JSON.readTree(generated.body()).path("data").path("suggestionId").asText();
+        long version = db.count("SELECT version FROM repair_order WHERE id=1");
+        String key = UUID.randomUUID().toString();
+        var body =
+                Map.of(
+                        "suggestionId",
+                        suggestion,
+                        "decision",
+                        "MODIFIED",
+                        "reason",
+                        "先核对学生时间",
+                        "outcome",
+                        "经人工核对后安排办理");
+        var first = post("/ai/manager/repairs/1/feedback", body, token, key);
+        assertThat(first.statusCode()).as(first.body()).isEqualTo(200);
+        var replay = post("/ai/manager/repairs/1/feedback", body, token, key);
+        assertThat(replay.statusCode()).as(replay.body()).isEqualTo(200);
+        assertThat(JSON.readTree(first.body()).path("data").path("id").asText())
+                .isEqualTo(JSON.readTree(replay.body()).path("data").path("id").asText());
+        assertThat(
+                        db.count(
+                                "SELECT COUNT(*) FROM ai_advice_feedback WHERE suggestion_id=?",
+                                suggestion))
+                .isEqualTo(1);
+        assertThat(db.count("SELECT version FROM repair_order WHERE id=1")).isEqualTo(version);
+        assertThat(post("/ai/manager/repairs/1/feedback", body, login("manager2")).statusCode())
+                .isEqualTo(404);
+        assertThat(post("/ai/manager/repairs/1/feedback", body, login("student1")).statusCode())
+                .isEqualTo(403);
+        String other =
+                db.one("SELECT id FROM sys_user WHERE username='manager2'").get("id").toString();
+        String building =
+                db.one("SELECT building_id FROM repair_order WHERE id=1")
+                        .get("buildingId")
+                        .toString();
+        db.update(
+                "INSERT INTO manager_building(manager_user_id,building_id) VALUES(?,?)",
+                other,
+                building);
+        try {
+            String otherToken = login("manager2");
+            assertThat(post("/ai/manager/repairs/1/feedback", body, otherToken).statusCode())
+                    .isEqualTo(404);
+            var history =
+                    http.send(
+                            HttpRequest.newBuilder(
+                                            URI.create(
+                                                    "http://127.0.0.1:"
+                                                            + port
+                                                            + "/api/v1/ai/manager/repairs/1/feedback"))
+                                    .header("Authorization", "Bearer " + otherToken)
+                                    .GET()
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString());
+            assertThat(history.statusCode()).as(history.body()).isEqualTo(200);
+            assertThat(
+                            JSON.readTree(history.body())
+                                    .path("data")
+                                    .path("items")
+                                    .path(0)
+                                    .path("canFollowUp")
+                                    .asBoolean())
+                    .isFalse();
+        } finally {
+            db.update(
+                    "DELETE FROM manager_building WHERE manager_user_id=? AND building_id=?",
+                    other,
+                    building);
+        }
+    }
+
+    @Test
     void sendsRealHttpProtocolAndReturnsHumanReviewedSuggestionWithoutCreatingOrder()
             throws Exception {
         ANSWER.set(

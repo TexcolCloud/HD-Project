@@ -1,3 +1,4 @@
+import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceEmpty } from '../../components/ServiceParts';
 import { User, Room, Student, Repair, Visitor } from '../../models/ApiModels';
 import { dateText } from '../../services/Labels';
@@ -32,10 +33,11 @@ export struct VisitorWorkspace {
   @Builder
   private VisitorCreate() {
     Column({space: 0}) {
+      DraftNotice({restored: this.state.draftRestored, blocked: this.state.draftBlocked, night: this.night, onDiscard: () => this.controller.discardDraft()})
       Text('仅登记本次来访所需信息，离开时补记离访时间。').fontSize(14).fontColor(this.muted()).lineHeight(24)
         .width('100%').padding(14).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 22})
-      serviceField({label: '访客姓名 *', value: this.state.visitorName, change: (v: string) => this.state.visitorName = v, placeholder: '请输入姓名'}, this.night, this.page)
-      serviceField({label: '联系电话 *', value: this.state.visitorPhone, change: (v: string) => this.state.visitorPhone = v, placeholder: '请输入联系电话'}, this.night, this.page)
+      serviceField({label: '访客姓名 *', value: this.state.visitorName, change: (v: string)  => { this.state.visitorName = v; this.controller.saveDraft(); }, placeholder: '请输入姓名'}, this.night, this.page)
+      serviceField({label: '联系电话 *', value: this.state.visitorPhone, change: (v: string)  => { this.state.visitorPhone = v; this.controller.saveDraft(); }, placeholder: '请输入联系电话'}, this.night, this.page)
       serviceLabel('被访学生 / 宿舍 *', this.night)
       Row({space: 8}) {
         TextInput({text: this.state.targetSearch, placeholder: '按学号或姓名查找'}).id('visitor-target-search').height(48).layoutWeight(1)
@@ -46,11 +48,11 @@ export struct VisitorWorkspace {
       if (this.state.students.length) {
         Select(this.state.students.map((s: Student): SelectOption => { return {value: (s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name}; }))
           .id('visitor-target').selected(this.state.students.findIndex((s: Student): boolean => s.id === this.state.visitedStudentId)).value(this.controller.studentChoice())
-          .onSelect((index: number) => this.state.visitedStudentId = this.state.students[index].id).width('100%').height(50)
+          .onSelect((index: number) => { this.state.visitedStudentId = this.state.students[index].id; this.controller.saveDraft(); }).width('100%').height(50)
           .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 20})
       } else { serviceEmpty('暂无可登记的在住学生，请先核对入住信息。', this.night) }
-      serviceField({label: '来访事由 *', value: this.state.visitorPurpose, change: (v: string) => this.state.visitorPurpose = v, placeholder: '例如：家属探访'}, this.night, this.page)
-      serviceField({label: '备注', value: this.state.visitorRemark, change: (v: string) => this.state.visitorRemark = v, placeholder: '可补充说明', multiline: true}, this.night, this.page)
+      serviceField({label: '来访事由 *', value: this.state.visitorPurpose, change: (v: string)  => { this.state.visitorPurpose = v; this.controller.saveDraft(); }, placeholder: '例如：家属探访'}, this.night, this.page)
+      serviceField({label: '备注', value: this.state.visitorRemark, change: (v: string)  => { this.state.visitorRemark = v; this.controller.saveDraft(); }, placeholder: '可补充说明', multiline: true}, this.night, this.page)
       Text('到访时间以保存时的服务端时间记录。').fontSize(12).fontColor(this.muted()).margin({bottom: 20})
       servicePrimary('保存来访登记', () => this.controller.submitVisitor(), this.night, this.page, this.state.busy, false)
     }.width('100%').alignItems(HorizontalAlign.Start)

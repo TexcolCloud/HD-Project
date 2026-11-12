@@ -138,8 +138,24 @@ public class MobilityService {
         transaction.executeWithoutResult(status -> travel.arrival(actor, orderId));
     }
 
+    public void abandonLeg(String userId, String orderId) {
+        repository.update(
+                "DELETE FROM mobility_pending_leg WHERE user_id=? AND order_id=?",
+                id(userId),
+                id(orderId));
+    }
+
     public Map<String, Integer> travelMinutes(Map<String, Integer> baseline) {
         return travel.minutes(baseline);
+    }
+
+    public Map<String, Map<String, Integer>> personalTravelMinutes(Map<String, Integer> shared) {
+        return travel.personalMinutes(shared);
+    }
+
+    public Efficiency efficiency(Actor actor) {
+        sessions.authorize(actor, false);
+        return travel.efficiency(actor);
     }
 
     public TravelModels travelModels(Actor actor) {

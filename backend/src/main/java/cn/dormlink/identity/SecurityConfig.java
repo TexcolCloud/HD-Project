@@ -46,6 +46,24 @@ class SecurityConfig {
                                     .setAuthentication(
                                             new UsernamePasswordAuthenticationToken(
                                                     actor, null, List.of()));
+                            if (actor.mustChangePassword()
+                                    && req.getRequestURI().startsWith("/api/v1/")
+                                    && !Set.of(
+                                                    "/api/v1/auth/me",
+                                                    "/api/v1/auth/csrf",
+                                                    "/api/v1/auth/change-password",
+                                                    "/api/v1/auth/logout",
+                                                    "/api/v1/health")
+                                            .contains(req.getRequestURI())) {
+                                fail(
+                                        res,
+                                        403,
+                                        "PASSWORD_CHANGE_REQUIRED",
+                                        "请先修改临时密码后继续使用",
+                                        req,
+                                        json);
+                                return;
+                            }
                             if (!mobile
                                     && !Set.of("GET", "HEAD", "OPTIONS")
                                             .contains(req.getMethod())) {

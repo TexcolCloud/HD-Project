@@ -1,0 +1,2 @@
+# SSH transport for opengauss-operations.py; uses the user's pinned known_hosts.
+paramiko==4.0.0

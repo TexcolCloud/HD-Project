@@ -28,6 +28,7 @@ class ManagerAssistService {
     private final FileService files;
     private final AiGateway gateway;
     private final JsonMapper json;
+    private final AssistFeedbackService feedback;
 
     ManagerAssistService(
             Db db,
@@ -36,7 +37,8 @@ class ManagerAssistService {
             RepairService repairs,
             FileService files,
             AiGateway gateway,
-            JsonMapper json) {
+            JsonMapper json,
+            AssistFeedbackService feedback) {
         this.db = db;
         this.auth = auth;
         this.access = access;
@@ -44,6 +46,7 @@ class ManagerAssistService {
         this.files = files;
         this.gateway = gateway;
         this.json = json;
+        this.feedback = feedback;
     }
 
     Object analyze(String id, AiCommand command) {
@@ -223,6 +226,7 @@ class ManagerAssistService {
                             normalized.put("generatedAt", Instant.now().toString());
                             return normalized;
                         });
+        feedback.register(result);
         return result;
     }
 

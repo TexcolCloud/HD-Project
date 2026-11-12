@@ -98,12 +98,26 @@ class MobilityServiceTest {
             new ResourceDatabasePopulator(
                             new ClassPathResource(base + "schema.sql"),
                             new ClassPathResource(migrations + "V2__dynamic_dispatch.sql"),
-                            new ClassPathResource(migrations + "V4__mobility.sql"))
+                            new ClassPathResource(migrations + "V4__mobility.sql"),
+                            new ClassPathResource(migrations + "V5__dispatch_closure.sql"))
+                    .execute(source);
+        }
+        try {
+            probe.queryForObject(
+                    "SELECT COUNT(*) FROM mobility_personal_travel_model", Integer.class);
+        } catch (org.springframework.jdbc.BadSqlGrammarException absent) {
+            new ResourceDatabasePopulator(
+                            new ClassPathResource(
+                                    (configured != null && !configured.isBlank()
+                                                    ? "db/opengauss/"
+                                                    : "db/migration/")
+                                            + "V5__dispatch_closure.sql"))
                     .execute(source);
         }
         jdbc = new JdbcTemplate(source);
         for (String table :
                 java.util.List.of(
+                        "mobility_personal_travel_model",
                         "mobility_model_revision",
                         "mobility_travel_model",
                         "travel_leg_summary",
@@ -146,6 +160,127 @@ class MobilityServiceTest {
     void close() {
         if (source != null) {
             source.destroy();
+        }
+    }
+
+    @Test
+    void personalCalibrationIsBoundedExpiresAndRespectsSharedRollbackAndCurrentScope() {
+        jdbc.update(
+                "INSERT INTO"
+                    + " mobility_personal_travel_model(user_id,from_building_id,to_building_id,minutes,sample_count,session_count,updated_at)"
+                    + " VALUES(1,1,2,1,5,3,?)",
+                java.sql.Timestamp.from(now));
+        var shared = java.util.Map.of("1:2", 8);
+        assertThat(service.personalTravelMinutes(shared).get("1").get("1:2")).isEqualTo(6);
+        assertThat(service.efficiency(phone).sampleCount()).isZero();
+        assertThat(service.efficiency(phone).meanAbsoluteErrorMinutes()).isNull();
+        assertThat(service.efficiency(phone).personalModelCount())
+                .as("unconfigured directions are not deployed models")
+                .isZero();
+        jdbc.update(
+                "INSERT INTO"
+                    + " mobility_travel_model(from_building_id,to_building_id,minutes,sample_count,session_count,enabled,updated_at)"
+                    + " VALUES(1,2,8,5,3,FALSE,?)",
+                java.sql.Timestamp.from(now));
+        assertThat(service.personalTravelMinutes(shared)).isEmpty();
+        jdbc.update("UPDATE mobility_travel_model SET enabled=TRUE");
+        jdbc.update("DELETE FROM manager_building WHERE manager_user_id=1 AND building_id=2");
+        assertThat(service.personalTravelMinutes(shared)).isEmpty();
+        jdbc.update("INSERT INTO manager_building VALUES(1,2)");
+        clock.current = now.plusSeconds(31L * 86400);
+        assertThat(service.personalTravelMinutes(shared)).isEmpty();
+    }
+
+    @Test
+    void confirmedJourneysProducePredictionsActualsAndPersonalCalibrationAfterThreeSessions() {
+        jdbc.update(
+                "INSERT INTO sys_user(id,username,password_hash,display_name,role)"
+                        + " VALUES(88,'leg-student','x','虚构学生','STUDENT')");
+        jdbc.update(
+                "INSERT INTO student(id,user_id,student_no,name,phone,created_by)"
+                        + " VALUES(88,88,'LEG88','虚构学生','13800000000',1)");
+        jdbc.update(
+                "INSERT INTO dorm_room(id,building_id,room_no,floor_no,capacity)"
+                        + " VALUES(88,2,'QA88',1,4)");
+        jdbc.update(
+                "INSERT INTO"
+                    + " residence(id,student_id,room_id,building_id,room_no,building_name,checked_in_at,active_student_id,operator_id)"
+                    + " VALUES(88,88,88,2,'QA88','乙栋',TIMESTAMP '2026-01-01 00:00:00',88,1)");
+        jdbc.update(
+                "INSERT INTO"
+                    + " repair_order(id,order_no,reporter_student_id,reporter_name,residence_id,room_id,room_no,building_id,building_name,title,description,category,priority,contact_name,contact_phone,status,handler_user_id,submitted_at)"
+                    + " VALUES(88,'QA-LEG-88',88,'虚构学生',88,88,'QA88',2,'乙栋','通行回放','虚构工单','OTHER','NORMAL','虚构学生','13800000000','ACCEPTED',1,TIMESTAMP"
+                    + " '2026-01-01 00:00:00')");
+        jdbc.update(
+                "INSERT INTO dispatch_travel(from_building_id,to_building_id,minutes)"
+                        + " VALUES(1,2,5)");
+        try {
+            var from =
+                    service.writeAnchor(
+                            phone,
+                            null,
+                            new AnchorWrite("1", "甲栋入口", 1, null, null, null, true, null));
+            var to =
+                    service.writeAnchor(
+                            phone,
+                            null,
+                            new AnchorWrite("2", "乙栋入口", 1, null, null, null, true, null));
+            for (int session = 0; session < 3; session++) {
+                var work =
+                        service.start(
+                                phone, new Start("phone-1", "mobility-v1", false, false, null));
+                for (int leg = 0; leg < 2; leg++) {
+                    clock.current = clock.current.plusSeconds(1);
+                    var context = service.view(phone).context();
+                    service.confirm(
+                            phone,
+                            work.session().id(),
+                            new Confirmation(
+                                    work.session().sourceEpoch(),
+                                    from.id(),
+                                    "MANUAL",
+                                    context.contextVersion()));
+                    service.departure(phone, "88");
+                    clock.current = clock.current.plusSeconds(60);
+                    context = service.view(phone).context();
+                    service.confirm(
+                            phone,
+                            work.session().id(),
+                            new Confirmation(
+                                    work.session().sourceEpoch(),
+                                    to.id(),
+                                    "MANUAL",
+                                    context.contextVersion()));
+                    service.arrival(phone, "88");
+                }
+                var current = service.view(phone).session();
+                service.action(
+                        phone,
+                        current.id(),
+                        "end",
+                        new Action(current.sourceEpoch(), current.version()));
+            }
+            var efficiency = service.efficiency(phone);
+            assertThat(efficiency.sampleCount()).isEqualTo(6);
+            assertThat(efficiency.measuredCount()).isEqualTo(6);
+            assertThat(efficiency.predictedMinutes()).isEqualTo(26.0);
+            assertThat(efficiency.actualMinutes()).isEqualTo(6.0);
+            assertThat(efficiency.meanAbsoluteErrorMinutes()).isCloseTo(20.0 / 6, within(.001));
+            assertThat(efficiency.personalModelCount()).isEqualTo(1);
+            assertThat(
+                            service.personalTravelMinutes(java.util.Map.of("1:2", 1))
+                                    .get("1")
+                                    .get("1:2"))
+                    .isEqualTo(1);
+        } finally {
+            jdbc.update("DELETE FROM mobility_pending_leg WHERE order_id=88");
+            jdbc.update("DELETE FROM repair_order WHERE id=88");
+            jdbc.update("DELETE FROM residence WHERE id=88");
+            jdbc.update("DELETE FROM student WHERE id=88");
+            jdbc.update("DELETE FROM dorm_room WHERE id=88");
+            jdbc.update("DELETE FROM sys_user WHERE id=88");
+            jdbc.update(
+                    "DELETE FROM dispatch_travel WHERE from_building_id=1 AND to_building_id=2");
         }
     }
 

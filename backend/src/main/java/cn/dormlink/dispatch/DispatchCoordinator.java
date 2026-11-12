@@ -1,12 +1,15 @@
 package cn.dormlink.dispatch;
 
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -21,14 +24,27 @@ class DispatchCoordinator {
     final AtomicBoolean running = new AtomicBoolean();
     volatile boolean ready;
     volatile String eligibility;
+    private final Clock clock;
+    volatile Instant nextTimeCheck;
+    private final DispatchDeadlines deadlines = new DispatchDeadlines();
 
+    @Autowired
     DispatchCoordinator(
             DispatchRepository repository,
             DispatchSignals signals,
             @Value("${app.dispatch.automatic:true}") boolean automatic) {
+        this(repository, signals, automatic, Clock.systemUTC());
+    }
+
+    DispatchCoordinator(
+            DispatchRepository repository,
+            DispatchSignals signals,
+            boolean automatic,
+            Clock clock) {
         this.repository = repository;
         this.signals = signals;
         this.automatic = automatic;
+        this.clock = clock;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -50,6 +66,10 @@ class DispatchCoordinator {
                 eligibility = current;
                 signals.changed(null, null, "ELIGIBILITY_CHANGED");
             }
+            if (nextTimeCheck != null && !clock.instant().isBefore(nextTimeCheck)) {
+                signals.changed(null, null, "TIME_BOUNDARY_REACHED");
+                nextTimeCheck = deadlines.acknowledged(clock.instant());
+            }
             signals.flush();
             if (Boolean.TRUE.equals(repository.revision().get("dirty"))) {
                 replan();
@@ -70,6 +90,7 @@ class DispatchCoordinator {
                 var snapshot = repository.snapshot(false);
                 var result = planner.plan(snapshot.input());
                 if (repository.publish(snapshot, result)) {
+                    nextTimeCheck = deadlines.planned(result, snapshot.orders(), clock.instant());
                     return true;
                 }
             }

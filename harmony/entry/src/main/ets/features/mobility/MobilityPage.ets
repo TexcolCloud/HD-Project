@@ -1,3 +1,4 @@
+import { TravelEfficiency } from "./TravelEfficiency";
 import { CampusAnchor, DispatchTask, DispatchRoute } from '../../models/ApiModels';
 import { palette } from '../../components/Palette';
 import { common } from '@kit.AbilityKit';
@@ -103,6 +104,7 @@ export struct MobilityPage {
   }
   build() {
     Column({space: 16}) {
+      TravelEfficiency({night: this.night, onError: (error: Error) => { this.scanError = error.message; }})
       Text('本次出行辅助').fontFamily('DormSerif').fontSize(28).fontColor(palette(this.night).ink).width('100%')
       Text('设备数据帮助判断移动状态与规划依据。到达、接单、维修完工由你明确确认。').fontSize(14).lineHeight(24).fontColor(palette(this.night).muted).width('100%')
       if (this.snapshot.error) { Text(this.snapshot.error).id('mobility-error').fontSize(14).fontColor(palette(this.night).danger).width('100%') }

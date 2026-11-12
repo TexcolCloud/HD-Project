@@ -215,6 +215,7 @@ public class HousingService {
         String sql = STUDENT + "WHERE " + studentScope();
         sql = BusinessSupport.search(sql, args, q, "s.name", "s.student_no", "h.room_no");
         sql = BusinessSupport.filter(sql, args, q, "buildingId", "h.building_id");
+        sql = BusinessSupport.filter(sql, args, q, "roomId", "h.room_id");
         if ("UNASSIGNED".equals(q.get("status"))) {
             sql += " AND h.id IS NULL";
         } else {
@@ -262,10 +263,11 @@ public class HousingService {
         if (id == null) {
             String uid =
                     db.insert(
-                            "INSERT INTO sys_user(username,password_hash,display_name,role,enabled)"
-                                    + " VALUES(?,?,?,?,?)",
+                            "INSERT INTO"
+                                + " sys_user(username,password_hash,display_name,role,enabled,must_change_password)"
+                                + " VALUES(?,?,?,?,?,TRUE)",
                             no,
-                            auth.encode("Demo@123456"),
+                            auth.encode(UUID.randomUUID().toString()),
                             name,
                             "STUDENT",
                             status.equals("ACTIVE"));

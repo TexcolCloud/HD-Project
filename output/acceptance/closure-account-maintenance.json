@@ -1,0 +1,12 @@
+{
+  "database": "isolated dormlink_account_test",
+  "createdManager": true,
+  "disabledManager": true,
+  "resetPassword": true,
+  "initialAndResetCredentialsDiffer": true,
+  "forceChangeOnFirstLogin": true,
+  "credentialDeliveryOwnerOnlySelfTest": true,
+  "credentialValuesRecorded": false,
+  "deliveredIntoIgnoredDirectory": true,
+  "actualDeliveryFilesOwnerOnlyAcl": true
+}

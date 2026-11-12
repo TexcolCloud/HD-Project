@@ -14,10 +14,12 @@ import type { Building, Model } from "../api/types";
 import { contextSummary } from "../composables/mobilityContext";
 import { dateTime, errorText, notify } from "../ui";
 import Drawer from "../components/Drawer.vue";
+import MobilityEfficiencyPanel from "../components/mobility/MobilityEfficiencyPanel.vue";
 
 const view = ref<MobilityView | null>(null);
 const buildings = ref<Building[]>([]);
 const travelModels = ref<Model<"MobilityTravelModel">[]>([]);
+const efficiencyRefresh = ref(0);
 const busy = ref(false),
   error = ref(""),
   editing = ref(false),
@@ -57,6 +59,7 @@ const buildingName = (id: string) =>
   buildings.value.find((item) => item.id === id)?.name ?? "负责楼栋";
 
 async function refresh() {
+  efficiencyRefresh.value++;
   busy.value = true;
   error.value = "";
   try {
@@ -261,6 +264,7 @@ onBeforeUnmount(() => clearInterval(clock));
         </small>
       </div>
     </section>
+    <MobilityEfficiencyPanel :refresh-key="efficiencyRefresh" />
     <section class="panel mobility-anchors">
       <header class="panel-head">
         <div>

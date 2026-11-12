@@ -30,6 +30,7 @@ public class AuthService {
     final boolean secure;
     final TransactionTemplate writes;
     final ApplicationEventPublisher events;
+    private final LoginAttempts attempts = new LoginAttempts();
 
     AuthService(
             Db db,
@@ -52,8 +53,11 @@ public class AuthService {
             throw ApiException.bad("旧密码不正确");
         }
         String next = Inputs.text(body, "newPassword", 128, true);
-        if (next.length() < 10) {
-            throw ApiException.bad("新密码至少10位");
+        if (next.length() < 10 || next.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw ApiException.bad("新密码至少10位且UTF-8长度不超过72字节");
+        }
+        if (matches(next, original)) {
+            throw ApiException.bad("新密码不能与原密码相同");
         } // BCrypt is deliberately outside the transaction; the comparison below prevents lost
         // updates.
         String encoded = encode(next);
@@ -61,8 +65,10 @@ public class AuthService {
                 status -> {
                     int changed =
                             db.update(
-                                    "UPDATE sys_user SET password_hash=? WHERE id=? AND"
-                                            + " password_hash=?",
+                                    "UPDATE sys_user SET"
+                                        + " password_hash=?,must_change_password=FALSE,"
+                                        + " credential_expires_at=NULL,account_version=account_version+1"
+                                        + " WHERE id=? AND password_hash=?",
                                     encoded,
                                     actor.id(),
                                     original);
@@ -156,12 +162,14 @@ public class AuthService {
         }
         var r =
                 db.find(
-                        "SELECT u.id,u.display_name,u.role,s.csrf_token,s.id"
+                        "SELECT u.id,u.display_name,u.role,u.must_change_password,s.csrf_token,s.id"
                             + " session_id,s.client_type,st.id student_id FROM auth_session s JOIN"
                             + " sys_user u ON u.id=s.user_id LEFT JOIN student st ON"
                             + " st.user_id=u.id WHERE s.token_hash=? AND s.revoked_at IS NULL AND"
-                            + " s.expires_at>? AND u.enabled=TRUE",
+                            + " s.expires_at>? AND u.enabled=TRUE AND (u.credential_expires_at IS"
+                            + " NULL OR u.credential_expires_at>?)",
                         Digests.sha256(token),
+                        Timestamp.from(Instant.now()),
                         Timestamp.from(Instant.now()));
         return r == null
                 ? null
@@ -172,10 +180,10 @@ public class AuthService {
                         Objects.toString(r.get("studentId"), null),
                         r.get("csrfToken").toString(),
                         r.get("sessionId").toString(),
-                        r.get("clientType").toString());
+                        r.get("clientType").toString(),
+                        Boolean.TRUE.equals(r.get("mustChangePassword")));
     }
 
-    @Transactional
     Map<String, Object> login(
             Map<String, Object> b, HttpServletRequest request, HttpServletResponse response) {
         String type = Inputs.choice(b, "clientType", "WEB", "MOBILE");
@@ -191,12 +199,45 @@ public class AuthService {
         }
         String username = Inputs.text(b, "username", 64, true),
                 password = Inputs.text(b, "password", 128, true);
+        String attemptKey = Digests.sha256(request.getRemoteAddr() + "\n" + username);
+        attempts.begin(attemptKey, Instant.now());
         var u = db.find("SELECT * FROM sys_user WHERE username=? AND enabled=TRUE", username);
-        if (u == null || !passwords.matches(password, u.get("passwordHash").toString())) {
+        boolean expired =
+                u != null
+                        && u.get("credentialExpiresAt") != null
+                        && !Instant.parse(u.get("credentialExpiresAt").toString())
+                                .isAfter(Instant.now());
+        if (u == null
+                || expired
+                || !passwords.matches(password, u.get("passwordHash").toString())) {
             throw new ApiException(401, "LOGIN_FAILED", "账号或密码不正确");
         }
+        // Password work is outside the transaction. Serialize session creation with password,
+        // account and permission maintenance, then recheck the exact credential snapshot.
+        return writes.execute(
+                status -> {
+                    var current =
+                            db.one("SELECT * FROM sys_user WHERE id=? FOR UPDATE", u.get("id"));
+                    boolean credentialExpired =
+                            current.get("credentialExpiresAt") != null
+                                    && !Instant.parse(current.get("credentialExpiresAt").toString())
+                                            .isAfter(Instant.now());
+                    if (!Boolean.TRUE.equals(current.get("enabled"))
+                            || credentialExpired
+                            || !Objects.equals(current.get("passwordHash"), u.get("passwordHash"))
+                            || !Objects.equals(
+                                    current.get("accountVersion"), u.get("accountVersion"))) {
+                        throw new ApiException(401, "LOGIN_FAILED", "账号或密码已变更，请重新登录");
+                    }
+                    attempts.succeeded(attemptKey);
+                    return createSession(current, type, response);
+                });
+    }
+
+    private Map<String, Object> createSession(
+            Map<String, Object> user, String type, HttpServletResponse response) {
         String token = random(), csrf = random();
-        String id = u.get("id").toString();
+        String id = user.get("id").toString();
         db.insert(
                 "INSERT INTO"
                     + " auth_session(user_id,token_hash,csrf_token,client_type,expires_at,created_at)"
@@ -211,8 +252,8 @@ public class AuthService {
         Actor actor =
                 new Actor(
                         id,
-                        u.get("displayName").toString(),
-                        u.get("role").toString(),
+                        user.get("displayName").toString(),
+                        user.get("role").toString(),
                         student == null ? null : student.get("id").toString(),
                         csrf);
         Map<String, Object> out = new LinkedHashMap<>();
@@ -227,7 +268,11 @@ public class AuthService {
     }
 
     Map<String, Object> profile(Actor a) {
-        var u = db.one("SELECT id,username,display_name,role FROM sys_user WHERE id=?", a.id());
+        var u =
+                db.one(
+                        "SELECT id,username,display_name,role,must_change_password FROM sys_user"
+                                + " WHERE id=?",
+                        a.id());
         u.put(
                 "buildingIds",
                 db

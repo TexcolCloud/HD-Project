@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { get, post, patch, ApiError } from "../api/client";
 import type { Model, Visitor, Building } from "../api/types";
 import { errorText, notify, dateTime, isoTime } from "../ui";
@@ -10,6 +11,7 @@ import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 const listQuery = useLatestQuery();
+const route = useRoute();
 const detailQuery = useLatestQuery();
 let contactRevision = 0;
 const { busy, error } = listQuery;
@@ -75,19 +77,20 @@ function create() {
   formError.value = "";
   modal.value = "create";
 }
-async function detail(v: Visitor) {
+async function detail(v: Visitor | string) {
+  const id = typeof v === "string" ? v : v.id;
   contactRevision++;
-  selected.value = v;
+  selected.value = typeof v === "string" ? undefined : v;
   clearPhone.value = "";
   formError.value = "";
   modal.value = "detail";
   await detailQuery.run(
-    (signal) => get<Visitor>(`/visitors/${v.id}`, {}, signal),
+    (signal) => get<Visitor>(`/visitors/${encodeURIComponent(id)}`, {}, signal),
     (r) => {
       selected.value = r;
     },
   );
-  if (modal.value === "detail" && selected.value?.id === v.id)
+  if (modal.value === "detail" && selected.value?.id === id)
     formError.value = detailQuery.error.value;
 }
 function correction() {
@@ -221,6 +224,13 @@ onMounted(async () => {
   }
   await load();
 });
+watch(
+  () => route.query.visitorId,
+  (id) => {
+    if (typeof id === "string" && id) void detail(id);
+  },
+  { immediate: true },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -234,6 +244,13 @@ onMounted(async () => {
     </button>
   </div>
   <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
+  <p
+    v-if="detailQuery.error.value && !selected"
+    class="error-banner"
+    role="alert"
+  >
+    {{ detailQuery.error.value }}
+  </p>
   <section class="panel">
     <form class="filters" @submit.prevent="search">
       <label>

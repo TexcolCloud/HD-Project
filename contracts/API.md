@@ -1,8 +1,20 @@
-# HD Platform API 1.2
+# HD Platform API 1.3
 
 实现固定契约，前缀 `/api/v1`，端口 `8080`。所有实体ID为字符串。成功 `{data:T,traceId:string}`；失败 `{error:{code,message,fieldErrors:[]},traceId}` 使用真实HTTP状态。列表 `data={items:T[],total:number,page:number,pageSize:number}`，默认1/20最大100。
 
-1.2 为增量设备能力接口，1.1 公开 schema 与操作保持兼容；可执行检查为 `python scripts/check-contracts.py`。字段以 `generate_openapi.py` 及生成结果为准。
+1.3增量补齐服务闭环；1.2设备接口与1.1公开schema、操作保持兼容。可执行检查为 `python scripts/check-contracts.py`。字段以 `generate_openapi.py` 及生成结果为准。
+
+## 服务闭环（1.3）
+
+- `POST /dispatch/tasks/{orderId}/takeover`：有资格宿管填写原因，以工单与任务双版本异常接续；原负责人可用时拒绝。接续后行程受阻，现场核对后恢复。
+- `GET /mobility/efficiency`：本人近30天可信通行片段、可比较样本、预计／实际误差及个人校准方向数；没有足量样本时返回空值与解释。
+- `GET /messages`、`GET /messages/summary`、`POST /messages/{id}/read`：本人持久收件箱、投递状态统计与显式已读。消息查看仍核对当前账号及范围，已读不推进业务。
+- `GET/POST /hygiene-remediations`、`GET/PATCH /hygiene-remediations/{id}`：整改查询／创建／责任和期限调整；列表支持`inspectionId`精确定位已有任务。
+- `POST /hygiene-remediations/{id}/feedback|review|cancel`：责任学生反馈、宿管关联有效合格复查验收或退回、带原因取消；写入保持版本、幂等和历史。
+- `GET/POST /ai/manager/repairs/{id}/feedback`：真实本人建议的采用／修改／忽略和实际结果；`canFollowUp`区分可读历史与可追加本人反馈。
+- `User.mustChangePassword`为可选扩展。首次／重置后仅允许身份查询、改密和退出，业务接口返回`PASSWORD_CHANGE_REQUIRED`；既有演示账号维持原登录方式。
+
+业务说明与验收边界见[16](../docs/16-服务闭环与联合验收.md)，受控账号维护和配套恢复见[17](../docs/17-账号与恢复运行手册.md)。
 
 ## 现场辅助（1.2）
 

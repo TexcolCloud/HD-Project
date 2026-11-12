@@ -1,0 +1,120 @@
+{
+  "recordedAt": "2026-11-12T12:21:59.403745+00:00",
+  "branch": "codex/service-closure",
+  "status": "IMPLEMENTED_AUTOMATION_PASSED_UI_INTERRUPTED",
+  "backend": {
+    "path": "backend/target/dormlink-backend-1.0.0.jar",
+    "bytes": 33995290,
+    "sha256": "d03d2d5e99d866a0471fe3fa18bcf08aed711e445af2523a0577edb495d0144d",
+    "h2Tests": "106 registered, 102 passed, 4 optional database skips",
+    "realDatabaseRun": "107 passed: 78 openGauss, 5 H2, 24 pure Java/architecture",
+    "format": "PASS",
+    "pmd": "6 mapped rules; 0 violations, 0 errors",
+    "qualityFixtures": "positive and expected negatives passed"
+  },
+  "tests": {
+    "backendLocalRegistered": 106,
+    "backendLocalPassed": 102,
+    "optionalDatabaseSkipped": 4,
+    "configuredBackendRunPassed": 107,
+    "actuallyOpenGauss": 78,
+    "h2": 5,
+    "pureJavaOrArchitecture": 24,
+    "webPassed": 33,
+    "harmonyReplayPassed": 80,
+    "contractSchemas": 104,
+    "contractVersion": "1.3.0",
+    "api11Compatible": true,
+    "pmdRulesMapped": 6,
+    "pmdViolations": 0,
+    "pmdErrors": 0
+  },
+  "harmony": {
+    "latestBuild": {
+      "bytes": 2358425,
+      "sha256": "51201c3ad3cc556c0d6b8c90276775207285776d51931d6ecd0aa537ed9e2ede"
+    },
+    "observedInstalledBuild": {
+      "hap": "harmony/entry/build/default/outputs/default/entry-default-unsigned.hap",
+      "bytes": 2358421,
+      "sha256": "476f0057bb26064210d21e1603146db9081c0ffa111185d4e204aca9578d8871",
+      "installation": "Root reported final package installed; workflow agent independently checked the matching local HAP hash and observed the running app"
+    },
+    "latestBuildInstallationPending": true,
+    "difference": "The final rebuild aligns the native password hint and client minimum from 8 to the existing server requirement of 10."
+  },
+  "observedUi": [
+    {
+      "surface": "IAB",
+      "scenario": "QA inspection10 to remediation creation",
+      "result": "PASS",
+      "taskId": "1",
+      "state": "OPEN",
+      "screenshot": "closure-web-remediation-created.jpg"
+    },
+    {
+      "surface": "Native emulator",
+      "scenario": "Process termination, other-account isolation, same-account text draft restore",
+      "result": "PASS",
+      "screenshots": [
+        "closure-harmony-draft-before.png",
+        "closure-harmony-draft-account-isolation.png",
+        "closure-harmony-draft-restored.png"
+      ]
+    },
+    {
+      "surface": "Native emulator",
+      "scenario": "Student inbox read acknowledgement and message opens task1",
+      "result": "PASS",
+      "report": "closure-harmony-delivery.json"
+    }
+  ],
+  "pendingUi": [
+    "Observe Web first-use password page after temporary QA login",
+    "Native student remediation feedback and gallery upload",
+    "Native manager linked recheck and acceptance with Web result confirmation",
+    "Native normal handoff, takeover entry/rejection and efficiency observation",
+    "Install latest hint-only native rebuild and repeat smoke"
+  ],
+  "controlInterruption": {
+    "browserReadCallsAborted": 2,
+    "resumeRequested": true,
+    "nativeStoppedAtBoundary": true
+  },
+  "runtime": {
+    "port": 8080,
+    "pid": 57116,
+    "databaseHealth": "UP",
+    "isolated8081Stopped": true,
+    "isolated8082Stopped": true
+  },
+  "reliability": {
+    "report": "closure-reliability-mixed.json",
+    "durationSeconds": 54.79,
+    "requests": 335,
+    "unexpectedResponses": 0,
+    "serverErrors": 0,
+    "syntheticSmallImagesAndObservations": true
+  },
+  "recovery": {
+    "latestApiReport": "closure-v13-recovery-api.json",
+    "tableCount": 36,
+    "attachmentFiles": 8,
+    "remediationStateAndMessageReadFactsPreserved": true
+  },
+  "externalConditions": {
+    "deepSeekOfficialCall": "No key configured; requested privately, manual fallback retained",
+    "physicalHardware": "Simulator and replay only",
+    "campusCoordinates": "Not field verified",
+    "productionHosting": "Templates only, no public HTTPS validation"
+  },
+  "qa": {
+    "account": "qa-closure-1112",
+    "userId": "16",
+    "purpose": "Observe first-use routing without changing existing accounts",
+    "cleanup": "Pending UI resume; credential file ignored and private",
+    "remediationId": "1",
+    "sourceInspectionId": "10",
+    "state": "OPEN during UI interruption"
+  }
+}

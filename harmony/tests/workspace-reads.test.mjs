@@ -58,6 +58,41 @@ async function controller(Api, effects = {}, photos = {}) {
   );
 }
 
+test('a confirmed duplicate visitor challenge can advance with a new request signature', async () => {
+  const requests = [];
+  const Api = { epoch: 1, assertCurrent() {}, post: async (_path, request) => {
+    requests.push(request);
+    if (!request.confirmDuplicate) throw Object.assign(new Error('duplicate'), {status: 409, code: 'VISITOR_DUPLICATE_CONFIRMATION_REQUIRED'});
+    return {id: 'created'};
+  }};
+  const { ReadScope } = await load('features/ReadScope.ets', { Api });
+  const { SubmissionKeys } = await load('services/SubmissionKeys.ets');
+  const { LocalDrafts } = await load('services/LocalDrafts.ets');
+  const { VisitorController } = await load('features/visitors/VisitorController.ets', { Api, ReadScope, SubmissionKeys, util: {generateRandomUUID: () => 'key'} });
+  const data = new Map();
+  const drafts = new LocalDrafts({get: key => data.get(key) || '', put: (key, value) => data.set(key, value), remove: key => data.delete(key)}, 'server', 'user');
+  const host = {setError() {}, flash() {}, navigate() {}, confirm: async () => true, fail: e => { throw e; }};
+  const visitors = new VisitorController(host);
+  visitors.bindDrafts(drafts);
+  Object.assign(visitors.state, {visitorName: '虚构访客', visitorPhone: '13800000000', visitedStudentId: '1', visitorPurpose: '测试探访'});
+  await visitors.submitVisitor();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].confirmDuplicate, true);
+  assert.equal(drafts.hasPending('visitor'), false);
+});
+
+test('restored visitor target missing from current authorized choices is never silently replaced', async () => {
+  const Api = {epoch: 1, request: async () => ({items: [{id: 'other', roomId: '1'}]})};
+  const { ReadScope } = await load('features/ReadScope.ets', {Api});
+  const { SubmissionKeys } = await load('services/SubmissionKeys.ets');
+  const { VisitorController } = await load('features/visitors/VisitorController.ets', {Api, ReadScope, SubmissionKeys, util: {generateRandomUUID: () => 'key'}});
+  const visitors = new VisitorController({setError() {}, fail: e => { throw e; }});
+  visitors.state.draftRestored = true;
+  visitors.state.visitedStudentId = 'original';
+  await visitors.loadStudents();
+  assert.equal(visitors.state.visitedStudentId, '');
+});
+
 test("latest repair filter wins even when an earlier request completes last in the same login", async () => {
   const responses = [];
   const Api = {

@@ -8,6 +8,7 @@ import cn.dormlink.shared.api.Inputs;
 import cn.dormlink.shared.application.BusinessSupport;
 import cn.dormlink.shared.jdbc.Db;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -21,13 +22,21 @@ public class OperationsService {
     final BusinessSupport ops;
     final FileService files;
     final HousingService housing;
+    final ApplicationEventPublisher events;
 
-    OperationsService(Db d, AuthService a, BusinessSupport o, FileService f, HousingService h) {
+    OperationsService(
+            Db d,
+            AuthService a,
+            BusinessSupport o,
+            FileService f,
+            HousingService h,
+            ApplicationEventPublisher events) {
         db = d;
         auth = a;
         ops = o;
         files = f;
         housing = h;
+        this.events = events;
     }
 
     Map<String, Object> hygieneRaw(String id) {
@@ -103,6 +112,11 @@ public class OperationsService {
         var a = auth.current();
         a.requireManager();
         Map<String, Object> old = null;
+        String roomId = Long.toString(Inputs.id(b, "roomId"));
+        var room = housing.room(roomId);
+        // All inspection mutations in a room share one stable lock, including creates and voids.
+        // Locking only individual inspection rows cannot protect a changing association graph.
+        db.one("SELECT id FROM dorm_room WHERE id=? FOR UPDATE", roomId);
         if (id != null) {
             db.one("SELECT id FROM hygiene_inspection WHERE id=? FOR UPDATE", id);
             old = hygieneRaw(id);
@@ -112,8 +126,6 @@ public class OperationsService {
             }
             Inputs.text(b, "correctionReason", 1000, true);
         }
-        String roomId = Long.toString(Inputs.id(b, "roomId"));
-        var room = housing.room(roomId);
         if (old != null && !roomId.equals(old.get("roomId"))) {
             throw ApiException.bad("修正评分不能改换宿舍");
         }
@@ -156,9 +168,54 @@ public class OperationsService {
             if (related.toString().equals(id)) {
                 throw ApiException.bad("不能关联自身");
             }
+            if (previous.get("voidedAt") != null
+                    || !Instant.parse(previous.get("inspectedAt").toString())
+                            .isBefore(at.toInstant())) {
+                throw ApiException.bad("复查须晚于有效的原检查");
+            }
+            var ancestors = new HashSet<String>();
+            var ancestor = previous;
+            while (ancestor != null) {
+                String ancestorId = ancestor.get("id").toString();
+                if (ancestorId.equals(id) || !ancestors.add(ancestorId) || ancestors.size() > 128) {
+                    throw ApiException.bad("巡检关联存在循环或层级过深");
+                }
+                ancestor =
+                        ancestor.get("relatedInspectionId") == null
+                                ? null
+                                : db.find(
+                                        "SELECT id,related_inspection_id FROM hygiene_inspection"
+                                                + " WHERE id=?",
+                                        ancestor.get("relatedInspectionId"));
+            }
+        }
+        if (id != null
+                && db.count(
+                                "SELECT COUNT(*) FROM hygiene_inspection WHERE"
+                                        + " related_inspection_id=? AND voided_at IS NULL AND"
+                                        + " inspected_at<=?",
+                                id,
+                                at)
+                        > 0) {
+            throw ApiException.bad("修正后的检查时刻须早于其有效复查");
         }
         if (round.startsWith("RECHECK") && related == null) {
             throw ApiException.bad("复查需要关联原巡检记录");
+        }
+        if (id != null) {
+            for (var task :
+                    db.rows(
+                            "SELECT inspection_id FROM hygiene_remediation WHERE"
+                                    + " related_recheck_id=? AND status='CLOSED'",
+                            id)) {
+                if (total < 60
+                        || !round.startsWith("RECHECK")
+                        || !Objects.equals(
+                                task.get("inspectionId"),
+                                related == null ? null : related.toString())) {
+                    throw ApiException.conflict("此复查用于整改验收；请先作废复查以重新打开整改，再修正验收依据");
+                }
+            }
         }
         if (id == null) {
             id =
@@ -221,6 +278,8 @@ public class OperationsService {
 
     Object voidHygiene(String id, Map<String, Object> b) {
         auth.current().requireManager();
+        var visible = hygieneRaw(id);
+        db.one("SELECT id FROM dorm_room WHERE id=? FOR UPDATE", visible.get("roomId"));
         db.one("SELECT id FROM hygiene_inspection WHERE id=? FOR UPDATE", id);
         var old = hygieneRaw(id);
         ops.version(old, b);
@@ -237,6 +296,7 @@ public class OperationsService {
                         id,
                         Inputs.version(b)));
         ops.audit("HYGIENE_VOID", "HYGIENE", id, reason, old);
+        events.publishEvent(new HygieneVoided(id, reason));
         return hygiene(id);
     }
 

@@ -1,3 +1,4 @@
+import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceEmpty } from '../../components/ServiceParts';
 import { User, Room, Repair, FileAsset, Hygiene } from '../../models/ApiModels';
 import { gradeLabel } from '../../services/Labels';
@@ -13,6 +14,7 @@ interface ScoreArgs { label: string; hint: string; value: string; change: (value
 @Component
 export struct HygieneWorkspace {
   @ObjectLink state: HygieneState;
+  onRemediate: (item: Hygiene) => void = () => {};
   @Prop page: string = 'home';
   @Prop night: boolean = false;
   user: User | null = null;
@@ -49,6 +51,7 @@ export struct HygieneWorkspace {
   @Builder
   private HygieneCreate() {
     Column({space: 0}) {
+      DraftNotice({restored: this.state.draftRestored, blocked: this.state.draftBlocked, night: this.night, onDiscard: () => this.controller.discardDraft()})
       Row() {
         Column({space: 6}) { Text('卫生总分').fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.ink()); Text('四项各25分 · 满分100分').fontSize(12).fontColor(this.muted()) }
           .alignItems(HorizontalAlign.Start).layoutWeight(1)
@@ -67,8 +70,8 @@ export struct HygieneWorkspace {
           .selected(this.state.rooms.findIndex((r: Room): boolean => r.id === this.state.inspectionRoomId)).value(this.controller.roomChoice()).onSelect((i: number) => this.state.inspectionRoomId = this.state.rooms[i].id)
           .width('100%').height(50).fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 20})
       } else { serviceEmpty('暂无可巡检的宿舍，请刷新或联系管理员。', this.night) }
-      serviceField({label: '检查日期 *', value: this.state.inspectionDate, change: (v: string) => this.state.inspectionDate = v, placeholder: 'YYYY-MM-DD'}, this.night, this.page)
-      serviceField({label: '实际检查时间 *', value: this.state.inspectionTime, change: (v: string) => this.state.inspectionTime = v, placeholder: 'HH:mm，例如18:30'}, this.night, this.page)
+      serviceField({label: '检查日期 *', value: this.state.inspectionDate, change: (v: string)  => { this.state.inspectionDate = v; this.controller.saveDraft(); }, placeholder: 'YYYY-MM-DD'}, this.night, this.page)
+      serviceField({label: '实际检查时间 *', value: this.state.inspectionTime, change: (v: string)  => { this.state.inspectionTime = v; this.controller.saveDraft(); }, placeholder: 'HH:mm，例如18:30'}, this.night, this.page)
       Text('北京时间。补录时填写实际检查的日期与时刻，不使用保存时间代替。').fontSize(12).fontColor(this.muted()).lineHeight(21).margin({bottom: 18})
       serviceLabel('巡检轮次 *', this.night)
       if (this.state.inspectionRelated) { Text('关联复查轮次：' + this.state.inspectionRound).fontSize(13).fontColor(this.muted()).margin({top: 8}) }
@@ -76,13 +79,13 @@ export struct HygieneWorkspace {
       Select(this.state.inspectionRelated ? [{value: '日常巡检'}, {value: '整改复查'}] : [{value: '日常巡检'}]).selected(this.state.inspectionRound.startsWith('RECHECK') ? 1 : 0).value(this.state.inspectionRound.startsWith('RECHECK') ? '整改复查' : '日常巡检')
         .onSelect((i: number) => { if (i) { if (!this.state.inspectionRound.startsWith('RECHECK')) this.state.inspectionRound = 'RECHECK'; } else { this.state.inspectionRound = 'ROUTINE'; this.state.inspectionRelated = ''; } }).width('100%').height(50)
         .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 20})
-      this.ScoreInput({label: '地面', hint: '无垃圾、无积水', value: this.state.floorScore, change: (v: string) => this.state.floorScore = v, id: 'hygiene-floor'})
-      this.ScoreInput({label: '桌面', hint: '物品摆放整齐', value: this.state.deskScore, change: (v: string) => this.state.deskScore = v, id: 'hygiene-desk'})
-      this.ScoreInput({label: '床铺', hint: '床铺整洁、无杂物', value: this.state.bedScore, change: (v: string) => this.state.bedScore = v, id: 'hygiene-bed'})
-      this.ScoreInput({label: '卫生间', hint: '洁净无异味', value: this.state.bathroomScore, change: (v: string) => this.state.bathroomScore = v, id: 'hygiene-bathroom'})
+      this.ScoreInput({label: '地面', hint: '无垃圾、无积水', value: this.state.floorScore, change: (v: string)  => { this.state.floorScore = v; this.controller.saveDraft(); }, id: 'hygiene-floor'})
+      this.ScoreInput({label: '桌面', hint: '物品摆放整齐', value: this.state.deskScore, change: (v: string)  => { this.state.deskScore = v; this.controller.saveDraft(); }, id: 'hygiene-desk'})
+      this.ScoreInput({label: '床铺', hint: '床铺整洁、无杂物', value: this.state.bedScore, change: (v: string)  => { this.state.bedScore = v; this.controller.saveDraft(); }, id: 'hygiene-bed'})
+      this.ScoreInput({label: '卫生间', hint: '洁净无异味', value: this.state.bathroomScore, change: (v: string)  => { this.state.bathroomScore = v; this.controller.saveDraft(); }, id: 'hygiene-bathroom'})
       Blank().height(22)
-      serviceField({label: '问题与扣分说明', value: this.state.issueNote, change: (v: string) => this.state.issueNote = v, placeholder: '低于60分时必须说明问题', multiline: true}, this.night, this.page)
-      serviceField({label: '整改建议', value: this.state.remediationNote, change: (v: string) => this.state.remediationNote = v, placeholder: '写明可执行的改进建议', multiline: true}, this.night, this.page)
+      serviceField({label: '问题与扣分说明', value: this.state.issueNote, change: (v: string)  => { this.state.issueNote = v; this.controller.saveDraft(); }, placeholder: '低于60分时必须说明问题', multiline: true}, this.night, this.page)
+      serviceField({label: '整改建议', value: this.state.remediationNote, change: (v: string)  => { this.state.remediationNote = v; this.controller.saveDraft(); }, placeholder: '写明可执行的改进建议', multiline: true}, this.night, this.page)
       this.Uploads('INSPECTION')
       servicePrimary('保存评分', () => this.controller.submitHygiene(), this.night, this.page, this.state.busy, this.state.uploading)
       Text('同一宿舍、日期和轮次只保留一条有效记录。更正成绩请在Web中操作并说明原因。').fontSize(12).fontColor(this.muted()).lineHeight(21).margin({top: 12})
@@ -109,7 +112,7 @@ export struct HygieneWorkspace {
           if (item.remediationNote) { Text('整改建议：' + item.remediationNote).fontSize(14).fontColor(this.muted()).lineHeight(24).width('100%') }
           Text('检查人：' + item.inspectorName).fontSize(12).fontColor(this.muted()).width('100%')
           ForEach(item.images, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}) }, (asset: FileAsset) => asset.id)
-          if (this.manager()) { serviceSecondary('录入整改复查', () => this.controller.recheck(item), this.night, this.state.busy) }
+          if (this.manager()) { serviceSecondary('录入整改复查', () => this.controller.recheck(item), this.night, this.state.busy); serviceSecondary('安排整改任务', () => this.onRemediate(item), this.night, this.state.busy) }
         }.padding(18).width('100%').alignItems(HorizontalAlign.Start).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(6).margin({bottom: 14})
       }, (item: Hygiene) => item.id + ':' + item.version)
       Row({space: 12}) {

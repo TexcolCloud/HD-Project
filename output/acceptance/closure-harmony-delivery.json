@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-12",
+  "timezone": "Asia/Shanghai",
+  "status": "PAUSED_PENDING_UI_RESUME",
+  "tool": "Local DevEco official hdc and UITest through scripts/harmony-ui.py",
+  "target": "127.0.0.1:5555",
+  "artifacts": {
+    "hap": "harmony/entry/build/default/outputs/default/entry-default-unsigned.hap",
+    "bytes": 2358421,
+    "sha256": "476f0057bb26064210d21e1603146db9081c0ffa111185d4e204aca9578d8871",
+    "installation": "Root reported final package installed; workflow agent independently checked the matching local HAP hash and observed the running app"
+  },
+  "observed": [
+    {
+      "scenario": "Student identity and room",
+      "result": "PASS",
+      "detail": "Logged in as student1; native home displayed A栋302 and student navigation"
+    },
+    {
+      "scenario": "Durable service inbox and read receipt",
+      "result": "PASS",
+      "detail": "Opened service inbox with two unread messages, including a remediation update. Explicitly marked the newest remediation message read; unread badge changed from 2 to 1",
+      "screenshot": "closure-harmony-student-messages.png"
+    },
+    {
+      "scenario": "Message opens authorized remediation",
+      "result": "PASS",
+      "detail": "Opened the newest remediation message into task1, inspection10, A栋302; displayed the fictional QA-closure-1112 requirement, responsible student and deadline 2026/11/14 20:09:00, with feedback and image selection controls",
+      "screenshot": "closure-harmony-remediation-open.png"
+    }
+  ],
+  "pending": [
+    "Native student remediation feedback submission",
+    "Native gallery selection and actual image upload",
+    "Native manager linked recheck and remediation acceptance",
+    "Cross-account remediation isolation after the new task exists",
+    "Fictional B-building repair creation and normal native handoff",
+    "Native abnormal takeover entry and available-owner rejection",
+    "Native travel efficiency unknown-data display"
+  ],
+  "pause": {
+    "reason": "Root observed repeated computer-control tools aborted before dispatch and requested all UI inputs stop pending the user's restore instruction",
+    "currentScreen": "student1 home",
+    "screenshot": "closure-harmony-paused.png",
+    "businessWrites": "No remediation feedback, gallery selection, recheck, acceptance or handoff was submitted. Only the explicit message read receipt was written",
+    "inputAttempt": "The attempted feedback text entry did not produce a successful tool result; subsequent observed screen returned home. No successful text input is claimed"
+  },
+  "rootObservedDraftEvidence": {
+    "source": "Root agent's separately observed restart/account-isolation test before handoff",
+    "title": "QA-closure-draft-1112",
+    "screenshots": [
+      "closure-harmony-draft-before.png",
+      "closure-harmony-draft-account-isolation.png",
+      "closure-harmony-draft-restored.png"
+    ],
+    "detail": "Root reported student2 had no student1 draft and student1 restored its own draft after restart; workflow agent did not repeat or reclassify those observations"
+  },
+  "limitations": [
+    "Only the local emulator is available; GPS, pedometer, screen-off endurance and battery accuracy are not physical-device results",
+    "No remote push delivery is claimed; the native inbox and foreground polling are the implemented delivery surface",
+    "Pending native interactions are not counted as passed"
+  ]
+}

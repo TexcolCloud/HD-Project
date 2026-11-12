@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "verifiedAt": "2026-11-12T20:09:54.173049+08:00",
+  "port": 8082,
+  "recoveredApiHealth": "UP",
+  "authenticatedOrderRead": true,
+  "orderId": "21",
+  "status": "COMPLETED",
+  "progressCount": 5,
+  "privateImageReadable": true,
+  "fileId": "9",
+  "imageBytes": 281329,
+  "imageSha256": "b83c843eef3d76581663f2d7d01fcefd48159edd06ccb6bb16029c7781f203de",
+  "matchesPairedImage": true,
+  "credentialsOrTokenRecorded": false,
+  "runtimeJarSha256": "d03d2d5e99d866a0471fe3fa18bcf08aed711e445af2523a0577edb495d0144d",
+  "observedJavaPid": 33300,
+  "isolatedApiStopped": true,
+  "restoredApiAppliedMigrations": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ]
+}

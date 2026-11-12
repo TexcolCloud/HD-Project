@@ -53,10 +53,26 @@ public final class RoutePlanner {
             boolean acceptingNew,
             Instant availableUntil,
             Node start,
-            List<String> lockedPrefix) {
+            List<String> lockedPrefix,
+            Map<String, Integer> personalTravelMinutes) {
+        public Worker(
+                String id,
+                Set<String> buildingIds,
+                boolean acceptingNew,
+                Instant availableUntil,
+                Node start,
+                List<String> lockedPrefix) {
+            this(id, buildingIds, acceptingNew, availableUntil, start, lockedPrefix, Map.of());
+        }
+
         public Worker {
             buildingIds = Set.copyOf(buildingIds);
             lockedPrefix = List.copyOf(lockedPrefix);
+            personalTravelMinutes = Map.copyOf(personalTravelMinutes);
+            if (personalTravelMinutes.values().stream()
+                    .anyMatch(value -> value < 1 || value > 360)) {
+                throw new IllegalArgumentException("Invalid calibrated personal travel minutes");
+            }
         }
     }
 
@@ -407,7 +423,7 @@ public final class RoutePlanner {
             int minutes =
                     i == 0 && j.locked() && current.equals(j.location())
                             ? 0
-                            : distance(in, current, j.location());
+                            : distance(in, worker, current, j.location());
             if (minutes < 0) {
                 return failed("UNREACHABLE");
             }
@@ -476,7 +492,7 @@ public final class RoutePlanner {
             // Ordinary stops may fill an appointment's waiting gap, but must not delay urgent
             // access.
             if (!j.locked() && "URGENT".equals(j.priority()) && ordinaryBefore) {
-                int directMinutes = distance(in, priorityAnchorLocation, j.location());
+                int directMinutes = distance(in, worker, priorityAnchorLocation, j.location());
                 if (directMinutes >= 0) {
                     Instant earliest = priorityAnchorTime.plusSeconds(directMinutes * 60L);
                     if (j.windowStart() != null && earliest.isBefore(j.windowStart())) {
@@ -500,7 +516,7 @@ public final class RoutePlanner {
         return new Evaluation(stops, travel, waiting, workload, travel + waiting + penalty, null);
     }
 
-    private int distance(Snapshot in, Node from, Node to) {
+    private int distance(Snapshot in, Worker worker, Node from, Node to) {
         if (from.buildingId().equals(to.buildingId())) {
             return Math.abs(from.floorNo() - to.floorNo()) * in.floorTravelMinutes()
                     + in.sameFloorMinutes();
@@ -509,6 +525,9 @@ public final class RoutePlanner {
         if (link == null) {
             return -1;
         }
+        link =
+                worker.personalTravelMinutes()
+                        .getOrDefault(from.buildingId() + ":" + to.buildingId(), link);
         return link
                 + (Math.max(0, from.floorNo() - 1) + Math.max(0, to.floorNo() - 1))
                         * in.floorTravelMinutes()

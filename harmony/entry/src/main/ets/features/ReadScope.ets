@@ -24,10 +24,14 @@ export class ReadScope {
   shouldReport(ticket: ReadTicket, error: Error): boolean {
     if (this.owns(ticket)) return true;
     // Current-session expiry belongs to the shell even after the initiating page has closed.
-    const failure = error as ApiError;
-    return failure.status === 401 && failure.sessionEpoch === Api.epoch;
+    return isSessionExpiry(error);
   }
   invalidate(): void {
     this.revision++;
   }
+}
+
+export function isSessionExpiry(error: Error): boolean {
+  const failure = error as ApiError;
+  return failure.status === 401 && failure.sessionEpoch === Api.epoch;
 }

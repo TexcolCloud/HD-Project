@@ -4,6 +4,7 @@ import type { Model } from "../api/types";
 import { generateManagerAdvice } from "../api/managerAssist";
 import { dateTime, errorText } from "../ui";
 import StatusBadge from "./StatusBadge.vue";
+import AssistFeedback from "./AssistFeedback.vue";
 const props = defineProps<{
   repairId?: string;
   imageCount?: number;
@@ -185,6 +186,11 @@ onBeforeUnmount(() => {
           </div>
         </section>
       </article>
+      <AssistFeedback
+        v-if="repairId"
+        :repair-id="repairId"
+        :suggestion-id="advice?.suggestionId"
+      />
     </div>
   </section>
 </template>

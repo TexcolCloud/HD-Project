@@ -117,9 +117,9 @@ public class DispatchRepository {
     List<Map<String, Object>> orders(boolean lock) {
         return db.rows(
                 "SELECT o.*,r.floor_no,t.id claim_id,t.manager_user_id task_manager_id,t.state"
-                    + " task_state,t.reason task_reason,t.version task_version FROM repair_order o"
-                    + " JOIN dorm_room r ON r.id=o.room_id LEFT JOIN dispatch_task t ON"
-                    + " t.active_order_id=o.id WHERE o.status IN"
+                    + " task_state,t.reason task_reason,t.version task_version,t.updated_at"
+                    + " task_updated_at FROM repair_order o JOIN dorm_room r ON r.id=o.room_id LEFT"
+                    + " JOIN dispatch_task t ON t.active_order_id=o.id WHERE o.status IN"
                     + " ('SUBMITTED','ACCEPTED','PROCESSING') ORDER BY CASE WHEN"
                     + " o.status='PROCESSING' THEN 0 WHEN o.status='ACCEPTED' THEN 1 ELSE 2"
                     + " END,o.submitted_at,o.id"
@@ -129,9 +129,9 @@ public class DispatchRepository {
     Map<String, Object> activeOrder(String orderId) {
         return db.one(
                 "SELECT o.*,r.floor_no,t.id claim_id,t.manager_user_id task_manager_id,t.state"
-                    + " task_state,t.reason task_reason,t.version task_version FROM repair_order o"
-                    + " JOIN dorm_room r ON r.id=o.room_id LEFT JOIN dispatch_task t ON"
-                    + " t.active_order_id=o.id WHERE o.id=? AND o.status IN"
+                    + " task_state,t.reason task_reason,t.version task_version,t.updated_at"
+                    + " task_updated_at FROM repair_order o JOIN dorm_room r ON r.id=o.room_id LEFT"
+                    + " JOIN dispatch_task t ON t.active_order_id=o.id WHERE o.id=? AND o.status IN"
                     + " ('SUBMITTED','ACCEPTED','PROCESSING')",
                 orderId);
     }
@@ -141,12 +141,15 @@ public class DispatchRepository {
     }
 
     public String eligibilityFingerprint() {
+        var travel = effectiveTravel();
         return json.writeValueAsString(
                 Map.of(
                         "managers",
                         planningManagers(managers(), Instant.now()),
                         "travel",
-                        new TreeMap<>(effectiveTravel())));
+                        new TreeMap<>(travel),
+                        "personalTravel",
+                        new TreeMap<>(mobility.personalTravelMinutes(travel))));
     }
 
     private Map<String, Integer> effectiveTravel() {
@@ -224,6 +227,14 @@ public class DispatchRepository {
         var work = orders(false);
         var links =
                 db.rows("SELECT * FROM dispatch_travel ORDER BY from_building_id,to_building_id");
+        Map<String, Integer> distances = new HashMap<>();
+        for (var link : links) {
+            distances.put(
+                    link.get("fromBuildingId") + ":" + link.get("toBuildingId"),
+                    (int) Db.number(link, "minutes"));
+        }
+        distances = new HashMap<>(mobility.travelMinutes(distances));
+        var personal = mobility.personalTravelMinutes(distances);
         Instant now = Instant.now();
         Map<String, List<String>> previous = new HashMap<>();
         var old = resultAt(Db.number(rev, "revision"));
@@ -278,7 +289,8 @@ public class DispatchRepository {
                                                     manager.get("positionBuildingId"), null)
                                             : null,
                                     (int) Db.number(manager, "positionFloorNo")),
-                            List.copyOf(locked)));
+                            List.copyOf(locked),
+                            personal.getOrDefault(id, Map.of())));
         }
         var jobs = new ArrayList<RoutePlanner.Job>();
         var excluded = new ArrayList<Map<String, Object>>();
@@ -325,15 +337,17 @@ public class DispatchRepository {
                             previousOwner.get(id),
                             previousPosition.getOrDefault(id, Integer.MAX_VALUE)));
         }
-        Map<String, Integer> distances = new HashMap<>();
-        for (var link : links) {
-            distances.put(
-                    link.get("fromBuildingId") + ":" + link.get("toBuildingId"),
-                    (int) Db.number(link, "minutes"));
-        }
-        distances = new HashMap<>(mobility.travelMinutes(distances));
         var eligibility = planningManagers(people, now);
-        var material = Map.of("managers", eligibility, "orders", work, "travel", distances);
+        var material =
+                Map.of(
+                        "managers",
+                        eligibility,
+                        "orders",
+                        work,
+                        "travel",
+                        distances,
+                        "personalTravel",
+                        personal);
         return new DispatchSnapshot(
                 Db.number(rev, "revision"),
                 Db.number(rev, "dataRevision"),

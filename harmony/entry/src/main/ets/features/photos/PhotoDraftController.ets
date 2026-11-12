@@ -25,6 +25,7 @@ export class PhotoDraftController {
   private report: PhotoDraft = new PhotoDraft();
   private result: PhotoDraft = new PhotoDraft();
   private inspection: PhotoDraft = new PhotoDraft();
+  private remediation: PhotoDraft = new PhotoDraft();
   private busy: boolean = false;
   private run: number = 0;
   private revisions: Map<string, number> = new Map<string, number>();
@@ -38,8 +39,9 @@ export class PhotoDraftController {
       ? this.report
       : usage === "RESULT"
         ? this.result
-        : this.inspection;
+        : usage === "REMEDIATION" ? this.remediation : this.inspection;
   }
+  draftVersion(usage: string): number { return this.revision(usage); }
   snapshot(usage: string): PhotoSnapshot {
     return new PhotoSnapshot(usage, this.draft(usage), this.busy);
   }
@@ -53,7 +55,7 @@ export class PhotoDraftController {
     };
   }
   private emit(): void {
-    for (const usage of ["REPORT", "RESULT", "HYGIENE"]) {
+    for (const usage of ["REPORT", "RESULT", "HYGIENE", "REMEDIATION"]) {
       for (const listener of this.listeners.slice())
         listener(this.snapshot(usage));
     }
@@ -65,6 +67,7 @@ export class PhotoDraftController {
     this.report = new PhotoDraft();
     this.result = new PhotoDraft();
     this.inspection = new PhotoDraft();
+    this.remediation = new PhotoDraft();
     this.emit();
   }
   clear(usage: string): void {
@@ -84,7 +87,7 @@ export class PhotoDraftController {
     this.emit();
   }
   private usageKey(usage: string): string {
-    return usage === "REPORT" || usage === "RESULT" ? usage : "HYGIENE";
+    return usage === "REPORT" || usage === "RESULT" || usage === "REMEDIATION" ? usage : "HYGIENE";
   }
   private revision(usage: string): number {
     return this.revisions.get(this.usageKey(usage)) || 0;

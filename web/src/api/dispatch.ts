@@ -48,6 +48,11 @@ export const handoffDispatchTask = (
   body: Model<"DispatchHandoffRequest">,
 ) =>
   post<Repair>(`/dispatch/tasks/${encodeURIComponent(orderId)}/handoff`, body);
+export const takeoverDispatchTask = (
+  orderId: string,
+  body: Model<"DispatchTakeoverRequest">,
+) =>
+  post<Repair>(`/dispatch/tasks/${encodeURIComponent(orderId)}/takeover`, body);
 export const saveRepairVisit = (
   orderId: string,
   body: Model<"RepairVisitRequest">,
