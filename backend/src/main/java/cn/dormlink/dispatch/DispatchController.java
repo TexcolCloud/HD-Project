@@ -17,16 +17,19 @@ class DispatchController {
     final AuthService auth;
     final DispatchPresence presence;
     final DispatchService dispatch;
+    final DispatchExecutionService execution;
     final BusinessSupport ops;
 
     DispatchController(
             AuthService auth,
             DispatchPresence presence,
             DispatchService dispatch,
+            DispatchExecutionService execution,
             BusinessSupport ops) {
         this.auth = auth;
         this.presence = presence;
         this.dispatch = dispatch;
+        this.execution = execution;
         this.ops = ops;
     }
 
@@ -62,7 +65,7 @@ class DispatchController {
             @PathVariable String orderId,
             @RequestBody Map<String, Object> b,
             HttpServletRequest r) {
-        return command(b, r, () -> dispatch.claim(orderId, b));
+        return command(b, r, () -> execution.claim(orderId, b));
     }
 
     @PostMapping("/tasks/{orderId}/handoff")
@@ -70,7 +73,7 @@ class DispatchController {
             @PathVariable String orderId,
             @RequestBody Map<String, Object> b,
             HttpServletRequest r) {
-        return command(b, r, () -> dispatch.handoff(orderId, b));
+        return command(b, r, () -> execution.handoff(orderId, b));
     }
 
     @PostMapping("/tasks/{orderId}/{action:depart|arrive|block|resume}")
@@ -79,7 +82,7 @@ class DispatchController {
             @PathVariable String action,
             @RequestBody Map<String, Object> b,
             HttpServletRequest r) {
-        return command(b, r, () -> dispatch.action(orderId, action, b));
+        return command(b, r, () -> execution.action(orderId, action, b));
     }
 
     @GetMapping("/travel")

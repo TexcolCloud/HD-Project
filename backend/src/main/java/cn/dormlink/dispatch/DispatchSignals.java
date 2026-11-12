@@ -1,8 +1,10 @@
 package cn.dormlink.dispatch;
 
+import cn.dormlink.identity.SessionsRevoked;
 import cn.dormlink.shared.jdbc.Db;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -39,6 +41,17 @@ public class DispatchSignals {
         this.json = json;
         write = new TransactionTemplate(tx);
         write.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @EventListener
+    public void sessionsRevoked(SessionsRevoked event) {
+        if (db.count("SELECT COUNT(*) FROM sys_user WHERE id=? AND role='MANAGER'", event.userId())
+                > 0) {
+            changed(
+                    null,
+                    event.userId(),
+                    event.sessionId() == null ? "PASSWORD_CHANGED" : "MANAGER_LOGOUT");
+        }
     }
 
     public void changed(String order, String actor, String reason) {

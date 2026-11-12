@@ -89,7 +89,7 @@ python scripts/acceptance-dispatch.py --report output/acceptance/opengauss-dispa
 
 Java测试默认使用独立H2内存库和随机端口，不读取真实AI密钥。原业务集成测试覆盖登录/撤销、角色/跨楼栋/他人资源、房间筛选、并发最后一个名额、完整工单状态、重复检查与修正审计、上传绑定前后权限、损坏PNG的415错误、新建停用学生禁止登录，以及原始WebP直接multipart上传和JPEG重编码。AI协议测试使用明确的本地HTTP fixture，验证多模态组包、管理研判授权、完整结果缓存、同key并发只调用一次、失败/未知结果不静默重调，以及实际含身份文本的脱敏；它们不代表已经调用真实DeepSeek账号。调度集成测试覆盖presence去重/过期、共享暂停、唯一claim、执行互斥、显式交接和旧计划拒绝发布。`target/red-*.log` 与 `target/green-*.log` 保留本次Red→Green开发记录，实际测试数量及结果在 `target/surefire-reports/`。
 
-真实openGauss测试复用原业务、调度、AI与并发测试边界。先建立独立的 `dormlink_platform_test`、`dormlink_dispatch_test`、`dormlink_ai_test`、`dormlink_concurrency_test` 四个PG库，再从被忽略环境文件加载测试账号，设置 `OPENGAUSS_TEST_USER`、`OPENGAUSS_TEST_PASSWORD` 和带 `{suite}` 占位的 `OPENGAUSS_TEST_URL`（例如 `jdbc:opengauss://<host>:15432/dormlink_{suite}_test?stringtype=unspecified&use_boolean=true&currentSchema=public`），然后执行 `mvnw.cmd test`。测试拒绝指向主库；未设置该URL时仍使用默认H2／可选MySQL路径。类名 `MySqlConcurrencyTest` 保留以兼容原复现命令，设置上述变量后实际连接openGauss的concurrency测试库。
+真实openGauss测试复用原业务、调度、AI与并发测试边界，并覆盖重构及设备能力。先建立独立的 `dormlink_platform_test`、`dormlink_dispatch_test`、`dormlink_ai_test`、`dormlink_concurrency_test`、`dormlink_refactor_test`、`dormlink_mobility_test`、`dormlink_mobility_http_test` 七个PG库，再从被忽略环境文件加载测试账号，设置 `OPENGAUSS_TEST_USER`、`OPENGAUSS_TEST_PASSWORD` 和带 `{suite}` 占位的 `OPENGAUSS_TEST_URL`（例如 `jdbc:opengauss://<host>:15432/dormlink_{suite}_test?stringtype=unspecified&use_boolean=true&currentSchema=public`），然后执行 `mvnw.cmd test`，或从根目录执行 `scripts/test-backend.ps1 -Database opengauss`。测试拒绝指向主库；未设置该URL时仍使用默认H2／可选MySQL路径。类名 `MySqlConcurrencyTest` 保留以兼容原复现命令，设置上述变量后实际连接openGauss的concurrency测试库。
 
 真实MySQL并发回归在单独的 `dormlink_concurrency_test` 库运行。先由本机数据库维护账号建此库并授予开发用户权限，然后从被忽略环境文件设置 `DB_USER`、`DB_PASSWORD`，设置 `MYSQL_TEST_URL` 指向该测试库，执行 `mvnw.cmd -Dtest=MySqlConcurrencyTest test`。不设置此变量时默认跳过，且测试拒绝指向正在演示的dormlink库。
 
@@ -100,5 +100,7 @@ Java测试默认使用独立H2内存库和随机端口，不读取真实AI密钥
 ## 代码入口
 
 `SecurityConfig/AuthService` 管身份和CSRF；`BusinessSupport` 管事务内幂等和审计；`HousingService` 管入住锁；`RepairService` 管状态；`OperationsService` 管访客/卫生；`FileService` 管图片；`StatisticsService` 管口径；`AiService` 管外部模型。各Controller只做HTTP路由和统一响应包装。
+
+`dispatch` 单向调用维修快照与命令，`RepairChanged` 同步维护调度投影并参与原事务回滚；禁止把该监听改为异步。`DispatchService` 管看板和配置，`DispatchExecutionService` 管任务执行／交接。设备服务入口保留事务，包内按工作会话、观测、锚点组织，具名 SQL 集中在仓储。`BackendArchitectureTest` 在常规 Maven 测试中检查所有业务与共享子包的依赖环、基础设施反向依赖和公共维修接口的弱类型泄漏。最新测试与边界见[15](../docs/15-结构治理与联合回归.md)。
 
 已知边界：单校单实例；按房间容量，无独立床号；受控初始化维护宿管账号和楼栋授权；普通业务界面不开放任意角色赋予或工单转派。私有附件目录和数据库需一起备份恢复。

@@ -169,8 +169,8 @@ onBeforeUnmount(() => clearInterval(clock));
       <p>在鸿蒙端开启本次工作，确认位置后为剩余路线提供依据。</p>
     </div>
     <div class="page-actions">
-      <button class="btn" :disabled="busy" @click="refresh">刷新状态</button
-      ><button
+      <button class="btn" :disabled="busy" @click="refresh">刷新状态</button>
+      <button
         class="btn primary"
         :disabled="busy || !buildings.length"
         @click="edit()"
@@ -180,7 +180,9 @@ onBeforeUnmount(() => clearInterval(clock));
     </div>
   </div>
   <p v-if="error" class="error-banner" role="alert">
-    {{ error }}<br />当前数据尚未更新，请重新读取后操作。
+    {{ error }}
+    <br />
+    当前数据尚未更新，请重新读取后操作。
   </p>
   <p v-if="!view && busy" class="loading" role="status">正在读取现场状态…</p>
   <template v-if="view">
@@ -192,9 +194,9 @@ onBeforeUnmount(() => clearInterval(clock));
           {{ summary.fresh ? "在有效期内" : "当前位置待确认" }} ·
           {{ view.context ? sourceLabels[view.context.source] : "暂无来源" }}
         </p>
-        <small v-if="view.context?.observedAt"
-          >观测于 {{ dateTime(view.context.observedAt) }}</small
-        >
+        <small v-if="view.context?.observedAt">
+          观测于 {{ dateTime(view.context.observedAt) }}
+        </small>
       </div>
       <dl class="mobility-facts">
         <div>
@@ -240,21 +242,23 @@ onBeforeUnmount(() => clearInterval(clock));
             :disabled="busy || !!error"
             @click="stop('pause')"
           >
-            暂停采集</button
-          ><button
+            暂停采集
+          </button>
+          <button
             v-if="live"
             class="btn"
             :disabled="busy || !!error"
             @click="stop('end')"
           >
-            结束本次工作</button
-          ><RouterLink class="text-link" to="/dispatch"
-            >查看任务路线 →</RouterLink
-          >
+            结束本次工作
+          </button>
+          <RouterLink class="text-link" to="/dispatch">
+            查看任务路线 →
+          </RouterLink>
         </div>
-        <small
-          >移动端主动开启后才采集。同账号只保留一个有效来源；暂停或结束不改变工单状态。</small
-        >
+        <small>
+          移动端主动开启后才采集。同账号只保留一个有效来源；暂停或结束不改变工单状态。
+        </small>
       </div>
     </section>
     <section class="panel mobility-anchors">
@@ -282,8 +286,8 @@ onBeforeUnmount(() => clearInterval(clock));
                 <strong>{{ item.name }}</strong>
                 <details class="mobility-code">
                   <summary>查看扫码内容</summary>
-                  <code>{{ "dormlink-anchor:" + item.scanCode }}</code
-                  ><small>静态码需在移动端预览并确认，仅用于地点校正。</small>
+                  <code>{{ "dormlink-anchor:" + item.scanCode }}</code>
+                  <small>静态码需在移动端预览并确认，仅用于地点校正。</small>
                 </details>
               </td>
               <td>
@@ -351,10 +355,10 @@ onBeforeUnmount(() => clearInterval(clock));
             >
               <td>
                 {{ buildingName(model.fromBuildingId) }} →
-                {{ buildingName(model.toBuildingId)
-                }}<small class="mobility-model-time">{{
-                  dateTime(model.updatedAt)
-                }}</small>
+                {{ buildingName(model.toBuildingId) }}
+                <small class="mobility-model-time">
+                  {{ dateTime(model.updatedAt) }}
+                </small>
               </td>
               <td>{{ model.minutes }} 分钟</td>
               <td>
@@ -368,8 +372,9 @@ onBeforeUnmount(() => clearInterval(clock));
                   :disabled="busy || !!error"
                   @click="rollback(model)"
                 >
-                  恢复人工基线</button
-                ><span v-else class="muted">已停用自动更新</span>
+                  恢复人工基线
+                </button>
+                <span v-else class="muted">已停用自动更新</span>
               </td>
             </tr>
           </tbody>
@@ -391,16 +396,19 @@ onBeforeUnmount(() => clearInterval(clock));
     @close="editing = false"
   >
     <form class="form" @submit.prevent="save">
-      <label
-        >地点名称 *<input
+      <label>
+        地点名称 *
+        <input
           v-model.trim="name"
           required
           maxlength="80"
           placeholder="例如：A栋南入口"
-      /></label>
+        />
+      </label>
       <div class="form-row">
-        <label
-          >楼栋 *<select v-model="buildingId" required>
+        <label>
+          楼栋 *
+          <select v-model="buildingId" required>
             <option
               v-for="building in buildings"
               :key="building.id"
@@ -408,16 +416,19 @@ onBeforeUnmount(() => clearInterval(clock));
             >
               {{ building.name }}
             </option>
-          </select></label
-        ><label
-          >楼层<input
+          </select>
+        </label>
+        <label>
+          楼层
+          <input
             v-model="floor"
             type="number"
             min="1"
             :max="buildings.find((b) => b.id === buildingId)?.floorCount"
             step="1"
             placeholder="入口可留空"
-        /></label>
+          />
+        </label>
       </div>
       <details>
         <summary>实测坐标（可选）</summary>
@@ -425,37 +436,39 @@ onBeforeUnmount(() => clearInterval(clock));
           仅填写已核验的地点坐标，留空时继续使用人工和扫码确认。
         </p>
         <div class="form-row">
-          <label
-            >纬度<input
+          <label>
+            纬度
+            <input
               v-model="latitude"
               type="number"
               min="-90"
               max="90"
-              step="any" /></label
-          ><label
-            >经度<input
+              step="any"
+            />
+          </label>
+          <label>
+            经度
+            <input
               v-model="longitude"
               type="number"
               min="-180"
               max="180"
               step="any"
-          /></label>
+            />
+          </label>
         </div>
-        <label
-          >识别半径（米）<input
-            v-model="radius"
-            type="number"
-            min="5"
-            max="500"
-            step="any"
-        /></label>
+        <label>
+          识别半径（米）
+          <input v-model="radius" type="number" min="5" max="500" step="any" />
+        </label>
       </details>
-      <label
-        >可用状态<select v-model="enabled">
+      <label>
+        可用状态
+        <select v-model="enabled">
           <option :value="true">可用</option>
           <option :value="false">停用</option>
-        </select></label
-      >
+        </select>
+      </label>
       <p v-if="formError" class="error-banner" role="alert">{{ formError }}</p>
       <button class="btn primary" :disabled="busy">
         {{ busy ? "正在保存…" : "保存地点" }}

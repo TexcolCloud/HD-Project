@@ -1,6 +1,5 @@
 package cn.dormlink.repairs;
 
-import cn.dormlink.dispatch.DispatchRepository;
 import cn.dormlink.identity.AuthService;
 import cn.dormlink.media.FileService;
 import cn.dormlink.shared.api.ApiException;
@@ -8,7 +7,9 @@ import cn.dormlink.shared.api.Inputs;
 import cn.dormlink.shared.application.BusinessSupport;
 import cn.dormlink.shared.jdbc.Db;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -20,18 +21,22 @@ public class RepairService {
     final AuthService auth;
     final BusinessSupport ops;
     final FileService files;
-    final DispatchRepository dispatch;
+    final ApplicationEventPublisher events;
 
     RepairService(
-            Db d, AuthService a, BusinessSupport o, FileService f, DispatchRepository dispatch) {
+            Db d,
+            AuthService a,
+            BusinessSupport o,
+            FileService f,
+            ApplicationEventPublisher events) {
         db = d;
         auth = a;
         ops = o;
         files = f;
-        this.dispatch = dispatch;
+        this.events = events;
     }
 
-    public Map<String, Object> raw(String id) {
+    private Map<String, Object> raw(String id) {
         var r = db.one("SELECT * FROM repair_order WHERE id=?", id);
         var a = auth.current();
         if (a.manager()) {
@@ -40,6 +45,20 @@ public class RepairService {
             throw ApiException.missing();
         }
         return r;
+    }
+
+    public RepairSnapshot snapshot(String id) {
+        return RepairSnapshot.fromRow(raw(id));
+    }
+
+    private void changed(String id, RepairChanged.Action action) {
+        var order = RepairSnapshot.fromRow(db.one("SELECT * FROM repair_order WHERE id=?", id));
+        events.publishEvent(new RepairChanged(order, action, auth.current().id()));
+    }
+
+    @Transactional
+    public Object accept(String id, int expectedVersion) {
+        return action(id, "accept", Map.of("expectedVersion", expectedVersion));
     }
 
     Map<String, Object> decorate(Map<String, Object> r) {
@@ -217,7 +236,7 @@ public class RepairService {
                 window.start(),
                 window.end(),
                 id);
-        dispatch.repairChanged(id, "submit", a.id());
+        changed(id, RepairChanged.Action.SUBMIT);
         return detail(id);
     }
 
@@ -237,21 +256,12 @@ public class RepairService {
                 Timestamp.from(Instant.now()));
     }
 
-    public Object action(String id, String action, Map<String, Object> b) {
+    Object action(String id, String action, Map<String, Object> b) {
         db.one("SELECT id FROM repair_order WHERE id=? FOR UPDATE", id);
         var r = raw(id);
         ops.version(r, b);
         if (!allowed(r).contains(action)) {
             throw new ApiException(409, "ILLEGAL_REPAIR_ACTION", "当前身份或工单状态不能执行此操作");
-        }
-        if (action.equals("accept")) {
-            var settings =
-                    db.find(
-                            "SELECT accepting_new_tasks FROM dispatch_manager WHERE user_id=?",
-                            auth.current().id());
-            if (settings != null && !Boolean.TRUE.equals(settings.get("acceptingNewTasks"))) {
-                throw ApiException.conflict("你已暂停接受新任务，请先恢复接单");
-            }
         }
         String before = r.get("status").toString();
         String after =
@@ -302,7 +312,7 @@ public class RepairService {
                 id,
                 note,
                 Map.of("from", before, "to", after));
-        dispatch.repairChanged(id, action, auth.current().id());
+        changed(id, RepairChanged.Action.fromWire(action));
         return detail(id);
     }
 
@@ -419,69 +429,45 @@ public class RepairService {
                 id,
                 "修改上门时间与安排",
                 Map.of("windowConfirmed", values.confirmed(), "visitRequired", values.required()));
-        dispatch.repairChanged(id, "visit", auth.current().id());
+        changed(id, RepairChanged.Action.VISIT);
         return detail(id);
     }
 
-    public Object handoff(String id, Map<String, Object> b) {
+    @Transactional
+    public Object transfer(RepairTransfer command) {
+        String id = command.orderId();
         db.one("SELECT id FROM repair_order WHERE id=? FOR UPDATE", id);
-        var order = raw(id);
+        var order = snapshot(id);
         var actor = auth.current();
         actor.requireManager();
-        if (!"ACCEPTED".equals(order.get("status"))
-                || !actor.id().equals(order.get("handlerUserId"))) {
+        if (order.status() != RepairSnapshot.Status.ACCEPTED
+                || !actor.id().equals(order.handlerUserId())) {
             throw ApiException.conflict("仅原办理宿管可以交接尚未开始的已接单任务");
         }
-        int orderVersion = Inputs.integer(b, "expectedOrderVersion", 0, Integer.MAX_VALUE);
-        if (Db.number(order, "version") != orderVersion) {
+        if (order.version() != command.expectedOrderVersion()) {
             throw ApiException.conflict("工单已更新，请刷新");
-        }
-        var task = dispatch.activeClaim(id);
-        if (task == null) {
-            throw ApiException.missing();
-        }
-        task = db.one("SELECT * FROM dispatch_task WHERE id=? FOR UPDATE", task.get("id"));
-        int taskVersion = Inputs.integer(b, "expectedTaskVersion", 0, Integer.MAX_VALUE);
-        if (Db.number(task, "version") != taskVersion
-                || Set.of("EN_ROUTE", "ON_SITE").contains(task.get("state"))) {
-            throw ApiException.conflict("在途、已到达或已变化任务不能直接交接");
-        }
-        String target = Long.toString(Inputs.id(b, "targetManagerId")),
-                reason = Inputs.text(b, "reason", 500, true);
-        if (target.equals(actor.id())) {
-            throw ApiException.bad("接收人不能是本人");
-        }
-        var person = dispatch.targetManager(target);
-        if (!dispatch.participating(person, Instant.now())
-                || !DispatchRepository.buildingIds(person)
-                        .contains(order.get("buildingId").toString())) {
-            throw ApiException.conflict("接收人需在线、接受新任务并具备该楼栋权限");
         }
         ops.changed(
                 db.update(
                         "UPDATE repair_order SET handler_user_id=?,handler_name=?,version=version+1"
                                 + " WHERE id=? AND version=? AND status='ACCEPTED'",
-                        target,
-                        person.get("displayName"),
+                        command.targetManagerId(),
+                        command.targetManagerName(),
                         id,
-                        orderVersion));
-        ops.changed(
-                db.update(
-                        "UPDATE dispatch_task SET"
-                            + " manager_user_id=?,state='ASSIGNED',next_user_id=NULL,reason='',version=version+1,updated_at=?"
-                            + " WHERE id=? AND version=?",
-                        target,
-                        Timestamp.from(Instant.now()),
-                        task.get("id"),
-                        taskVersion));
-        event(id, "ACCEPTED", "ACCEPTED", "handoff", reason + "；交接给" + person.get("displayName"));
+                        command.expectedOrderVersion()));
+        event(
+                id,
+                "ACCEPTED",
+                "ACCEPTED",
+                "handoff",
+                command.reason() + "；交接给" + command.targetManagerName());
         ops.audit(
                 "REPAIR_HANDOFF",
                 "REPAIR",
                 id,
-                reason,
-                Map.of("fromManagerId", actor.id(), "toManagerId", target));
-        dispatch.repairChanged(id, "handoff", actor.id());
+                command.reason(),
+                Map.of("fromManagerId", actor.id(), "toManagerId", command.targetManagerId()));
+        changed(id, RepairChanged.Action.HANDOFF);
         return detail(id);
     }
 }

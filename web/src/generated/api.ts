@@ -1363,6 +1363,17 @@ export interface components {
             user: components["schemas"]["User"];
             token?: string;
         };
+        PasswordRequest: {
+            oldPassword: string;
+            newPassword: string;
+        };
+        LeaveRequest: {
+            expectedVersion: number;
+            leftAt?: string;
+        };
+        ContactResult: {
+            phone: string;
+        };
         Csrf: {
             token: string;
             headerName: string;

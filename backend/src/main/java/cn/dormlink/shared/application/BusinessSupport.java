@@ -3,6 +3,7 @@ package cn.dormlink.shared.application;
 import cn.dormlink.identity.AuthService;
 import cn.dormlink.shared.api.ApiException;
 import cn.dormlink.shared.api.Inputs;
+import cn.dormlink.shared.crypto.Digests;
 import cn.dormlink.shared.jdbc.Db;
 
 import org.springframework.stereotype.Service;
@@ -117,7 +118,7 @@ public class BusinessSupport {
         if (k.length() > 64) {
             throw ApiException.bad("Idempotency-Key长度不能超过64");
         }
-        String hash = AuthService.hash(json.writeValueAsString(new TreeMap<>(body)));
+        String hash = Digests.sha256(json.writeValueAsString(new TreeMap<>(body)));
         String permission = permissionFingerprint(a);
         var old =
                 db.find(
@@ -158,7 +159,7 @@ public class BusinessSupport {
                                 + " building_id",
                         actor.id());
         var student = db.find("SELECT id,status FROM student WHERE user_id=?", actor.id());
-        return AuthService.hash(json.writeValueAsString(Arrays.asList(user, buildings, student)));
+        return Digests.sha256(json.writeValueAsString(Arrays.asList(user, buildings, student)));
     }
 
     public static String filter(

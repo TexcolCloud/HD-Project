@@ -1,9 +1,190 @@
 <script setup lang="ts">
-import {ref,watch,onBeforeUnmount} from 'vue';import type {Model} from '../api/types';import {generateManagerAdvice} from '../api/managerAssist';import {dateTime,errorText} from '../ui';import StatusBadge from './StatusBadge.vue';
-const props=defineProps<{repairId?:string;imageCount?:number;contextVersion?:number}>();
-const consent=ref(false),includeImages=ref(false),busy=ref(false),error=ref(''),advice=ref<Model<'ManagerAdvice'>>(),opened=ref(false);let controller:AbortController|undefined,generation=0;
-async function generate(){if(!consent.value){error.value='请先勾选同意本次外部分析';return;}const current=++generation;busy.value=true;error.value='';controller=new AbortController();try{const result=await generateManagerAdvice(props.repairId,{consentToExternalAnalysis:consent.value,includeImages:includeImages.value},controller.signal);if(current===generation)advice.value=result;}catch(e){if(current===generation&&!(e instanceof DOMException&&e.name==='AbortError'))error.value=errorText(e);}finally{if(current===generation){busy.value=false;controller=undefined;}}}
-watch(()=>[props.repairId,props.contextVersion],()=>{generation++;controller?.abort();advice.value=undefined;consent.value=false;includeImages.value=false;error.value='';opened.value=false;busy.value=false;});
-onBeforeUnmount(()=>{generation++;controller?.abort();});
+import { ref, watch, onBeforeUnmount } from "vue";
+import type { Model } from "../api/types";
+import { generateManagerAdvice } from "../api/managerAssist";
+import { dateTime, errorText } from "../ui";
+import StatusBadge from "./StatusBadge.vue";
+const props = defineProps<{
+  repairId?: string;
+  imageCount?: number;
+  contextVersion?: number;
+}>();
+const consent = ref(false),
+  includeImages = ref(false),
+  busy = ref(false),
+  error = ref(""),
+  advice = ref<Model<"ManagerAdvice">>(),
+  opened = ref(false);
+let controller: AbortController | undefined,
+  generation = 0;
+async function generate() {
+  if (!consent.value) {
+    error.value = "请先勾选同意本次外部分析";
+    return;
+  }
+  const current = ++generation;
+  busy.value = true;
+  error.value = "";
+  controller = new AbortController();
+  try {
+    const result = await generateManagerAdvice(
+      props.repairId,
+      {
+        consentToExternalAnalysis: consent.value,
+        includeImages: includeImages.value,
+      },
+      controller.signal,
+    );
+    if (current === generation) advice.value = result;
+  } catch (e) {
+    if (
+      current === generation &&
+      !(e instanceof DOMException && e.name === "AbortError")
+    )
+      error.value = errorText(e);
+  } finally {
+    if (current === generation) {
+      busy.value = false;
+      controller = undefined;
+    }
+  }
+}
+watch(
+  () => [props.repairId, props.contextVersion],
+  () => {
+    generation++;
+    controller?.abort();
+    advice.value = undefined;
+    consent.value = false;
+    includeImages.value = false;
+    error.value = "";
+    opened.value = false;
+    busy.value = false;
+  },
+);
+onBeforeUnmount(() => {
+  generation++;
+  controller?.abort();
+});
 </script>
-<template><section class="manager-assist" :class="{compact:!repairId}"><header><div><p class="section-note">DeepSeek · 宿管辅助</p><h2>{{repairId?'工单研判':'值班简报'}}</h2></div><button class="text-link" type="button" :aria-expanded="opened" @click="opened=!opened">{{opened?'收起':'展开'}}</button></header><p class="manager-assist-intro">{{repairId?'整理可见故障现象、沟通问题与办理建议。':'根据负责范围内的工单和系统统计，整理需要关注的事项。'}}</p><div v-if="opened" class="manager-assist-body"><form class="manager-assist-form" @submit.prevent="generate"><label class="manager-assist-consent"><input v-model="consent" type="checkbox" :disabled="busy">同意将{{repairId?'本次工单摘要':'负责范围内的工单摘要'}}发送给外部 AI 服务分析</label><label v-if="repairId&&(imageCount||0)>0" class="manager-assist-consent"><input v-model="includeImages" type="checkbox" :disabled="busy">同时分析前 {{Math.min(imageCount||0,3)}} 张学生故障图片（可选）</label><p>默认不发送图片。建议需人工核对，不自动接单、派单、改状态或替代路线规则。</p><button class="btn" :disabled="busy||!consent">{{busy?'正在生成…':advice?'重新生成建议':repairId?'生成工单研判':'生成值班简报'}}</button></form><div v-if="error" class="error-banner" role="alert">{{error}}<br>已保留现有内容，可继续手动办理。</div><article v-if="advice" class="manager-advice"><div class="manager-advice-meta"><span>AI 建议，请人工核对</span><small>{{dateTime(advice.generatedAt)}}</small></div><section v-if="advice.facts.length" class="manager-advice-facts"><h3>系统数据</h3><dl><div v-for="(fact,i) in advice.facts" :key="i"><dt>{{fact.label}}</dt><dd>{{fact.value}}</dd></div></dl></section><h3>事项摘要</h3><p>{{advice.summary}}</p><section v-if="advice.findings.length"><h3>需要关注</h3><ul><li v-for="(finding,i) in advice.findings" :key="i">{{finding}}</li></ul></section><section v-if="advice.suggestedActions.length"><h3>办理建议</h3><ul><li v-for="(action,i) in advice.suggestedActions" :key="i">{{action}}</li></ul></section><section v-if="advice.questions.length"><h3>待确认问题</h3><ul><li v-for="(question,i) in advice.questions" :key="i">{{question}}</li></ul></section><p v-if="advice.uncertainty" class="manager-advice-uncertainty">{{advice.uncertainty}}</p><section v-if="advice.evidence.length"><h3>相关工单</h3><div class="manager-advice-evidence"><RouterLink v-for="item in advice.evidence" :key="item.orderId" :to="'/repairs/'+encodeURIComponent(item.orderId)"><span><strong>{{item.title}}</strong><small>{{item.orderNo}}</small></span><StatusBadge :status="item.status"/></RouterLink></div></section></article></div></section></template>
+<template>
+  <section class="manager-assist" :class="{ compact: !repairId }">
+    <header>
+      <div>
+        <p class="section-note">DeepSeek · 宿管辅助</p>
+        <h2>{{ repairId ? "工单研判" : "值班简报" }}</h2>
+      </div>
+      <button
+        class="text-link"
+        type="button"
+        :aria-expanded="opened"
+        @click="opened = !opened"
+      >
+        {{ opened ? "收起" : "展开" }}
+      </button>
+    </header>
+    <p class="manager-assist-intro">
+      {{
+        repairId
+          ? "整理可见故障现象、沟通问题与办理建议。"
+          : "根据负责范围内的工单和系统统计，整理需要关注的事项。"
+      }}
+    </p>
+    <div v-if="opened" class="manager-assist-body">
+      <form class="manager-assist-form" @submit.prevent="generate">
+        <label class="manager-assist-consent">
+          <input v-model="consent" type="checkbox" :disabled="busy" />
+          同意将{{
+            repairId ? "本次工单摘要" : "负责范围内的工单摘要"
+          }}发送给外部 AI 服务分析
+        </label>
+        <label
+          v-if="repairId && (imageCount || 0) > 0"
+          class="manager-assist-consent"
+        >
+          <input v-model="includeImages" type="checkbox" :disabled="busy" />
+          同时分析前 {{ Math.min(imageCount || 0, 3) }} 张学生故障图片（可选）
+        </label>
+        <p>
+          默认不发送图片。建议需人工核对，不自动接单、派单、改状态或替代路线规则。
+        </p>
+        <button class="btn" :disabled="busy || !consent">
+          {{
+            busy
+              ? "正在生成…"
+              : advice
+                ? "重新生成建议"
+                : repairId
+                  ? "生成工单研判"
+                  : "生成值班简报"
+          }}
+        </button>
+      </form>
+      <div v-if="error" class="error-banner" role="alert">
+        {{ error }}
+        <br />
+        已保留现有内容，可继续手动办理。
+      </div>
+      <article v-if="advice" class="manager-advice">
+        <div class="manager-advice-meta">
+          <span>AI 建议，请人工核对</span>
+          <small>{{ dateTime(advice.generatedAt) }}</small>
+        </div>
+        <section v-if="advice.facts.length" class="manager-advice-facts">
+          <h3>系统数据</h3>
+          <dl>
+            <div v-for="(fact, i) in advice.facts" :key="i">
+              <dt>{{ fact.label }}</dt>
+              <dd>{{ fact.value }}</dd>
+            </div>
+          </dl>
+        </section>
+        <h3>事项摘要</h3>
+        <p>{{ advice.summary }}</p>
+        <section v-if="advice.findings.length">
+          <h3>需要关注</h3>
+          <ul>
+            <li v-for="(finding, i) in advice.findings" :key="i">
+              {{ finding }}
+            </li>
+          </ul>
+        </section>
+        <section v-if="advice.suggestedActions.length">
+          <h3>办理建议</h3>
+          <ul>
+            <li v-for="(action, i) in advice.suggestedActions" :key="i">
+              {{ action }}
+            </li>
+          </ul>
+        </section>
+        <section v-if="advice.questions.length">
+          <h3>待确认问题</h3>
+          <ul>
+            <li v-for="(question, i) in advice.questions" :key="i">
+              {{ question }}
+            </li>
+          </ul>
+        </section>
+        <p v-if="advice.uncertainty" class="manager-advice-uncertainty">
+          {{ advice.uncertainty }}
+        </p>
+        <section v-if="advice.evidence.length">
+          <h3>相关工单</h3>
+          <div class="manager-advice-evidence">
+            <RouterLink
+              v-for="item in advice.evidence"
+              :key="item.orderId"
+              :to="'/repairs/' + encodeURIComponent(item.orderId)"
+            >
+              <span>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.orderNo }}</small>
+              </span>
+              <StatusBadge :status="item.status" />
+            </RouterLink>
+          </div>
+        </section>
+      </article>
+    </div>
+  </section>
+</template>

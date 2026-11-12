@@ -1,6 +1,6 @@
 package cn.dormlink.shared.jdbc;
 
-import cn.dormlink.identity.AuthService;
+import cn.dormlink.shared.crypto.Digests;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,7 +68,7 @@ public class SchemaMigrations implements InitializingBean {
 
     private void apply(Connection connection, Migration migration) throws Exception {
         String script = migration.resource().getContentAsString(StandardCharsets.UTF_8);
-        String checksum = AuthService.hash(script);
+        String checksum = Digests.sha256(script);
         try (var find =
                 connection.prepareStatement(
                         "SELECT checksum FROM schema_migration WHERE version=?")) {

@@ -1,10 +1,13 @@
 package cn.dormlink.dispatch;
 
-import cn.dormlink.identity.AuthService;
 import cn.dormlink.mobility.MobilityService;
+import cn.dormlink.repairs.RepairChanged;
+import cn.dormlink.repairs.RepairSnapshot;
 import cn.dormlink.shared.api.ApiException;
+import cn.dormlink.shared.crypto.Digests;
 import cn.dormlink.shared.jdbc.Db;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -62,7 +65,8 @@ public class DispatchRepository {
                                         + " ('ACCEPTED','PROCESSING') AND handler_user_id IS NOT"
                                         + " NULL ORDER BY id")) {
                         ensureClaim(
-                                o, o.get("status").equals("PROCESSING") ? "ON_SITE" : "ASSIGNED");
+                                RepairSnapshot.fromRow(o),
+                                o.get("status").equals("PROCESSING") ? "ON_SITE" : "ASSIGNED");
                     }
                     var a = db.find("SELECT id FROM building WHERE code='A'");
                     var b = db.find("SELECT id FROM building WHERE code='B'");
@@ -96,10 +100,6 @@ public class DispatchRepository {
         return reads.execute(status -> work.get());
     }
 
-    public Map<String, Object> targetManager(String id) {
-        return presence.manager(id);
-    }
-
     String latestResult() {
         var p = db.find("SELECT result_json FROM dispatch_plan ORDER BY revision DESC LIMIT 1");
         return p == null ? null : p.get("resultJson").toString();
@@ -124,6 +124,16 @@ public class DispatchRepository {
                     + " o.status='PROCESSING' THEN 0 WHEN o.status='ACCEPTED' THEN 1 ELSE 2"
                     + " END,o.submitted_at,o.id"
                         + (lock ? " FOR UPDATE" : ""));
+    }
+
+    Map<String, Object> activeOrder(String orderId) {
+        return db.one(
+                "SELECT o.*,r.floor_no,t.id claim_id,t.manager_user_id task_manager_id,t.state"
+                    + " task_state,t.reason task_reason,t.version task_version FROM repair_order o"
+                    + " JOIN dorm_room r ON r.id=o.room_id LEFT JOIN dispatch_task t ON"
+                    + " t.active_order_id=o.id WHERE o.id=? AND o.status IN"
+                    + " ('SUBMITTED','ACCEPTED','PROCESSING')",
+                orderId);
     }
 
     List<Map<String, Object>> managers() {
@@ -327,7 +337,7 @@ public class DispatchRepository {
         return new DispatchSnapshot(
                 Db.number(rev, "revision"),
                 Db.number(rev, "dataRevision"),
-                AuthService.hash(json.writeValueAsString(material)),
+                Digests.sha256(json.writeValueAsString(material)),
                 new RoutePlanner.Snapshot(now, workers, jobs, distances, 2, 1),
                 people,
                 work,
@@ -371,15 +381,15 @@ public class DispatchRepository {
                         }));
     }
 
-    public Map<String, Object> activeClaim(String orderId) {
+    Map<String, Object> activeClaim(String orderId) {
         return db.find("SELECT * FROM dispatch_task WHERE active_order_id=?", orderId);
     }
 
-    Map<String, Object> ensureClaim(Map<String, Object> order, String state) {
-        String id = order.get("id").toString();
+    Map<String, Object> ensureClaim(RepairSnapshot order, String state) {
+        String id = order.id();
         var task = activeClaim(id);
         if (task != null) {
-            if (!Objects.equals(task.get("managerUserId"), order.get("handlerUserId"))) {
+            if (!Objects.equals(task.get("managerUserId"), order.handlerUserId())) {
                 throw ApiException.conflict("工单办理人与有效任务不一致");
             }
             return task;
@@ -390,23 +400,35 @@ public class DispatchRepository {
                     + " VALUES(?,?,?,?,?,?)",
                 id,
                 id,
-                order.get("handlerUserId"),
+                order.handlerUserId(),
                 state,
                 Timestamp.from(Instant.now()),
                 Timestamp.from(Instant.now()));
         return activeClaim(id);
     }
 
-    public void repairChanged(String orderId, String action, String actorId) {
-        var order = db.one("SELECT * FROM repair_order WHERE id=?", orderId);
-        switch (action) {
-            case "accept", "rework" -> ensureClaim(order, "ASSIGNED");
-            case "start" -> {
+    @EventListener
+    public void repairChanged(RepairChanged event) {
+        var order = event.order();
+        String orderId = order.id();
+        // Synchronous on purpose: a task invariant failure must roll back the repair and its audit.
+        if (event.action() == RepairChanged.Action.ACCEPT) {
+            var settings =
+                    db.find(
+                            "SELECT accepting_new_tasks FROM dispatch_manager WHERE user_id=?",
+                            event.actorId());
+            if (settings != null && !Boolean.TRUE.equals(settings.get("acceptingNewTasks"))) {
+                throw ApiException.conflict("你已暂停接受新任务，请先恢复接单");
+            }
+        }
+        switch (event.action()) {
+            case ACCEPT, REWORK -> ensureClaim(order, "ASSIGNED");
+            case START -> {
                 if (db.count(
                                 "SELECT COUNT(*) FROM dispatch_task WHERE manager_user_id=? AND"
                                     + " active_order_id IS NOT NULL AND order_id<>? AND state IN"
                                     + " ('ON_SITE','EN_ROUTE')",
-                                order.get("handlerUserId"),
+                                order.handlerUserId(),
                                 orderId)
                         > 0) {
                     throw ApiException.conflict("请先完成或标记受阻的当前任务，不能同时开始另一站");
@@ -418,17 +440,17 @@ public class DispatchRepository {
                             + " WHERE active_order_id=?",
                         Timestamp.from(Instant.now()),
                         orderId);
-                var room = db.one("SELECT floor_no FROM dorm_room WHERE id=?", order.get("roomId"));
+                var room = db.one("SELECT floor_no FROM dorm_room WHERE id=?", order.roomId());
                 db.update(
                         "UPDATE dispatch_manager SET"
                             + " position_building_id=?,position_floor_no=?,position_updated_at=?,version=version+1"
                             + " WHERE user_id=?",
-                        order.get("buildingId"),
+                        order.buildingId(),
                         room.get("floorNo"),
                         Timestamp.from(Instant.now()),
-                        order.get("handlerUserId"));
+                        order.handlerUserId());
             }
-            case "finish", "confirm", "cancel", "reject" ->
+            case FINISH, CONFIRM, CANCEL, REJECT ->
                     db.update(
                             "UPDATE dispatch_task SET"
                                 + " state='DONE',active_order_id=NULL,next_user_id=NULL,version=version+1,updated_at=?"
@@ -437,6 +459,6 @@ public class DispatchRepository {
                             orderId);
             default -> {}
         }
-        signals.changed(orderId, actorId, "REPAIR_" + action.toUpperCase(Locale.ROOT));
+        signals.changed(orderId, event.actorId(), "REPAIR_" + event.action().name());
     }
 }
