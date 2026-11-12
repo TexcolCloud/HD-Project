@@ -20,11 +20,14 @@ npm run dev
 ```powershell
 npm test
 npm run build
+npm run format:check
 ```
 
 `npm run generate:api` 使用 `openapi-typescript` 从 `../contracts/openapi.json` 生成 `src/generated/api.ts`，构建时自动执行。实体和请求类型引用该文件，不手工维护另一套 DTO。依赖精确版本与 `package-lock.json` 一起锁定，TypeScript 采用与契约生成器兼容的 5.9.3。
 
 API 传输层测试覆盖组合查询、Cookie 与 CSRF 写请求、幂等头，以及非 JSON 代理响应的可读错误。页面验证还需启动实际后端，完成登录、写入、图片与角色范围的浏览器联调。
+
+查询使用 `useLatestQuery` 按独立列表／详情管理取消与销毁，旧响应不能覆盖当前选择。房间、楼栋编辑及房间详情位于 `components/housing`，分别拥有表单和请求生命周期。格式由锁定 Prettier 管理，执行 `npm run format`；生成模型不手工格式化。最新维护说明与浏览器记录见[结构治理与联合回归](../docs/15-结构治理与联合回归.md)。
 
 ## 已实现
 

@@ -1,7 +1,110 @@
 <script setup lang="ts">
-import type {DispatchTask,DispatchTaskAction} from '../../api/dispatch';
-import {dateTime} from '../../ui';import {dispatchTaskNames} from '../../composables/dispatchPlan';import StatusBadge from '../StatusBadge.vue';
-defineProps<{task:DispatchTask;own?:boolean;highlighted?:boolean;canDepart?:boolean;busy?:boolean}>();
-defineEmits<{action:[action:'claim'|DispatchTaskAction,task:DispatchTask]}>();
+import type { DispatchTask, DispatchTaskAction } from "../../api/dispatch";
+import { dateTime } from "../../ui";
+import { dispatchTaskNames } from "../../composables/dispatchPlan";
+import StatusBadge from "../StatusBadge.vue";
+defineProps<{
+  task: DispatchTask;
+  own?: boolean;
+  highlighted?: boolean;
+  canDepart?: boolean;
+  busy?: boolean;
+}>();
+defineEmits<{
+  action: [action: "claim" | DispatchTaskAction, task: DispatchTask];
+}>();
 </script>
-<template><article class="dispatch-task" :class="{changed:highlighted}"><div class="dispatch-task-heading"><span class="dispatch-task-room">{{task.buildingName}} <strong class="num">{{task.roomNo}}</strong><small>{{task.floorNo}} 层</small></span><span class="dispatch-state" :class="task.state">{{dispatchTaskNames[task.state]}}</span></div><h3>{{task.title}}</h3><p class="dispatch-task-id">{{task.orderNo}}<span v-if="task.priority==='URGENT'" class="dispatch-urgent">较急</span><span v-if="highlighted">本次调整</span></p><div class="dispatch-task-estimate"><span>预计到达<strong>{{dateTime(task.estimatedArrival)}}</strong></span><span>预计处理<strong>{{task.serviceMinutes}} 分钟</strong></span><span>预计通行<strong>{{task.travelMinutes}} 分钟</strong></span></div><p v-if="task.windowStart&&task.windowEnd" class="dispatch-window">{{task.windowConfirmed?'已确认预约':'可协商时段'}}：{{dateTime(task.windowStart)}} — {{dateTime(task.windowEnd)}}</p><p v-if="task.locked" class="dispatch-lock">当前站点或已出发站点已锁定，重规划保留办理责任。</p><p v-if="task.reason" class="dispatch-task-reason">{{task.reason}}</p><div class="dispatch-task-actions"><template v-if="own"><button v-if="task.state==='RECOMMENDED'" class="btn primary" :disabled="busy" @click="$emit('action','claim',task)">接下推荐工单</button><button v-if="task.state==='ASSIGNED'&&canDepart" class="btn primary" :disabled="busy" @click="$emit('action','depart',task)">出发前往</button><button v-if="task.state==='EN_ROUTE'" class="btn primary" :disabled="busy" @click="$emit('action','arrive',task)">到达现场</button><button v-if="task.state==='BLOCKED'" class="btn" :disabled="busy" @click="$emit('action','resume',task)">恢复安排</button><button v-if="!['RECOMMENDED','BLOCKED'].includes(task.state)" class="btn" :disabled="busy" @click="$emit('action','block',task)">暂时受阻</button></template><RouterLink :to="'/repairs/'+task.orderId" class="text-link">查看工单与处理 →</RouterLink><StatusBadge :status="task.repairStatus"/></div></article></template>
+<template>
+  <article class="dispatch-task" :class="{ changed: highlighted }">
+    <div class="dispatch-task-heading">
+      <span class="dispatch-task-room">
+        {{ task.buildingName }}
+        <strong class="num">{{ task.roomNo }}</strong>
+        <small>{{ task.floorNo }} 层</small>
+      </span>
+      <span class="dispatch-state" :class="task.state">
+        {{ dispatchTaskNames[task.state] }}
+      </span>
+    </div>
+    <h3>{{ task.title }}</h3>
+    <p class="dispatch-task-id">
+      {{ task.orderNo }}
+      <span v-if="task.priority === 'URGENT'" class="dispatch-urgent">
+        较急
+      </span>
+      <span v-if="highlighted">本次调整</span>
+    </p>
+    <div class="dispatch-task-estimate">
+      <span>
+        预计到达
+        <strong>{{ dateTime(task.estimatedArrival) }}</strong>
+      </span>
+      <span>
+        预计处理
+        <strong>{{ task.serviceMinutes }} 分钟</strong>
+      </span>
+      <span>
+        预计通行
+        <strong>{{ task.travelMinutes }} 分钟</strong>
+      </span>
+    </div>
+    <p v-if="task.windowStart && task.windowEnd" class="dispatch-window">
+      {{ task.windowConfirmed ? "已确认预约" : "可协商时段" }}：{{
+        dateTime(task.windowStart)
+      }}
+      — {{ dateTime(task.windowEnd) }}
+    </p>
+    <p v-if="task.locked" class="dispatch-lock">
+      当前站点或已出发站点已锁定，重规划保留办理责任。
+    </p>
+    <p v-if="task.reason" class="dispatch-task-reason">{{ task.reason }}</p>
+    <div class="dispatch-task-actions">
+      <template v-if="own">
+        <button
+          v-if="task.state === 'RECOMMENDED'"
+          class="btn primary"
+          :disabled="busy"
+          @click="$emit('action', 'claim', task)"
+        >
+          接下推荐工单
+        </button>
+        <button
+          v-if="task.state === 'ASSIGNED' && canDepart"
+          class="btn primary"
+          :disabled="busy"
+          @click="$emit('action', 'depart', task)"
+        >
+          出发前往
+        </button>
+        <button
+          v-if="task.state === 'EN_ROUTE'"
+          class="btn primary"
+          :disabled="busy"
+          @click="$emit('action', 'arrive', task)"
+        >
+          到达现场
+        </button>
+        <button
+          v-if="task.state === 'BLOCKED'"
+          class="btn"
+          :disabled="busy"
+          @click="$emit('action', 'resume', task)"
+        >
+          恢复安排
+        </button>
+        <button
+          v-if="!['RECOMMENDED', 'BLOCKED'].includes(task.state)"
+          class="btn"
+          :disabled="busy"
+          @click="$emit('action', 'block', task)"
+        >
+          暂时受阻
+        </button>
+      </template>
+      <RouterLink :to="'/repairs/' + task.orderId" class="text-link">
+        查看工单与处理 →
+      </RouterLink>
+      <StatusBadge :status="task.repairStatus" />
+    </div>
+  </article>
+</template>

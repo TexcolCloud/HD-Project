@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicInteger;
             "app.seed=true",
             "app.cookie-secure=false",
             "app.ai.api-key=",
+            "app.dispatch.automatic=false",
             "app.files=target/refactor-uploads"
         })
 class BackendRefactorIntegrationTest {
@@ -439,6 +440,75 @@ class BackendRefactorIntegrationTest {
         new org.springframework.transaction.support.TransactionTemplate(transactions)
                 .executeWithoutResult(status -> signals.changed(null, null, reason));
         assertThat(db.count("SELECT COUNT(*) FROM dispatch_event WHERE event_type=?", reason))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void taskProjectionFailureRollsBackRepairAndAllowsRetryWithTheSameKey() throws Exception {
+        String student = token("student1"), manager = token("manager1");
+        var created =
+                request(
+                        student,
+                        "POST",
+                        "/repairs",
+                        Map.of(
+                                "title", "事务内任务投影回归",
+                                "description", "虚构宿舍门锁故障",
+                                "category", "OTHER",
+                                "priority", "NORMAL",
+                                "contactName", "虚构学生",
+                                "contactPhone", "13800000000",
+                                "reportImageIds", List.of()),
+                        UUID.randomUUID().toString());
+        assertThat(created.statusCode()).as(created.body()).isEqualTo(200);
+        String id = json.readTree(created.body()).path("data").path("id").asText();
+        String key = UUID.randomUUID().toString();
+        db.update(
+                "UPDATE dispatch_manager SET accepting_new_tasks=TRUE WHERE user_id=?",
+                auth.authenticate(manager).id());
+        doThrow(new IllegalStateException("injected dispatch fact-store failure"))
+                .when(db)
+                .insert(startsWith("INSERT INTO dispatch_event"), any(Object[].class));
+        var failed =
+                request(
+                        manager,
+                        "POST",
+                        "/repairs/" + id + "/accept",
+                        Map.of("expectedVersion", 0),
+                        key);
+        reset(db);
+        assertThat(failed.statusCode()).isEqualTo(500);
+        var afterFailure =
+                json.readTree(
+                                request(
+                                                student,
+                                                "GET",
+                                                "/repairs/" + id,
+                                                null,
+                                                UUID.randomUUID().toString())
+                                        .body())
+                        .path("data");
+        assertThat(afterFailure.path("status").asText()).isEqualTo("SUBMITTED");
+        assertThat(afterFailure.path("version").asInt()).isZero();
+        assertThat(afterFailure.path("handlerUserId").isNull()).isTrue();
+        assertThat(db.count("SELECT COUNT(*) FROM dispatch_task WHERE order_id=?", id)).isZero();
+        assertThat(
+                        db.count(
+                                "SELECT COUNT(*) FROM repair_event WHERE order_id=? AND"
+                                        + " action='accept'",
+                                id))
+                .isZero();
+        var retried =
+                request(
+                        manager,
+                        "POST",
+                        "/repairs/" + id + "/accept",
+                        Map.of("expectedVersion", 0),
+                        key);
+        assertThat(retried.statusCode()).as(retried.body()).isEqualTo(200);
+        assertThat(json.readTree(retried.body()).path("data").path("status").asText())
+                .isEqualTo("ACCEPTED");
+        assertThat(db.count("SELECT COUNT(*) FROM dispatch_task WHERE active_order_id=?", id))
                 .isEqualTo(1);
     }
 

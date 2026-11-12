@@ -1,15 +1,24 @@
-import type { components, operations } from '../generated/api';
-export type Model<K extends keyof components['schemas']> = components['schemas'][K];
-export type Body<K extends keyof operations> = operations[K] extends {requestBody:{content:{'application/json':infer T}}} ? T : never;
-export type Result<K extends keyof operations> = operations[K] extends {responses:{200:{content:{'application/json':{data:infer T}}}}} ? T : never;
-export type Query = NonNullable<operations['get_rooms']['parameters']['query']>;
-export type User = Model<'User'>;
-export type Building = Model<'Building'>;
-export type Room = Model<'Room'>;
-export type Student = Model<'Student'>;
-export type Residence = Model<'Residence'>;
-export type Repair = Model<'Repair'>;
-export type RepairEvent = Model<'RepairEvent'>;
-export type Hygiene = Model<'Hygiene'>;
-export type Visitor = Model<'Visitor'>;
-export type FileAsset = Model<'FileAsset'>;
+import type { components, operations } from "../generated/api";
+export type Model<K extends keyof components["schemas"]> =
+  components["schemas"][K];
+export type Body<K extends keyof operations> = operations[K] extends {
+  requestBody: { content: { "application/json": infer T } };
+}
+  ? T
+  : never;
+export type Result<K extends keyof operations> = operations[K] extends {
+  responses: { 200: { content: { "application/json": { data: infer T } } } };
+}
+  ? T
+  : never;
+export type Query = NonNullable<operations["get_rooms"]["parameters"]["query"]>;
+export type User = Model<"User">;
+export type Building = Model<"Building">;
+export type Room = Model<"Room">;
+export type Student = Model<"Student">;
+export type Residence = Model<"Residence">;
+export type Repair = Model<"Repair">;
+export type RepairEvent = Model<"RepairEvent">;
+export type Hygiene = Model<"Hygiene">;
+export type Visitor = Model<"Visitor">;
+export type FileAsset = Model<"FileAsset">;

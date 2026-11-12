@@ -1,8 +1,8 @@
 package cn.dormlink.identity;
 
-import cn.dormlink.dispatch.DispatchSignals;
 import cn.dormlink.shared.api.ApiException;
 import cn.dormlink.shared.api.Inputs;
+import cn.dormlink.shared.crypto.Digests;
 import cn.dormlink.shared.jdbc.Db;
 
 import jakarta.servlet.http.*;
@@ -28,19 +28,16 @@ public class AuthService {
     final Db db;
     final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder(10);
     final boolean secure;
-    final DispatchSignals dispatch;
     final TransactionTemplate writes;
     final ApplicationEventPublisher events;
 
     AuthService(
             Db db,
             @Value("${app.cookie-secure}") boolean secure,
-            DispatchSignals dispatch,
             PlatformTransactionManager transactions,
             ApplicationEventPublisher events) {
         this.db = db;
         this.secure = secure;
-        this.dispatch = dispatch;
         this.writes = new TransactionTemplate(transactions);
         this.events = events;
     }
@@ -78,9 +75,6 @@ public class AuthService {
                             Timestamp.from(Instant.now()),
                             actor.id());
                     events.publishEvent(new SessionsRevoked(actor.id(), null));
-                    if (actor.manager()) {
-                        dispatch.changed(null, actor.id(), "PASSWORD_CHANGED");
-                    }
                 });
         clearCookies(response);
     }
@@ -102,7 +96,7 @@ public class AuthService {
         return db.one(
                         "SELECT id FROM auth_session WHERE token_hash=? AND user_id=? AND"
                                 + " revoked_at IS NULL AND expires_at>?",
-                        hash(token),
+                        Digests.sha256(token),
                         current().id(),
                         Timestamp.from(Instant.now()))
                 .get("id")
@@ -156,17 +150,6 @@ public class AuthService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(b);
     }
 
-    public static String hash(String value) {
-        try {
-            return HexFormat.of()
-                    .formatHex(
-                            MessageDigest.getInstance("SHA-256")
-                                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     public Actor authenticate(String token) {
         if (token == null || token.length() > 200) {
             return null;
@@ -178,7 +161,7 @@ public class AuthService {
                             + " sys_user u ON u.id=s.user_id LEFT JOIN student st ON"
                             + " st.user_id=u.id WHERE s.token_hash=? AND s.revoked_at IS NULL AND"
                             + " s.expires_at>? AND u.enabled=TRUE",
-                        hash(token),
+                        Digests.sha256(token),
                         Timestamp.from(Instant.now()));
         return r == null
                 ? null
@@ -219,7 +202,7 @@ public class AuthService {
                     + " auth_session(user_id,token_hash,csrf_token,client_type,expires_at,created_at)"
                     + " VALUES(?,?,?,?,?,?)",
                 id,
-                hash(token),
+                Digests.sha256(token),
                 csrf,
                 type,
                 Timestamp.from(Instant.now().plusSeconds(28800)),
@@ -278,12 +261,9 @@ public class AuthService {
             db.update(
                     "UPDATE auth_session SET revoked_at=? WHERE token_hash=?",
                     Timestamp.from(Instant.now()),
-                    hash(t));
+                    Digests.sha256(t));
         }
         events.publishEvent(new SessionsRevoked(current().id(), current().sessionId()));
         clearCookies(s);
-        if (current().manager()) {
-            dispatch.changed(null, current().id(), "MANAGER_LOGOUT");
-        }
     }
 }

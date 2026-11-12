@@ -95,14 +95,12 @@ it("写请求先取CSRF并使用Cookie与CSRF头，解析data信封", async () =
 it("代理错误返回HTML时给出可读错误，不把空data当成功", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response("<html>proxy</html>", {
-          status: 200,
-          headers: { "Content-Type": "text/html" },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response("<html>proxy</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+    ),
   );
   await expect(request("/rooms")).rejects.toMatchObject({
     code: "INVALID_RESPONSE",

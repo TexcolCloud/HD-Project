@@ -1,0 +1,123 @@
+{
+  "database": "real openGauss isolated dormlink_*_test",
+  "totals": {
+    "tests": 83,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "name": "cn.dormlink.AiAdapterTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "19.089"
+    },
+    {
+      "name": "cn.dormlink.BackendArchitectureTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.211"
+    },
+    {
+      "name": "cn.dormlink.BackendRefactorIntegrationTest",
+      "tests": "11",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "15.046"
+    },
+    {
+      "name": "cn.dormlink.DbJdbcCompatibilityTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.737"
+    },
+    {
+      "name": "cn.dormlink.dispatch.RoutePlannerTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.077"
+    },
+    {
+      "name": "cn.dormlink.DispatchIntegrationTest",
+      "tests": "11",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "11.351"
+    },
+    {
+      "name": "cn.dormlink.media.FileCleanupTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2.483"
+    },
+    {
+      "name": "cn.dormlink.mobility.MobilityEstimatorTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.016"
+    },
+    {
+      "name": "cn.dormlink.mobility.MobilityHttpIntegrationTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "3.095"
+    },
+    {
+      "name": "cn.dormlink.mobility.MobilityServiceTest",
+      "tests": "10",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2.556"
+    },
+    {
+      "name": "cn.dormlink.mobility.TravelLearningTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.014"
+    },
+    {
+      "name": "cn.dormlink.MySqlConcurrencyTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2.686"
+    },
+    {
+      "name": "cn.dormlink.OpenGaussSchemaTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.205"
+    },
+    {
+      "name": "cn.dormlink.PlatformIntegrationTest",
+      "tests": "11",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "7.66"
+    }
+  ]
+}

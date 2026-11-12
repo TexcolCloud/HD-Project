@@ -50,6 +50,9 @@ schemas = {
  'User':obj(dict(id='string',username='string',displayName='string',role='Role',buildingIds='string[]',studentId='string?',currentRoom='Room?')),
  'LoginRequest':obj(dict(username='string',password='string',clientType=enum('WEB','MOBILE'))),
  'LoginResult':obj({'user':'User','token?':'string'}),
+ 'PasswordRequest':obj(dict(oldPassword='string',newPassword='string')),
+ 'LeaveRequest':obj({'expectedVersion':'integer','leftAt?':'string'}),
+ 'ContactResult':obj(dict(phone='string')),
  'Csrf':obj(dict(token='string',headerName='string')),
  'RoomRequest':obj({'buildingId':'string','roomNo':'string','floorNo':'integer','capacity':'integer','enabled?':'boolean','remark?':'string','expectedVersion?':'integer'}),
  'StudentRequest':obj({'studentNo':'string','name':'string','college':'string','major?':'string','grade?':'string','className?':'string','phone':'string','status?':'string','expectedVersion?':'integer'}),
@@ -150,7 +153,7 @@ def add(path, method, output=None, body=None, page=False, binary=False):
         op['requestBody']={'required':True,'content':{'application/json':{'schema':kind(body) if isinstance(body,str) else body}}}
     paths.setdefault(path,{})[method]=op
 
-add('/auth/csrf','get','Csrf');add('/auth/login','post','LoginResult','LoginRequest');add('/auth/me','get','User');add('/auth/logout','post');add('/auth/change-password','post',body=obj(dict(oldPassword='string',newPassword='string')))
+add('/auth/csrf','get','Csrf');add('/auth/login','post','LoginResult','LoginRequest');add('/auth/me','get','User');add('/auth/logout','post');add('/auth/change-password','post',body=schemas['PasswordRequest'])
 for path, entity, req in [('buildings','Building',None),('rooms','Room','RoomRequest'),('students','Student','StudentRequest'),('repairs','Repair','RepairRequest'),('visitors','Visitor','VisitorRequest'),('hygiene-inspections','Hygiene','HygieneRequest')]:
     add('/'+path,'get',entity+'Page',page=True);add('/'+path+'/{id}','get',entity);add('/'+path,'post',entity,req or obj({'code':'string','name':'string','floorCount':'integer','enabled?':'boolean'}))
     if path!='repairs': add('/'+path+'/{id}','patch',entity,req or obj({'code':'string','name':'string','floorCount':'integer','enabled?':'boolean','expectedVersion':'integer'}))
@@ -163,8 +166,8 @@ for action in ('accept','reject','start','finish','confirm','rework','cancel','n
     add('/repairs/{id}/'+action,'post','Repair','ActionRequest')
 add('/repairs/{id}/events','get',None)
 paths['/repairs/{id}/events']['get']['responses']['200']['content']['application/json']['schema']=obj(dict(data='RepairEvent[]',traceId='string'))
-add('/visitors/{id}/leave','post','Visitor',obj({'expectedVersion':'integer','leftAt?':'string'}));add('/visitors/{id}/reveal-contact','post',None)
-paths['/visitors/{id}/reveal-contact']['post']['responses']['200']['content']['application/json']['schema']=obj(dict(data=obj(dict(phone='string')),traceId='string'))
+add('/visitors/{id}/leave','post','Visitor',schemas['LeaveRequest']);add('/visitors/{id}/reveal-contact','post',None)
+paths['/visitors/{id}/reveal-contact']['post']['responses']['200']['content']['application/json']['schema']=obj(dict(data=schemas['ContactResult'],traceId='string'))
 add('/hygiene-inspections/{id}/void','post','Hygiene','ActionRequest')
 add('/hygiene-inspections/{id}/history','get')
 paths['/hygiene-inspections/{id}/history']['get']['responses']['200']['content']['application/json']['schema']=obj(dict(data='CorrectionEvent[]',traceId='string'))

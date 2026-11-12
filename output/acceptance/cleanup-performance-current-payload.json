@@ -1,0 +1,29 @@
+{
+  "/repairs?page=1&pageSize=20": {
+    "status": 200,
+    "dataJsonBytes": 20811,
+    "collectionLengths": {
+      "items": 20
+    },
+    "total": 100001,
+    "itemCount": 20
+  },
+  "/statistics/repairs": {
+    "status": 200,
+    "dataJsonBytes": 3612,
+    "collectionLengths": {
+      "byStatus": 7,
+      "byCategory": 4,
+      "trend": 90
+    }
+  },
+  "/dispatch/board": {
+    "status": 200,
+    "dataJsonBytes": 2003,
+    "collectionLengths": {
+      "routes": 2,
+      "unassigned": 1,
+      "changes": 1
+    }
+  }
+}

@@ -2,6 +2,7 @@ package cn.dormlink.assistance;
 
 import cn.dormlink.identity.AuthService;
 import cn.dormlink.shared.api.ApiException;
+import cn.dormlink.shared.crypto.Digests;
 import cn.dormlink.shared.jdbc.Db;
 
 import org.springframework.stereotype.Component;
@@ -46,7 +47,7 @@ class AiRequestLedger {
     }
 
     String requestHash(AiCommand command) {
-        return AuthService.hash(json.writeValueAsString(canonical(command.body())));
+        return Digests.sha256(json.writeValueAsString(canonical(command.body())));
     }
 
     private Object canonical(Object value) {
@@ -70,7 +71,7 @@ class AiRequestLedger {
                         "SELECT building_id FROM manager_building WHERE manager_user_id=? ORDER BY"
                                 + " building_id",
                         actor.id());
-        return AuthService.hash(
+        return Digests.sha256(
                 json.writeValueAsString(Map.of("role", actor.role(), "buildings", scope)));
     }
 

@@ -1,0 +1,33 @@
+{
+  "label": "maintainability-cleanup",
+  "at": "2026-11-12T08:29:07.804497+00:00",
+  "concurrency": 4,
+  "requestsPerEndpoint": 60,
+  "warmupPerWorker": 2,
+  "endpoints": {
+    "/repairs?page=1&pageSize=20": {
+      "p50Ms": 373.84,
+      "p95Ms": 842.03,
+      "p99Ms": 942.21,
+      "maxMs": 1022.6,
+      "errors": 0,
+      "throughputPerSecond": 9.56
+    },
+    "/statistics/repairs": {
+      "p50Ms": 612.78,
+      "p95Ms": 819.62,
+      "p99Ms": 917.88,
+      "maxMs": 965.27,
+      "errors": 0,
+      "throughputPerSecond": 6.21
+    },
+    "/dispatch/board": {
+      "p50Ms": 59.22,
+      "p95Ms": 110.21,
+      "p99Ms": 120.66,
+      "maxMs": 142.41,
+      "errors": 0,
+      "throughputPerSecond": 59.5
+    }
+  }
+}

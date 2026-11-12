@@ -73,13 +73,14 @@ onMounted(() => window.addEventListener("session-expired", expired));
 onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
 </script>
 <template>
-  <a class="skip-link" href="#main-content">跳到主要内容</a
-  ><template v-if="route.path === '/login'"><RouterView /></template>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <template v-if="route.path === '/login'"><RouterView /></template>
   <div v-else class="app-shell">
     <aside class="sidebar">
-      <RouterLink class="brand" to="/dashboard"
-        >寓见<span>DormLink</span></RouterLink
-      >
+      <RouterLink class="brand" to="/dashboard">
+        寓见
+        <span>DormLink</span>
+      </RouterLink>
       <p class="sidebar-note">学生公寓综合服务平台</p>
       <nav aria-label="管理功能">
         <RouterLink
@@ -87,37 +88,45 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
           :key="path"
           :to="path"
           :class="{ active: route.path.startsWith(path) }"
-          ><Icon :name="icon" />{{ label }}</RouterLink
         >
+          <Icon :name="icon" />
+          {{ label }}
+        </RouterLink>
       </nav>
       <div class="sidebar-foot">
-        <Icon name="shield" /><span>按负责楼栋管理数据</span
-        ><small>入住有档案，服务有回应。</small>
+        <Icon name="shield" />
+        <span>按负责楼栋管理数据</span>
+        <small>入住有档案，服务有回应。</small>
       </div>
     </aside>
     <div class="workspace">
       <header class="topbar">
         <div class="breadcrumb">
-          公寓服务中心<span>/</span><strong>{{ route.meta.title }}</strong>
+          公寓服务中心
+          <span>/</span>
+          <strong>{{ route.meta.title }}</strong>
         </div>
         <div class="top-actions">
           <div class="theme-switch" aria-label="界面主题">
             <button :aria-pressed="theme === 'day'" @click="applyTheme('day')">
-              <Icon name="sun" />暖白日间</button
-            ><button
+              <Icon name="sun" />
+              暖白日间
+            </button>
+            <button
               :aria-pressed="theme === 'night'"
               @click="applyTheme('night')"
             >
-              <Icon name="moon" />暖黑夜间
+              <Icon name="moon" />
+              暖黑夜间
             </button>
           </div>
           <div class="profile">
-            <span class="avatar">{{
-              session.user?.displayName?.slice(0, 1)
-            }}</span>
+            <span class="avatar">
+              {{ session.user?.displayName?.slice(0, 1) }}
+            </span>
             <div>
-              <strong>{{ session.user?.displayName }}</strong
-              ><small>宿管</small>
+              <strong>{{ session.user?.displayName }}</strong>
+              <small>宿管</small>
             </div>
           </div>
           <button
@@ -126,8 +135,9 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
             aria-label="修改密码"
             @click="passwordOpen = true"
           >
-            <Icon name="shield" /></button
-          ><button
+            <Icon name="shield" />
+          </button>
+          <button
             class="icon-button"
             title="退出登录"
             aria-label="退出登录"
@@ -141,8 +151,8 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
         <RouterView />
       </main>
       <footer class="app-footer">
-        <span>寓见 · 学生公寓综合服务管理平台</span
-        ><span>记录与统计均限负责楼栋</span>
+        <span>寓见 · 学生公寓综合服务管理平台</span>
+        <span>记录与统计均限负责楼栋</span>
       </footer>
     </div>
   </div>
@@ -163,30 +173,36 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
     :busy="passwordBusy"
     :dirty="!!oldPassword || !!newPassword"
     @close="passwordOpen = false"
-    ><form class="form" @submit.prevent="changePassword">
+  >
+    <form class="form" @submit.prevent="changePassword">
       <p class="form-note">修改成功后所有会话将失效，需要重新登录。</p>
-      <label
-        >原密码<input
+      <label>
+        原密码
+        <input
           v-model="oldPassword"
           type="password"
           required
-          autocomplete="current-password" /></label
-      ><label
-        >新密码<input
+          autocomplete="current-password"
+        />
+      </label>
+      <label>
+        新密码
+        <input
           v-model="newPassword"
           type="password"
           required
           minlength="10"
           maxlength="128"
           autocomplete="new-password"
-        /><small>至少10位，建议同时包含大小写字母、数字和符号。</small></label
-      >
+        />
+        <small>至少10位，建议同时包含大小写字母、数字和符号。</small>
+      </label>
       <p v-if="passwordError" class="error-banner" role="alert">
         {{ passwordError }}
       </p>
       <button class="btn primary" :disabled="passwordBusy">
         {{ passwordBusy ? "正在修改…" : "修改密码并重新登录" }}
       </button>
-    </form></Drawer
-  >
+    </form>
+  </Drawer>
 </template>

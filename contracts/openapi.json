@@ -7111,6 +7111,46 @@
           "user"
         ]
       },
+      "PasswordRequest": {
+        "type": "object",
+        "properties": {
+          "oldPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "oldPassword",
+          "newPassword"
+        ]
+      },
+      "LeaveRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer"
+          },
+          "leftAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ]
+      },
+      "ContactResult": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
       "Csrf": {
         "type": "object",
         "properties": {

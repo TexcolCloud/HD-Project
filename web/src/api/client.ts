@@ -141,7 +141,8 @@ export async function request<T>(
 export const get = <T>(
   path: string,
   query: Record<string, string | number | null | undefined> = {},
-) => request<T>(path + queryString(query));
+  signal?: AbortSignal,
+) => request<T>(path + queryString(query), { signal });
 export const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "POST", body });
 export const patch = <T>(path: string, body: unknown) =>

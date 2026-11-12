@@ -186,6 +186,17 @@ export interface LoginResult {
   user: User;
   token?: string;
 }
+export interface PasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+export interface LeaveRequest {
+  expectedVersion: number;
+  leftAt?: string;
+}
+export interface ContactResult {
+  phone: string;
+}
 export interface Csrf {
   token: string;
   headerName: string;

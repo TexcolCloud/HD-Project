@@ -21,6 +21,7 @@ jobs:
           python-version: '3.12'
       - run: npm ci --prefix web
       - run: python scripts/check-contracts.py
+      - run: npm run format:check --prefix web
       - run: npm test --prefix web
       - run: node --test harmony/tests/*.test.mjs
       - run: npm run build --prefix web

@@ -194,17 +194,15 @@ onMounted(async () => {
       </p>
     </div>
     <div class="page-actions">
-      <button class="btn" :disabled="busy" @click="refresh">刷新计划</button
-      ><button class="btn" @click="travelOpen = true">通行时间</button>
+      <button class="btn" :disabled="busy" @click="refresh">刷新计划</button>
+      <button class="btn" @click="travelOpen = true">通行时间</button>
     </div>
   </div>
   <div v-if="error" class="error-banner" role="alert">
-    {{ error
-    }}<br />当前保留上次成功读取的计划，重新连通前不执行新的调度操作。<button
-      @click="refresh"
-    >
-      重新读取
-    </button>
+    {{ error }}
+    <br />
+    当前保留上次成功读取的计划，重新连通前不执行新的调度操作。
+    <button @click="refresh">重新读取</button>
   </div>
   <p v-if="operationError && !blockedTask" class="error-banner" role="alert">
     {{ operationError }}
@@ -212,38 +210,43 @@ onMounted(async () => {
   <p v-if="!board && busy" class="loading" role="status">
     正在读取人员与任务计划…
   </p>
-  <template v-if="board"
-    ><div class="dispatch-summary">
+  <template v-if="board">
+    <div class="dispatch-summary">
       <div>
-        <span>在线宿管</span
-        ><strong class="num">{{ board.onlineCount }}<small>人</small></strong>
+        <span>在线宿管</span>
+        <strong class="num">
+          {{ board.onlineCount }}
+          <small>人</small>
+        </strong>
       </div>
       <div>
-        <span>参与调度</span
-        ><strong class="num"
-          >{{ board.participatingCount }}<small>人</small></strong
-        >
+        <span>参与调度</span>
+        <strong class="num">
+          {{ board.participatingCount }}
+          <small>人</small>
+        </strong>
       </div>
       <div>
-        <span>已安排任务</span
-        ><strong class="num"
-          >{{ board.metrics.assignedCount }}<small>笔</small></strong
-        >
+        <span>已安排任务</span>
+        <strong class="num">
+          {{ board.metrics.assignedCount }}
+          <small>笔</small>
+        </strong>
       </div>
       <div>
-        <span>暂未安排</span
-        ><strong class="num"
-          >{{ board.metrics.unassignedCount }}<small>笔</small></strong
-        >
+        <span>暂未安排</span>
+        <strong class="num">
+          {{ board.metrics.unassignedCount }}
+          <small>笔</small>
+        </strong>
       </div>
     </div>
     <section class="dispatch-presence">
       <div>
-        <span class="dispatch-presence-label"
-          ><i :class="{ connected: managerPresence.state === 'online' }" />{{
-            board.me.acceptingNewTasks ? "接受新任务" : "暂停新任务"
-          }}</span
-        >
+        <span class="dispatch-presence-label">
+          <i :class="{ connected: managerPresence.state === 'online' }" />
+          {{ board.me.acceptingNewTasks ? "接受新任务" : "暂停新任务" }}
+        </span>
         <p>
           同账号多端只计一人。{{
             managerPresence.state === "background"
@@ -253,9 +256,9 @@ onMounted(async () => {
                 : "前台每30秒同步活跃状态。"
           }}
         </p>
-        <small v-if="managerPresence.lastResponseAt"
-          >最近心跳回应 {{ dateTime(managerPresence.lastResponseAt) }}</small
-        >
+        <small v-if="managerPresence.lastResponseAt">
+          最近心跳回应 {{ dateTime(managerPresence.lastResponseAt) }}
+        </small>
       </div>
       <div>
         <p>
@@ -271,15 +274,16 @@ onMounted(async () => {
               : "尚未确认"
           }}
         </p>
-        <small
-          >{{
+        <small>
+          {{
             board.me.availableUntil
               ? "可用到 " + dateTime(board.me.availableUntil)
               : "未设置可用截止时刻"
-          }}<template v-if="board.me.positionUpdatedAt">
-            · 位置确认 {{ dateTime(board.me.positionUpdatedAt) }}</template
-          ></small
-        >
+          }}
+          <template v-if="board.me.positionUpdatedAt">
+            · 位置确认 {{ dateTime(board.me.positionUpdatedAt) }}
+          </template>
+        </small>
       </div>
       <div class="button-row">
         <button
@@ -287,10 +291,9 @@ onMounted(async () => {
           :disabled="operationBusy || !board.me.online"
           @click="toggleAccepting"
         >
-          {{ board.me.acceptingNewTasks ? "暂停接单" : "接受新任务" }}</button
-        ><button class="btn" @click="settingsOpen = true">
-          设置位置与时段
+          {{ board.me.acceptingNewTasks ? "暂停接单" : "接受新任务" }}
         </button>
+        <button class="btn" @click="settingsOpen = true">设置位置与时段</button>
       </div>
     </section>
     <section
@@ -305,14 +308,17 @@ onMounted(async () => {
       <button class="btn" @click="settingsOpen = true">设置工作时段</button>
     </section>
     <div class="dispatch-sync-line">
-      <span
-        >计划版本 <b class="num">{{ board.revision }}</b> ·
-        {{ dateTime(board.generatedAt) }}</span
-      ><span v-if="board.dirty" class="dispatch-updating" role="status"
-        >有新变化，正在更新剩余路线…</span
-      ><span v-else
-        >前台每5秒检查新计划 · 最近读取 {{ dateTime(lastCheckedAt) }}</span
-      >
+      <span>
+        计划版本
+        <b class="num">{{ board.revision }}</b>
+        · {{ dateTime(board.generatedAt) }}
+      </span>
+      <span v-if="board.dirty" class="dispatch-updating" role="status">
+        有新变化，正在更新剩余路线…
+      </span>
+      <span v-else>
+        前台每5秒检查新计划 · 最近读取 {{ dateTime(lastCheckedAt) }}
+      </span>
     </div>
     <section
       v-if="board.changes.length || routeChanges.length"
@@ -329,10 +335,10 @@ onMounted(async () => {
         </summary>
         <ul>
           <li v-for="change in routeChanges" :key="change.orderId">
-            <RouterLink :to="'/repairs/' + change.orderId">{{
-              change.title
-            }}</RouterLink
-            ><span>{{ change.detail }}</span>
+            <RouterLink :to="'/repairs/' + change.orderId">
+              {{ change.title }}
+            </RouterLink>
+            <span>{{ change.detail }}</span>
           </li>
         </ul>
       </details>
@@ -420,9 +426,10 @@ onMounted(async () => {
               :key="entry.task.orderId"
             >
               <div class="dispatch-unassigned-heading">
-                <strong
-                  >{{ entry.task.buildingName }} {{ entry.task.roomNo }}</strong
-                ><span>本单候选 {{ entry.candidateCount }} 人</span>
+                <strong>
+                  {{ entry.task.buildingName }} {{ entry.task.roomNo }}
+                </strong>
+                <span>本单候选 {{ entry.candidateCount }} 人</span>
               </div>
               <h3>{{ entry.task.title }}</h3>
               <p>{{ entry.reason }}</p>
@@ -430,8 +437,10 @@ onMounted(async () => {
                 <RouterLink
                   :to="'/repairs/' + entry.task.orderId"
                   class="text-link"
-                  >查看工单与安排 →</RouterLink
-                ><button
+                >
+                  查看工单与安排 →
+                </RouterLink>
+                <button
                   v-if="
                     entry.task.state === 'BLOCKED' &&
                     entry.task.handlerUserId === board.me.userId
@@ -479,10 +488,11 @@ onMounted(async () => {
             :disabled="operationBusy || busy"
             @click="manualReplan"
           >
-            {{ operationBusy ? "正在办理…" : "手动重新规划" }}</button
-          ><small
-            >系统会自动响应新增、完工与人员变化；手动操作用于补充更新。</small
-          >
+            {{ operationBusy ? "正在办理…" : "手动重新规划" }}
+          </button>
+          <small>
+            系统会自动响应新增、完工与人员变化；手动操作用于补充更新。
+          </small>
         </section>
       </aside>
     </div>
@@ -497,18 +507,19 @@ onMounted(async () => {
         class="dispatch-other-route"
       >
         <summary>
-          <span
-            >{{ route.manager.displayName
-            }}<small
-              >{{ route.manager.online ? "在线" : "暂不在线" }} ·
+          <span>
+            {{ route.manager.displayName }}
+            <small>
+              {{ route.manager.online ? "在线" : "暂不在线" }} ·
               {{
                 route.manager.acceptingNewTasks ? "接受新任务" : "暂停新任务"
-              }}</small
-            ></span
-          ><span
-            >{{ route.tasks.length }} 笔 · 预计负载
-            {{ route.workloadMinutes }} 分钟</span
-          >
+              }}
+            </small>
+          </span>
+          <span>
+            {{ route.tasks.length }} 笔 · 预计负载
+            {{ route.workloadMinutes }} 分钟
+          </span>
         </summary>
         <div class="dispatch-remaining">
           <DispatchTaskCard
@@ -525,21 +536,24 @@ onMounted(async () => {
       <p v-if="!otherRoutes.length" class="dispatch-route-empty">
         当前没有其他可见宿管路线。
       </p>
-    </section></template
-  ><DispatchAvailability
+    </section>
+  </template>
+  <DispatchAvailability
     v-if="settingsOpen && board"
     :manager="board.me"
     :buildings="buildings"
     @close="settingsOpen = false"
     @saved="settingsSaved"
-  /><DispatchTravelEditor
+  />
+  <DispatchTravelEditor
     v-if="travelOpen"
     :buildings="buildings"
     @close="
       travelOpen = false;
       refresh();
     "
-  /><Drawer
+  />
+  <Drawer
     v-if="blockedTask"
     title="记录暂时受阻"
     :subtitle="
@@ -552,12 +566,14 @@ onMounted(async () => {
     :busy="operationBusy"
     :dirty="!!blockReason"
     @close="blockedTask = undefined"
-    ><form class="form" @submit.prevent="block">
+  >
+    <form class="form" @submit.prevent="block">
       <p class="info-note">
         受阻后仍保留原办理责任。情况解除后再恢复安排，不会将当前处理中的工单自动派给他人。
       </p>
-      <label
-        >受阻原因 *<textarea
+      <label>
+        受阻原因 *
+        <textarea
           v-model.trim="blockReason"
           required
           minlength="2"
@@ -571,6 +587,6 @@ onMounted(async () => {
       <button class="btn primary" :disabled="operationBusy">
         {{ operationBusy ? "正在保存…" : "保存受阻原因" }}
       </button>
-    </form></Drawer
-  >
+    </form>
+  </Drawer>
 </template>
