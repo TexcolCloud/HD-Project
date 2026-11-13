@@ -42,7 +42,7 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 .\scripts\run-harmony.ps1 -BuildOnly
 ```
 
-鸿蒙脚本默认目标为 `127.0.0.1:5555`，通过 hdc 把设备 8080 转发到开发机。其他已连接目标使用 `-Target '设备标识'`。App 的「服务连接设置」可修改 API 地址，默认 `http://127.0.0.1:8080/api/v1`。当前 HAP 位于 [entry-default-unsigned.hap](harmony/entry/build/default/outputs/default/entry-default-unsigned.hap)，Bundle 为 `com.dormlink.residence`，Ability 为 `EntryAbility`；已在本机模拟器安装，真实手机及发布签名另行配置。
+鸿蒙脚本默认目标为 `127.0.0.1:5555`，通过 hdc 把设备 8080 转发到开发机。其他已连接目标使用 `-Target '设备标识'`。App 的「服务连接设置」可修改 API 地址，默认 `http://127.0.0.1:8080/api/v1`。当前 HAP 位于 `harmony/entry/build/default/outputs/default/entry-default-unsigned.hap`，Bundle 为 `com.dormlink.residence`，Ability 为 `EntryAbility`；已在本机模拟器安装，真实手机及发布签名另行配置。
 
 ## 课程演示账号
 
@@ -76,7 +76,9 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 
 ## 验证与文档
 
-当前配置真实数据库的完整运行107项通过：78项实际openGauss、5项H2、24项纯Java／架构；本地运行注册106项，其中102通过、4项真实库可选用例跳过。Web33项、Harmony80项回放及正式API24构建通过。API1.3包含104个schema并保持1.1兼容；旧HTTP Map适配仍保留，跨模块维修读取使用类型化快照。当前运行包与应用内浏览器／模拟器逐项记录见[16](docs/16-服务闭环与联合验收.md)及[联合验收索引](output/acceptance/closure-delivery.json)，结构治理历史保留在[15](docs/15-结构治理与联合回归.md)。
+本机AI协作指令、个人审美模板和`output/`生成产物不纳入Git。文档中的报告、截图路径用于复核本机记录，新克隆需运行相应脚本生成；CI报告通过GitHub Actions artifacts保存。业务术语、接口契约、项目设计规范与校验脚本继续随源码维护。
+
+当前配置真实数据库的完整运行107项通过：78项实际openGauss、5项H2、24项纯Java／架构；本地运行注册106项，其中102通过、4项真实库可选用例跳过。Web33项、Harmony80项回放及正式API24构建通过。API1.3包含104个schema并保持1.1兼容；旧HTTP Map适配仍保留，跨模块维修读取使用类型化快照。当前运行包与应用内浏览器／模拟器逐项记录见[16](docs/16-服务闭环与联合验收.md)及联合验收索引（本机生成：`output/acceptance/closure-delivery.json`），结构治理历史保留在[15](docs/15-结构治理与联合回归.md)。
 
 ```powershell
 # 本地H2／纯计算；真实库模式另需配置独立测试库及HBA
@@ -88,7 +90,7 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 
 此前openGauss替换已完成22表／567行迁移快照核对、附件保留及跨端工单21闭环；这是重构前的历史验收，见[迁移与验收](docs/10-openGauss迁移与验收.md)。567不是当前目标库总行数，旧MySQL源仍保留。
 
-2026年11月7日的MySQL历史基线及其测试数量保留在[09](docs/09-动态调度交付与验收.md)和[当时汇总](output/acceptance/dispatch-delivery-summary.json)，不冒充本轮openGauss验证。
+2026年11月7日的MySQL历史基线及其测试数量保留在[09](docs/09-动态调度交付与验收.md)和当时汇总（本机生成：`output/acceptance/dispatch-delivery-summary.json`），不冒充本轮openGauss验证。
 
 既有学生图文报修、宿管现场访客与评分有历史实测。本轮另已观察原生整改图文反馈、关联合格复查与验收、正常交接，以及Web官方纯文本研判和人工反馈；完整场景及结果以[16](docs/16-服务闭环与联合验收.md)的最新记录为准。首次改密只验证引导及业务访问限制，未替演示账号提交新密码；临时QA账号已停用。真实手机、官方附图／简报和公网生产环境仍在本次通过范围之外。
 
