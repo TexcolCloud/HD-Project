@@ -51,6 +51,7 @@ def main():
         x=str((left+right)//2); high=str(top+(bottom-top)*3//10); low=str(top+(bottom-top)*3//4)
         print(hdc('shell','uitest','uiInput','swipe',x,low if a.direction=='up' else high,x,high if a.direction=='up' else low,'1500'));return
     if a.action=='capture':
+        OUT.mkdir(parents=True,exist_ok=True)
         remote='/data/local/tmp/'+a.name+'.png'
         hdc('shell','uitest','screenCap','-p',remote)
         print(hdc('file','recv',remote,str(OUT/(a.name+'.png'))));return

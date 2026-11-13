@@ -1,1 +1,0 @@
-{"realOpenGaussVerified":false,"engine":"H2 in-memory JDBC","verifiedAt":"2026-11-11T10:00:10.770345200Z","passed":true,"checks":["non-empty-target-refused-before-copy","bigint-boolean-empty-null-date-utc-millisecond-copy"]}

@@ -16,15 +16,25 @@
 **/*.log
 .playwright-cli/
 .tools/
-output/runtime/
-output/acceptance/harmony-current-layout.json
-output/acceptance/closure-native-*.json
-output/acceptance/_closure_native.py
-output/acceptance/_convert_service_parts.py
-output/acceptance/_finish_native_reports.py
-output/analysis/closure-planner/
-output/analysis/deadline-probe/
-output/analysis/DeadlineBoundaryProbe.java
+/output/
+
+# Local assistant instructions and personal preferences
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+CLAUDE.local.md
+FRONTEND_AESTHETICS.md
+/docs/ai-rules/
+.codex/
+.agents/
+.claude/
+.cursor/
+.cursorrules
+.windsurf/
+.windsurfrules
+GEMINI.md
+/.github/copilot-instructions.md
+/.github/instructions/
 
 # Downloaded Maven distribution; wrapper bootstrap remains versioned.
 backend/.mvn/apache-maven-*/

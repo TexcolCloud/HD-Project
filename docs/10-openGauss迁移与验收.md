@@ -1,12 +1,12 @@
 # openEuler／openGauss 数据库迁移与验收
 
-更新日期：2026年11月11日（Asia/Shanghai）。状态：本轮数据库替换、数据保留迁移、自动化／HTTP／三端联调及最终运行核对已完成。Java API当前以openGauss profile连接openEuler虚拟机中的项目PG库。[统一交付汇总](../output/acceptance/opengauss-delivery-summary.json)记录实际结果；[07](07-开发与验收.md)和[09](09-动态调度交付与验收.md)保留此前MySQL环境的历史结果，不作为本轮openGauss证据。
+更新日期：2026年11月11日（Asia/Shanghai）。状态：本轮数据库替换、数据保留迁移、自动化／HTTP／三端联调及最终运行核对已完成。Java API当前以openGauss profile连接openEuler虚拟机中的项目PG库。统一交付汇总（本机生成：`output/acceptance/opengauss-delivery-summary.json`）记录实际结果；[07](07-开发与验收.md)和[09](09-动态调度交付与验收.md)保留此前MySQL环境的历史结果，不作为本轮openGauss证据。
 
 ## 变更范围
 
 Java后端继续使用Spring JDBC、显式事务、参数化SQL及数据库约束；数据库部署在VMware中的openEuler系统。Vue管理端和原生ArkTS应用仍通过同一Java API访问数据，接口契约、角色权限、R3界面及附件下载入口保持一致。
 
-目标为项目独立的 `dormlink` 库，采用PG兼容模式，避免默认A模式将空字符串视为NULL而改变现有必填字段语义。SSH实际检查为openEuler24.03 LTS-SP4，使用虚拟机中既有的Docker容器 `OpenGauss`，数据库为openGauss-lite7.0.0-RC1、build10d38387、编译日期2025-03-21。容器published15432→5432，持久目录 `/data/OpenGauss`，restart=always；未下载、替换现有镜像或重装虚拟机。原实例默认A库保留，项目主库及platform／dispatch／ai／concurrency四个独立测试库另行创建为PG模式，见[环境记录](../output/acceptance/opengauss-environment.json)。
+目标为项目独立的 `dormlink` 库，采用PG兼容模式，避免默认A模式将空字符串视为NULL而改变现有必填字段语义。SSH实际检查为openEuler24.03 LTS-SP4，使用虚拟机中既有的Docker容器 `OpenGauss`，数据库为openGauss-lite7.0.0-RC1、build10d38387、编译日期2025-03-21。容器published15432→5432，持久目录 `/data/OpenGauss`，restart=always；未下载、替换现有镜像或重装虚拟机。原实例默认A库保留，项目主库及platform／dispatch／ai／concurrency四个独立测试库另行创建为PG模式，见环境记录（本机生成：`output/acceptance/opengauss-environment.json`）。
 
 应用角色 `dormlink`不具有SYSADMIN、CREATEDB或CREATEROLE权限，在专属数据库内拥有所需public schema权限。HBA按项目五个数据库和开发机VMnet8主机 `/32` 放行，该角色来自其他主机的连接拒绝；沿用既有实例MD5认证及原密码加密设置，没有修改全局算法。
 
@@ -60,25 +60,25 @@ SSH和数据库凭据只放入被Git忽略的本机环境文件。文档、脚�
 
 | 检查 | 当前状态 | 证据与实际范围 |
 | --- | --- | --- |
-| SSH与运行环境 | 已核实 | [环境记录](../output/acceptance/opengauss-environment.json)：openEuler24.03 LTS-SP4、现有OpenGauss容器及上述版本／持久目录；SSH凭据仅保留本机 |
+| SSH与运行环境 | 已核实 | 环境记录（本机生成：`output/acceptance/opengauss-environment.json`）：openEuler24.03 LTS-SP4、现有OpenGauss容器及上述版本／持久目录；SSH凭据仅保留本机 |
 | 数据库与授权 | 完成 | 主库与四个测试库均为PG模式，应用角色权限及主机白名单见环境记录 |
-| 后端自动化与打包 | 47通过，0失败／错误／跳过，package成功 | [opengauss-backend-tests.json](../output/acceptance/opengauss-backend-tests.json)：36项在虚拟机openGauss四个隔离PG库执行，3项H2 JDBC／DDL验证，8项纯Java算法；不把47项全部说成真实数据库测试 |
-| 迁移工具隔离自测 | 通过，未验证真实openGauss | [migration-tool-tests.json](../output/acceptance/migration-tool-tests.json)：H2 JDBC验证非空目标拒绝与BIGINT／布尔／空串／NULL／DATE／UTC毫秒复制 |
-| 真实迁移预检 | 通过、目标未改动 | [opengauss-preflight-results.json](../output/acceptance/opengauss-preflight-results.json)：源V2结构、PG目标空库和附件检查 |
-| 数据保留迁移 | 通过 | [opengauss-migration-results.json](../output/acceptance/opengauss-migration-results.json)：21张数据表typedContentMatched=true，另1张schema_migration保留目标PG脚本校验和，共22表；16个序列恢复，6个有效文件与1个DELETED元信息保留 |
-| 重复导入保护 | 按预期拒绝 | [opengauss-nonempty-rejection.json](../output/acceptance/opengauss-nonempty-rejection.json)：迁移后CheckOnly返回TARGET_NOT_EMPTY；报告passed=false表示拒绝重复覆盖，不是首次迁移失败 |
+| 后端自动化与打包 | 47通过，0失败／错误／跳过，package成功 | `output/acceptance/opengauss-backend-tests.json`：36项在虚拟机openGauss四个隔离PG库执行，3项H2 JDBC／DDL验证，8项纯Java算法；不把47项全部说成真实数据库测试 |
+| 迁移工具隔离自测 | 通过，未验证真实openGauss | `output/acceptance/migration-tool-tests.json`：H2 JDBC验证非空目标拒绝与BIGINT／布尔／空串／NULL／DATE／UTC毫秒复制 |
+| 真实迁移预检 | 通过、目标未改动 | `output/acceptance/opengauss-preflight-results.json`：源V2结构、PG目标空库和附件检查 |
+| 数据保留迁移 | 通过 | `output/acceptance/opengauss-migration-results.json`：21张数据表typedContentMatched=true，另1张schema_migration保留目标PG脚本校验和，共22表；16个序列恢复，6个有效文件与1个DELETED元信息保留 |
+| 重复导入保护 | 按预期拒绝 | `output/acceptance/opengauss-nonempty-rejection.json`：迁移后CheckOnly返回TARGET_NOT_EMPTY；报告passed=false表示拒绝重复覆盖，不是首次迁移失败 |
 | 真实数据库并发 | 已包含于上述36项 | 独立concurrency库执行5项原有并发回归；工单认领／调度互斥另在dispatch隔离库验证，明细见后端报告 |
-| 真实基础HTTP | 10组通过 | [opengauss-api-results.json](../output/acceptance/opengauss-api-results.json)：登录／授权、图片、报修闭环、容量、巡检、访客、统计、CSRF及撤销 |
-| 真实调度HTTP | 复跑7组通过，测试单与设置收尾完成 | [opengauss-dispatch-api-results.json](../output/acceptance/opengauss-dispatch-api-results.json)：测试单17–20均关闭，两位宿管settingsRestored=true；[初轮报告](../output/acceptance/opengauss-dispatch-first-results.json)保留旧截止时刻已过期导致自动恢复失败的实际限制，不改写首次记录 |
-| Web构建／自动化 | 12项与构建通过 | [本轮测试记录](../output/acceptance/opengauss-web-tests.txt)；不代表openGauss UI联调 |
-| Web应用内浏览器 | 7组通过 | [opengauss-web-ui-results.json](../output/acceptance/opengauss-web-ui-results.json)：保留数据／旧附件、新图文报修、接单处理结果、原生确认同步、路线与跨端设置；最后重载控制台warning／error为空 |
-| 鸿蒙构建／自动化 | 18项与构建通过 | [本轮测试记录](../output/acceptance/opengauss-harmony-tests.txt)；不代表openGauss设备联调 |
-| 鸿蒙模拟器 | 6组通过 | [opengauss-harmony-ui-results.json](../output/acceptance/opengauss-harmony-ui-results.json)：Pura90／API24，DevEco官方hdc／uitest及系统PhotoViewPicker；学生图文新建、读Web进度与确认、宿管下一站、原生RCP共享设置 |
-| 运行身份与保留数据 | 同源包和真实连接核对通过 | [opengauss-runtime-results.json](../output/acceptance/opengauss-runtime-results.json)：8080的profile为opengauss，health数据库UP，运行JAR与target哈希相同、ERROR0；新旧附件下载200且大小／JPEG一致，源MySQL快照仍完整 |
+| 真实基础HTTP | 10组通过 | `output/acceptance/opengauss-api-results.json`：登录／授权、图片、报修闭环、容量、巡检、访客、统计、CSRF及撤销 |
+| 真实调度HTTP | 复跑7组通过，测试单与设置收尾完成 | `output/acceptance/opengauss-dispatch-api-results.json`：测试单17–20均关闭，两位宿管settingsRestored=true；初轮报告（本机生成：`output/acceptance/opengauss-dispatch-first-results.json`）保留旧截止时刻已过期导致自动恢复失败的实际限制，不改写首次记录 |
+| Web构建／自动化 | 12项与构建通过 | 本轮测试记录（本机生成：`output/acceptance/opengauss-web-tests.txt`）；不代表openGauss UI联调 |
+| Web应用内浏览器 | 7组通过 | `output/acceptance/opengauss-web-ui-results.json`：保留数据／旧附件、新图文报修、接单处理结果、原生确认同步、路线与跨端设置；最后重载控制台warning／error为空 |
+| 鸿蒙构建／自动化 | 18项与构建通过 | 本轮测试记录（本机生成：`output/acceptance/opengauss-harmony-tests.txt`）；不代表openGauss设备联调 |
+| 鸿蒙模拟器 | 6组通过 | `output/acceptance/opengauss-harmony-ui-results.json`：Pura90／API24，DevEco官方hdc／uitest及系统PhotoViewPicker；学生图文新建、读Web进度与确认、宿管下一站、原生RCP共享设置 |
+| 运行身份与保留数据 | 同源包和真实连接核对通过 | `output/acceptance/opengauss-runtime-results.json`：8080的profile为opengauss，health数据库UP，运行JAR与target哈希相同、ERROR0；新旧附件下载200且大小／JPEG一致，源MySQL快照仍完整 |
 
-实际联合流程为：原生student1读取迁移保留的A302入住，通过系统图库选取项目许可的公开庭院夹具、上传故障图片9并新建工单21；IAB的manager1读取同单，接单、开始、上传结果图片10并完工；原生刷新查看处理进度后确认已解决，Web再次刷新显示COMPLETED及submit／accept／start／finish／confirm五条事件。夹具不代表真实学生故障照片。[Web完成截图](../output/acceptance/opengauss-web-completed.png)、[原生完成截图](../output/acceptance/opengauss-harmony-completed.png)及运行证明相互对应。
+实际联合流程为：原生student1读取迁移保留的A302入住，通过系统图库选取项目许可的公开庭院夹具、上传故障图片9并新建工单21；IAB的manager1读取同单，接单、开始、上传结果图片10并完工；原生刷新查看处理进度后确认已解决，Web再次刷新显示COMPLETED及submit／accept／start／finish／confirm五条事件。夹具不代表真实学生故障照片。Web完成截图（本机生成：`output/acceptance/opengauss-web-completed.png`）、原生完成截图（本机生成：`output/acceptance/opengauss-harmony-completed.png`）及运行证明相互对应。
 
-原生manager1的路线显示下一站工单10／A302，同账号Web与原生仍只计1在线／1参与；原生通过RCP将本次可用截止设为2026年11月11日23:00（北京时间），Web自动同步并在重载后保留。该时刻是本轮UI主动保存的新演示设置，不是恢复2026年11月7日已过期的截止时间；保留的B405工单11仍按其旧硬预约过期原因显示待安排。[宿管路线截图](../output/acceptance/opengauss-harmony-delivery.png)与对应UI报告记录此状态。
+原生manager1的路线显示下一站工单10／A302，同账号Web与原生仍只计1在线／1参与；原生通过RCP将本次可用截止设为2026年11月11日23:00（北京时间），Web自动同步并在重载后保留。该时刻是本轮UI主动保存的新演示设置，不是恢复2026年11月7日已过期的截止时间；保留的B405工单11仍按其旧硬预约过期原因显示待安排。宿管路线截图（本机生成：`output/acceptance/opengauss-harmony-delivery.png`）与对应UI报告记录此状态。
 
 本轮实际安装并操作的HAP为1,733,752字节，SHA256为 `7642730312ad1e379e4027a31a467ffd8e639290895dcef408b881da8cdabafb`；不沿用11月7日旧包哈希。Java运行包为33,823,109字节，SHA256为 `6c878dd2d49c9af7c5a5616eb3feee3d9cff56a87af227dda2dd36924f9da22c`，运行副本与target一致。以上是当次交付快照，后续构建或业务操作会产生新产物和记录。
 
