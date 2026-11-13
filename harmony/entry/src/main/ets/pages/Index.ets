@@ -509,12 +509,12 @@ struct Index {
       Text('公寓里的日常，\n清楚，也从容。').fontFamily('DormSerif').fontWeight(FontWeight.Medium).fontSize(32)
         .fontColor(this.ink()).lineHeight(48).width('100%').margin({top: 40, bottom: 16})
       Text('报修、来访与巡检，从这里开始。').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 38})
-      serviceLabel('账号', this.night)
+      serviceLabel({text: '账号', night: this.night})
       TextInput({text: this.username, placeholder: '请输入学校提供的账号'}).id('login-username')
         .onChange((value: string) => this.username = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
         .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(64)
-      serviceLabel('密码', this.night)
+      serviceLabel({text: '密码', night: this.night})
       TextInput({text: this.password, placeholder: '请输入密码'}).id('login-password').type(InputType.Password)
         .onChange((value: string) => this.password = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
@@ -530,7 +530,7 @@ struct Index {
       Button(this.showServer ? '收起服务连接设置' : '服务连接设置').fontSize(12).fontColor(this.muted())
         .backgroundColor(Color.Transparent).height(48).onClick(() => this.showServer = !this.showServer)
       if (this.showServer) {
-        serviceField({label: '服务地址', value: this.server, change: (value: string) => this.server = value, placeholder: 'http://电脑地址:8080/api/v1'}, this.night, this.page)
+        serviceField({label: '服务地址', value: this.server, change: (value: string) => this.server = value, placeholder: 'http://电脑地址:8080/api/v1', night: this.night, page: this.page})
         Text('模拟器默认通过本机端口转发连接；真机请填写可访问的服务地址。').fontSize(12).fontColor(this.muted()).lineHeight(21)
       }
     }.width('100%').alignItems(HorizontalAlign.Start).padding({left: 24, right: 24, top: 32, bottom: 36})
@@ -539,20 +539,20 @@ struct Index {
   @Builder
   private Profile() {
     Column({space: 0}) {
-      serviceSecondary('服务消息（' + this.unreadCount + ' 条未读）', () => this.go('messages'), this.night, this.busy)
-      serviceSecondary('卫生整改任务', () => this.go('remediations'), this.night, this.busy)
-      serviceSecondary(this.messageNotifications ? '关闭前台新消息系统提醒' : '开启前台新消息系统提醒', async () => {
+      serviceSecondary({label: '服务消息（' + this.unreadCount + ' 条未读）', click: () => this.go('messages'), night: this.night, busy: this.busy})
+      serviceSecondary({label: '卫生整改任务', click: () => this.go('remediations'), night: this.night, busy: this.busy})
+      serviceSecondary({label: this.messageNotifications ? '关闭前台新消息系统提醒' : '开启前台新消息系统提醒', click: async () => {
         if (this.messageNotifications) { this.messageNotifications = false; return; }
         try { await DeviceActions.notify(this.getUIContext().getHostContext() as common.UIAbilityContext); this.messageNotifications = true; }
         catch (error) { this.fail(error as Error); }
-      }, this.night, this.busy)
+      }, night: this.night, busy: this.busy})
       Text(this.user?.displayName || '').fontFamily('DormSerif').fontSize(30).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 18})
-      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生'}, this.night)
-      serviceDetail({label: '登录账号', value: this.user?.username || ''}, this.night)
-      if (!this.manager()) { serviceDetail({label: '当前宿舍', value: this.homeState.room ? this.homeState.room.buildingName + ' ' + this.homeState.room.roomNo : '尚未入住'}, this.night) }
+      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生', night: this.night})
+      serviceDetail({label: '登录账号', value: this.user?.username || '', night: this.night})
+      if (!this.manager()) { serviceDetail({label: '当前宿舍', value: this.homeState.room ? this.homeState.room.buildingName + ' ' + this.homeState.room.roomNo : '尚未入住', night: this.night}) }
       Blank().height(24)
-      if (!this.manager()) { servicePrimary('查看入住信息', () => this.go('room'), this.night, this.page, this.busy, false); Blank().height(12) }
-      serviceSecondary('修改密码', () => this.go('password'), this.night, this.busy)
+      if (!this.manager()) { servicePrimary({label: '查看入住信息', click: () => this.go('room'), night: this.night, page: this.page, busy: this.busy, uploading: false}); Blank().height(12) }
+      serviceSecondary({label: '修改密码', click: () => this.go('password'), night: this.night, busy: this.busy})
       Row() {
         Text('暖黑夜间').fontSize(16).fontColor(this.ink()).layoutWeight(1)
         Toggle({type: ToggleType.Switch, isOn: this.night}).selectedColor(this.accent()).onChange((v: boolean) => { this.night = v; this.saveSettings(); })
@@ -566,13 +566,13 @@ struct Index {
   @Builder
   private Password() {
     Column({space: 18}) {
-      serviceLabel('原密码 *', this.night)
+      serviceLabel({text: '原密码 *', night: this.night})
       TextInput({text: this.oldPassword, placeholder: '请输入原密码'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.oldPassword = v)
-      serviceLabel('新密码 *', this.night)
+      serviceLabel({text: '新密码 *', night: this.night})
       TextInput({text: this.newPassword, placeholder: '至少10位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.newPassword = v)
       Text(this.user?.mustChangePassword ? '首次使用或密码重置后，请先设置个人密码。修改成功后重新登录。' : '修改成功后需要重新登录。').fontSize(13).fontColor(this.muted())
-      servicePrimary('确认修改密码', () => this.changePassword(), this.night, this.page, this.busy, false)
-      serviceSecondary('退出当前账号', () => this.logout(), this.night, this.busy)
+      servicePrimary({label: '确认修改密码', click: () => this.changePassword(), night: this.night, page: this.page, busy: this.busy, uploading: false})
+      serviceSecondary({label: '退出当前账号', click: () => this.logout(), night: this.night, busy: this.busy})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 

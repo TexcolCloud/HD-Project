@@ -4445,7 +4445,8 @@
                     "enum": [
                       "REPORT",
                       "RESULT",
-                      "INSPECTION"
+                      "INSPECTION",
+                      "REMEDIATION"
                     ]
                   }
                 },

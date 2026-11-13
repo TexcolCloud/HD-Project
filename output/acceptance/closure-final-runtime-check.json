@@ -1,0 +1,16 @@
+{
+  "verifiedAt": "2026-11-13T02:53:22.5507595Z",
+  "pid": 40324,
+  "runtimeJar": "output/runtime/backend-8080-20261112231530322.jar",
+  "bytes": 33995290,
+  "sha256": "d03d2d5e99d866a0471fe3fa18bcf08aed711e445af2523a0577edb495d0144d",
+  "health": {
+    "database": "UP",
+    "status": "UP"
+  },
+  "isolated8081Listening": false,
+  "isolated8082Listening": false,
+  "mainServiceRestartedByVerifier": false,
+  "apiKeyRead": false,
+  "passed": true
+}

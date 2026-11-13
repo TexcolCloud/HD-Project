@@ -1,0 +1,97 @@
+{
+  "checkedAt": "2026-11-13T01:53:01.008407+00:00",
+  "scope": "Read-only resume verification; no credentials or AI key inspected",
+  "mainPid": 40324,
+  "mainHealth": "UP",
+  "databaseHealth": "UP",
+  "runtimeJar": "output/runtime/backend-8080-20261112231530322.jar",
+  "runtimeBytes": 33995290,
+  "runtimeSha256": "d03d2d5e99d866a0471fe3fa18bcf08aed711e445af2523a0577edb495d0144d",
+  "task1": {
+    "status": "OPEN",
+    "version": 0,
+    "inspectionId": "10"
+  },
+  "inspection10": {
+    "round": "ROUTINE",
+    "totalScore": 89,
+    "version": 0
+  },
+  "qaAccount16": {
+    "enabled": true,
+    "mustChangePassword": true,
+    "accountVersion": 0,
+    "activeSessions": 1
+  },
+  "officialAiFeedback": {
+    "id": "1",
+    "orderId": "23",
+    "decision": "IGNORED"
+  },
+  "officialReportsContainNoCredentialPatterns": true,
+  "testReports": {
+    "h2": {
+      "totals": {
+        "tests": 106,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 4
+      },
+      "byBackend": {
+        "H2 or optional database tests skipped": {
+          "tests": 77,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 4
+        },
+        "pure Java / architecture": {
+          "tests": 24,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "H2": {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "passed": true
+    },
+    "opengauss": {
+      "totals": {
+        "tests": 107,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "byBackend": {
+        "openGauss": {
+          "tests": 78,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "pure Java / architecture": {
+          "tests": 24,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "H2": {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "passed": true
+    }
+  },
+  "pmd": {
+    "violations": 0,
+    "processingErrors": 0,
+    "configurationErrors": 0
+  }
+}

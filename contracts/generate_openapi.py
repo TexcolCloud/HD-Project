@@ -193,7 +193,7 @@ add('/hygiene-inspections/{id}/void','post','Hygiene','ActionRequest')
 add('/hygiene-inspections/{id}/history','get')
 paths['/hygiene-inspections/{id}/history']['get']['responses']['200']['content']['application/json']['schema']=obj(dict(data='CorrectionEvent[]',traceId='string'))
 for name, entity in [('overview','Overview'),('repairs','RepairStatistics'),('hygiene','HygieneStatistics'),('visitors','VisitorStatistics')]:add('/statistics/'+name,'get',entity,page=True)
-add('/files','post','FileAsset');paths['/files']['post']['requestBody']={'required':True,'content':{'multipart/form-data':{'schema':obj(dict(file={'type':'string','format':'binary'},usage=enum('REPORT','RESULT','INSPECTION')))}}}
+add('/files','post','FileAsset');paths['/files']['post']['requestBody']={'required':True,'content':{'multipart/form-data':{'schema':obj(dict(file={'type':'string','format':'binary'},usage=enum('REPORT','RESULT','INSPECTION','REMEDIATION')))}}}
 add('/files/{id}','delete');add('/files/{id}/content','get',binary=True);add('/files/{id}/thumbnail','get',binary=True)
 add('/ai/repair-suggestions','post','AiSuggestion','AiRequest');add('/health','get')
 add('/dispatch/heartbeat','post','DispatchManager','DispatchHeartbeatRequest')

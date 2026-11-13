@@ -4292,7 +4292,7 @@ export interface operations {
                     /** Format: binary */
                     file: string;
                     /** @enum {string} */
-                    usage: "REPORT" | "RESULT" | "INSPECTION";
+                    usage: "REPORT" | "RESULT" | "INSPECTION" | "REMEDIATION";
                 };
             };
         };

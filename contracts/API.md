@@ -37,7 +37,7 @@
 - `POST /auth/login` body `{username,password,clientType:"WEB"|"MOBILE"}` → `{user:User,token?:string}`。WEB服务端Set-Cookie `HD_SESSION` (HttpOnly,SameSite=Lax)，MOBILE返回token使用 `Authorization: Bearer ...`。WEB所有POST/PATCH/DELETE需 `X-XSRF-TOKEN`，登录后重新GET csrf。
 - `GET /auth/me` → `User`；`POST /auth/logout` → `{loggedOut:true}`。
 - `POST /auth/change-password` body `{oldPassword,newPassword}` → `{changed:true}` 并撤销会话。
-- `User={id,username,displayName,role:"MANAGER"|"STUDENT",buildingIds:string[],studentId?:string,currentRoom?:Room}`。
+- `User={id,username,displayName,role:"MANAGER"|"STUDENT",buildingIds:string[],studentId?:string,currentRoom?:Room,mustChangePassword?:boolean}`。
 
 Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用MOBILE bearer，没有CSRF要求。不在客户端保存任何AI密钥。
 
@@ -61,7 +61,7 @@ Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用M
 
 - GET `/buildings` → 分页Building；POST body `{code,name,floorCount,enabled?}` → Building；PATCH `/{id}` body同上+expectedVersion。
 - GET `/rooms` → 分页Room；GET `/{id}` → Room；POST body `{buildingId,roomNo,floorNo,capacity,enabled?,remark?}` → Room；PATCH `/{id}` 同上+expectedVersion。
-- GET `/students` → 分页Student；GET `/{id}` → Student；POST `{studentNo,name,college,major?,grade?,className?,phone,status?}` → Student（自动创建同学号学生账号，初始密码Demo@123456，仅开发seed规则；生产必须由初始化流程配置）；PATCH `/{id}` 同上+expectedVersion。
+- GET `/students` → 分页Student；GET `/{id}` → Student；POST `{studentNo,name,college,major?,grade?,className?,phone,status?}` → Student（创建同学号学生账号，只保存独立随机口令摘要并要求首次改密；核验身份后由[受控维护工具](../docs/17-账号与恢复运行手册.md)签发临时凭据，不返回共享初始密码）；PATCH `/{id}` 同上+expectedVersion。
 - GET `/residences` → 分页Residence；POST `/residences/check-in` `{studentId,roomId,checkedInAt?}` → Residence；POST `/{id}/transfer` `{targetRoomId,reason,expectedVersion}` → 新Residence；POST `/{id}/check-out` `{reason,expectedVersion}` → Residence。
 - GET `/me/room` → Room|null；GET `/me/residences` → 分页Residence。
 
@@ -93,7 +93,7 @@ Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用M
 
 ## 附件和AI
 
-- POST `/files` multipart `file` + `usage=REPORT|RESULT|INSPECTION` → FileAsset；JPEG/PNG/WebP≤10MB，每组最多6（提交业务时验证）。上传后业务绑定前只上传者可读。
+- POST `/files` multipart `file` + `usage=REPORT|RESULT|INSPECTION|REMEDIATION` → FileAsset；REPORT和REMEDIATION仅学生，RESULT和INSPECTION仅宿管。JPEG/PNG/WebP≤10MB，每组最多6（提交业务时验证）。上传后业务绑定前只上传者可读；绑定整改凭证后按当前责任、入住区间和楼栋范围鉴权，旧轮次归档，宿管可按范围读取历史。
 - GET `/files/{id}/content`、`/thumbnail` 图片二进制（需Cookie/Bearer）；DELETE `/{id}`仅本人TEMP → `{deleted:true}`。
 - POST `/ai/repair-suggestions` `{description,imageIds:string[],consentToExternalAnalysis:true}` → `{suggestionId,title,category,summary,uncertainty,questions:string[],riskTags:string[],requiresHumanReview:true}`。未配置返回503 `AI_NOT_CONFIGURED`，不得用假结果替代；手动填写继续可用。
 - GET `/health` 无需登录 → `{status:"UP",database:"UP"}`。
@@ -108,7 +108,7 @@ Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用M
 - `POST /dispatch/replan {expectedRevision?}` → `DispatchBoard`，手工补充重算；新增工单、办理状态与人员资格变化由后端自动触发。
 - `POST /dispatch/tasks/{orderId}/claim {expectedOrderVersion,expectedRevision?}` → `Repair`，复用真实接单及唯一办理责任约束。
 - `POST /dispatch/tasks/{orderId}/{depart|arrive|block|resume} {expectedTaskVersion,reason?}` → `DispatchTask`。受阻必填原因。物理执行状态与维修业务状态独立；到达不自动开始维修，同一宿管只能有一个在途或现场任务。
-- `POST /dispatch/tasks/{orderId}/handoff {targetManagerId,reason,expectedOrderVersion,expectedTaskVersion}` → `Repair`；仅原办理人可交接已接单、未出发／到场任务，接收人需有权限且可参与调度。当前交接界面在Web端。
+- `POST /dispatch/tasks/{orderId}/handoff {targetManagerId,reason,expectedOrderVersion,expectedTaskVersion}` → `Repair`；仅原办理人可交接已接单、未出发／到场任务，接收人需有权限且可参与调度。Web和鸿蒙均提供交接界面；异常接续另见1.3的`takeover`接口，不能用重规划隐式转移责任。
 - `GET /dispatch/travel` → `DispatchTravel`；`PATCH /dispatch/travel/{fromId}/{toId} {minutes,expectedVersion}` → `DispatchTravelLink`。通行时间是楼栋／楼层粒度估算，两个楼栋均需有权限；`baselineTravelMinutes=-1`表示无可比较的提交顺序，不得据此计算节省率。
 - `Repair`新增`windowStart/windowEnd`（ISO8601或null）、`windowConfirmed`、`estimatedMinutes`、`visitRequired`、`waitingReason`；新建请求可选上门偏好起止。`PATCH /repairs/{id}/visit`带订单版本，学生仅能改本人偏好并清除确认，宿管才能确认预约及修改服务安排。仅`SUBMITTED/ACCEPTED/PROCESSING`可编辑。
 
@@ -119,4 +119,4 @@ Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用M
 - `POST /ai/manager/brief`、`POST /ai/manager/repairs/{id}`，请求`ManagerAssistRequest={consentToExternalAnalysis:true,includeImages?:boolean}` → `ManagerAdvice`。
 - 简报仅发送范围内工单摘要和统计；单工单研判可主动附前3张故障图。`facts`和`evidence`由服务端统计／授权查询产生；模型输出不修改工单、人员归属、预约或路线。
 - 请求携带`Idempotency-Key`，同用户／路径／键且相同请求体复用完整成功结果；进行中返回409 `AI_REQUEST_RUNNING`，同键异内容409。明确失败的首次调用503 `AI_UNAVAILABLE`，失败键重放409 `AI_REQUEST_FAILED`；90秒仍未知则409 `AI_RESULT_UNKNOWN`，均不自动再次调用供应商。后两者提示用户明确重新生成；网络未知或进行中重试保留原键，明确终态后下一次主动生成使用新键。
-- 权限在缓存读取前核验，授权范围变化拒绝旧简报缓存；未配置503 `AI_NOT_CONFIGURED`。学生填写助手和宿管助手共用日／分钟额度、并发限制、超时与调用审计。真实DeepSeek密钥尚未配置，协议fixture不代表供应商调用验收。
+- 权限在缓存读取前核验，授权范围变化拒绝旧简报缓存；未配置503 `AI_NOT_CONFIGURED`。学生填写助手和宿管助手共用日／分钟额度、并发限制、超时与调用审计。当前已实际验证官方纯文本工单研判、Web展示及本人建议反馈留档；官方附图研判、值班简报的真实调用未验收，协议fixture不能替代这些场景。证据与边界见[16](../docs/16-服务闭环与联合验收.md)。
