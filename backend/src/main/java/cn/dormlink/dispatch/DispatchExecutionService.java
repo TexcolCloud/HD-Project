@@ -4,6 +4,7 @@ import cn.dormlink.identity.AuthService;
 import cn.dormlink.mobility.MobilityService;
 import cn.dormlink.repairs.RepairService;
 import cn.dormlink.repairs.RepairSnapshot;
+import cn.dormlink.repairs.RepairTakeover;
 import cn.dormlink.repairs.RepairTransfer;
 import cn.dormlink.shared.api.ApiException;
 import cn.dormlink.shared.api.Inputs;
@@ -121,6 +122,97 @@ class DispatchExecutionService {
         return db.one("SELECT * FROM dispatch_task WHERE id=? FOR UPDATE", claim.get("id"));
     }
 
+    Object takeover(String orderId, Map<String, Object> body) {
+        var actor = auth.current();
+        actor.requireManager();
+        db.one("SELECT id FROM repair_order WHERE id=? FOR UPDATE", orderId);
+        var order = repairs.snapshot(orderId);
+        String reason = Inputs.text(body, "reason", 500, true);
+        int orderVersion = Inputs.integer(body, "expectedOrderVersion", 0, Integer.MAX_VALUE);
+        int taskVersion = Inputs.integer(body, "expectedTaskVersion", 0, Integer.MAX_VALUE);
+        if (!Set.of(RepairSnapshot.Status.ACCEPTED, RepairSnapshot.Status.PROCESSING)
+                        .contains(order.status())
+                || order.handlerUserId() == null
+                || actor.id().equals(order.handlerUserId())
+                || order.version() != orderVersion) {
+            throw ApiException.conflict("仅可接续其他宿管负责且尚未完工的任务，请刷新后核对");
+        }
+        var task = lockedClaim(orderId);
+        if (Db.number(task, "version") != taskVersion) {
+            throw ApiException.conflict("任务已更新，请刷新");
+        }
+        var successor = presence.manager(actor.id());
+        if (!repository.participating(successor, Instant.now())
+                || !DispatchRepository.buildingIds(successor).contains(order.buildingId())) {
+            throw ApiException.conflict("接续人须在线、接受任务且具有该楼栋权限");
+        }
+        // Repair ownership is locked above. Do not invert command's actor -> repair lock order by
+        // taking a second user's lock here; a concurrent original-owner command rechecks ownership.
+        var owner =
+                db.one("SELECT id,role,enabled FROM sys_user WHERE id=?", order.handlerUserId());
+        boolean lostEligibility =
+                !Boolean.TRUE.equals(owner.get("enabled"))
+                        || !"MANAGER".equals(owner.get("role"))
+                        || db.count(
+                                        "SELECT COUNT(*) FROM manager_building WHERE"
+                                                + " manager_user_id=? AND building_id=?",
+                                        order.handlerUserId(),
+                                        order.buildingId())
+                                == 0;
+        if (!lostEligibility) {
+            Instant grace = Instant.now().minusSeconds(600);
+            boolean recentLogin =
+                    db.count(
+                                    "SELECT COUNT(*) FROM auth_session WHERE user_id=? AND"
+                                            + " last_seen_at>?",
+                                    order.handlerUserId(),
+                                    Timestamp.from(grace))
+                            > 0;
+            boolean recentWork =
+                    db.count(
+                                    "SELECT COUNT(*) FROM field_work_session WHERE user_id=?"
+                                            + " AND (lease_expires_at>? OR started_at>?)",
+                                    order.handlerUserId(),
+                                    Timestamp.from(grace),
+                                    Timestamp.from(grace))
+                            > 0;
+            var accepted =
+                    db.one("SELECT accepted_at FROM repair_order WHERE id=?", orderId)
+                            .get("acceptedAt");
+            boolean justAccepted =
+                    accepted != null && Instant.parse(accepted.toString()).isAfter(grace);
+            if (recentLogin || recentWork || justAccepted) {
+                throw ApiException.conflict("原办理人仍可接续或尚在10分钟失联宽限内，请联系原办理人正常交接");
+            }
+        }
+        String previousState = task.get("state").toString();
+        ops.changed(
+                db.update(
+                        "UPDATE dispatch_task SET"
+                            + " manager_user_id=?,state='BLOCKED',next_user_id=NULL,reason=?,version=version+1,updated_at=?"
+                            + " WHERE id=? AND version=?",
+                        actor.id(),
+                        reason,
+                        Timestamp.from(Instant.now()),
+                        task.get("id"),
+                        taskVersion));
+        mobility.abandonLeg(order.handlerUserId(), orderId);
+        ops.audit(
+                "DISPATCH_TAKEOVER",
+                "REPAIR",
+                orderId,
+                reason,
+                Map.of(
+                        "previousState",
+                        previousState,
+                        "fromManagerId",
+                        order.handlerUserId(),
+                        "toManagerId",
+                        actor.id()));
+        return repairs.takeover(
+                new RepairTakeover(orderId, orderVersion, order.handlerUserId(), reason));
+    }
+
     Object action(String orderId, String action, Map<String, Object> b) {
         var a = auth.current();
         a.requireManager();
@@ -197,13 +289,17 @@ class DispatchExecutionService {
         if (action.equals("depart")) {
             mobility.departure(a, orderId);
         }
+        if (action.equals("block")) {
+            mobility.abandonLeg(a.id(), orderId);
+        }
         ops.audit(
                 "DISPATCH_" + action.toUpperCase(Locale.ROOT),
                 "REPAIR",
                 orderId,
                 reason,
                 Map.of("from", old, "to", next));
-        signals.changed(orderId, a.id(), "TASK_" + action.toUpperCase(Locale.ROOT));
+        signals.taskChanged(
+                orderId, order.buildingId(), action.toUpperCase(Locale.ROOT), a.id(), version + 1);
         return views.task(repository.activeOrder(orderId), a.id(), null, 0);
     }
 }

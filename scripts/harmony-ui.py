@@ -36,8 +36,9 @@ def layout():
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument('action',choices=['inspect','tap','fill','back','capture','swipe'])
+    p.add_argument('action',choices=['inspect','tap','fill','back','capture','swipe','assert'])
     p.add_argument('--id');p.add_argument('--text');p.add_argument('--value');p.add_argument('--type')
+    p.add_argument('--label',help='For assert: inspect the visible value to the right of this label')
     p.add_argument('--name',default='harmony-current')
     p.add_argument('--direction',choices=['up','down'],default='up')
     a=p.parse_args()
@@ -54,6 +55,30 @@ def main():
         hdc('shell','uitest','screenCap','-p',remote)
         print(hdc('file','recv',remote,str(OUT/(a.name+'.png'))));return
     nodes=layout()
+    if a.action=='assert':
+        if a.value is None:raise ValueError('--value required for assert')
+        if a.id and 'password' in a.id.lower():raise ValueError('Password values must not be asserted or logged')
+        def visible(n):
+            b=list(map(int,re.findall(r'-?\d+',n.get('bounds',''))))
+            return len(b)==4 and b[2]>b[0] and b[3]>b[1] and b[3]>SCREEN[1] and b[1]<SCREEN[3] and n.get('visible')!='false'
+        nodes=[n for n in nodes if visible(n)]
+        if a.label:
+            labels=[n for n in nodes if n.get('type')=='Text' and n.get('text')==a.label]
+            if len(labels)!=1:raise AssertionError('Expected one observed label; found '+str(len(labels)))
+            b=list(map(int,re.findall(r'-?\d+',labels[0]['bounds'])))
+            matches=[]
+            for n in nodes:
+                v=list(map(int,re.findall(r'-?\d+',n.get('bounds',''))))
+                if n.get('type')=='Text' and len(v)==4 and v[0]>=b[2] and abs((v[1]+v[3])-(b[1]+b[3]))<20:
+                    matches.append(n)
+        else:
+            matches=[n for n in nodes if (a.id is not None and n.get('id')==a.id) or (a.text is not None and n.get('text')==a.text)]
+            if a.type:matches=[n for n in matches if n.get('type')==a.type]
+        if len(matches)!=1:raise AssertionError('Expected one observed value; found '+str(len(matches)))
+        actual=matches[0].get('text','')
+        if actual!=a.value:raise AssertionError('Native UI value mismatch: expected '+repr(a.value)+', observed '+repr(actual))
+        print('PASS native UI value:',a.id or a.label or a.text,repr(actual))
+        return
     if a.action=='inspect':
         print(json.dumps([{k:n.get(k) for k in ['type','text','id','bounds','enabled','clickable']} for n in nodes],ensure_ascii=False,indent=2));return
     matches=[n for n in nodes if (a.id is not None and n.get('id')==a.id) or (a.text is not None and n.get('text')==a.text)]

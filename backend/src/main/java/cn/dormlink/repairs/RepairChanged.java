@@ -15,7 +15,8 @@ public record RepairChanged(RepairSnapshot order, Action action, String actorId)
         CANCEL,
         NOTES,
         VISIT,
-        HANDOFF;
+        HANDOFF,
+        TAKEOVER;
 
         static Action fromWire(String value) {
             return valueOf(value.toUpperCase(Locale.ROOT));

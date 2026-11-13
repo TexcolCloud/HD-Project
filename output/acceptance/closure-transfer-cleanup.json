@@ -1,0 +1,5 @@
+{
+  "temporaryTransferDumpsRemoved": 1,
+  "onlyKnownBackupHashRemoved": true,
+  "persistentBackupsAndDatabasesRetained": true
+}

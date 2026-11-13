@@ -86,6 +86,12 @@ public class MobilityController {
         return ApiResponses.ok(service.travelModels(actor), request);
     }
 
+    @GetMapping("/efficiency")
+    public Envelope<Efficiency> efficiency(
+            @AuthenticationPrincipal Actor actor, HttpServletRequest request) {
+        return ApiResponses.ok(service.efficiency(actor), request);
+    }
+
     @PostMapping("/travel-models/{fromId}/{toId}/rollback")
     public Envelope<TravelModel> rollback(
             @AuthenticationPrincipal Actor actor,

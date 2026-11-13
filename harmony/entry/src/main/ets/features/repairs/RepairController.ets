@@ -1,3 +1,4 @@
+import { LocalDrafts } from "../../services/LocalDrafts";
 import { util } from "@kit.ArkTS";
 import { Api, ApiError, UploadedPhoto } from "../../services/Api";
 import {
@@ -21,8 +22,22 @@ import {
 import { WorkspaceHost } from "../WorkspaceHost";
 import { ReadScope } from "../ReadScope";
 
+interface RepairDraft {
+  repairTitle: string;
+  repairDescription: string;
+  repairCategory: string;
+  repairPriority: string;
+  repairUrgentReason: string;
+  contactName: string;
+  contactPhone: string;
+  contactTime: string;
+  visitDraft: VisitWindowDraft;
+}
+
 @Observed
 export class RepairState {
+  draftRestored: boolean = false;
+  draftBlocked: boolean = false;
   busy: boolean = false;
   uploading: boolean = false;
   listLoading: boolean = false;
@@ -58,6 +73,7 @@ export class RepairState {
 
 export class RepairController {
   state: RepairState = new RepairState();
+  private drafts: LocalDrafts | null = null;
   private host: WorkspaceHost;
   private photoDrafts: PhotoDraftController;
   private aiEpoch: number = 0;
@@ -69,6 +85,67 @@ export class RepairController {
   constructor(host: WorkspaceHost, photos: PhotoDraftController) {
     this.host = host;
     this.photoDrafts = photos;
+  }
+  bindDrafts(drafts: LocalDrafts | null): void {
+    this.drafts = drafts;
+    if (!drafts) return;
+    const value = drafts.read("repair");
+    this.state.draftBlocked = drafts.hasPending("repair");
+    if (!value) return;
+    try {
+      const data = JSON.parse(value) as RepairDraft;
+      if (data) {
+        if (typeof data.repairTitle === "string") this.state.repairTitle = data.repairTitle;
+        if (typeof data.repairDescription === "string") this.state.repairDescription = data.repairDescription;
+        if (typeof data.repairCategory === "string") this.state.repairCategory = data.repairCategory;
+        if (typeof data.repairPriority === "string") this.state.repairPriority = data.repairPriority;
+        if (typeof data.repairUrgentReason === "string") this.state.repairUrgentReason = data.repairUrgentReason;
+        if (typeof data.contactName === "string") this.state.contactName = data.contactName;
+        if (typeof data.contactPhone === "string") this.state.contactPhone = data.contactPhone;
+        if (typeof data.contactTime === "string") this.state.contactTime = data.contactTime;
+        if (data.visitDraft) {
+          const draft = new VisitWindowDraft();
+          draft.enabled = data.visitDraft.enabled === true;
+          draft.startDay = data.visitDraft.startDay; draft.startClock = data.visitDraft.startClock;
+          draft.endDay = data.visitDraft.endDay; draft.endClock = data.visitDraft.endClock;
+          this.state.visitDraft = draft;
+        }
+        this.state.draftRestored = true;
+      }
+    } catch (_) { drafts.clear("repair"); }
+  }
+  saveDraft(): void {
+    if (!this.drafts || !(this.state.repairTitle.trim() || this.state.repairDescription.trim())) return;
+    const draft: RepairDraft = {
+      repairTitle: this.state.repairTitle,
+      repairDescription: this.state.repairDescription,
+      repairCategory: this.state.repairCategory,
+      repairPriority: this.state.repairPriority,
+      repairUrgentReason: this.state.repairUrgentReason,
+      contactName: this.state.contactName,
+      contactPhone: this.state.contactPhone,
+      contactTime: this.state.contactTime,
+      visitDraft: this.state.visitDraft
+    };
+    try { this.drafts.save("repair", JSON.stringify(draft)); }
+    catch (error) { this.host.setError("本机草稿保存失败：" + (error as Error).message); }
+  }
+  discardDraft(): void {
+    this.drafts?.clear("repair");
+    this.drafts?.completeKey("repair");
+    const fresh = new RepairState();
+    this.state.repairTitle = fresh.repairTitle;
+    this.state.repairDescription = fresh.repairDescription;
+    this.state.repairCategory = fresh.repairCategory;
+    this.state.repairPriority = fresh.repairPriority;
+    this.state.repairUrgentReason = fresh.repairUrgentReason;
+    this.state.contactName = fresh.contactName;
+    this.state.contactPhone = fresh.contactPhone;
+    this.state.contactTime = fresh.contactTime;
+    this.state.visitDraft = new VisitWindowDraft();
+    this.photoDrafts.clear("REPORT");
+    this.state.draftRestored = false;
+    this.state.draftBlocked = false;
   }
   suspendReads(): void {
     this.listRead.invalidate();
@@ -84,7 +161,12 @@ export class RepairController {
     this.state = new RepairState();
   }
   private requestKey(body: Object, scope: string): string {
-    return this.submissionKeys.reserve(scope, JSON.stringify(body));
+    const signature = JSON.stringify(body);
+    if (scope === "repair" && this.drafts) {
+      this.saveDraft();
+      return this.drafts.reserveKey(scope, signature, (): string => this.submissionKeys.reserve(scope, signature));
+    }
+    return this.submissionKeys.reserve(scope, signature);
   }
   photoChanged(snapshot: PhotoSnapshot): void {
     this.state.uploading = snapshot.busy;
@@ -139,6 +221,7 @@ export class RepairController {
     }
   }
   async submitRepair(): Promise<void> {
+    if (this.state.draftBlocked) { this.host.setError("上次提交结果未确认，请先查看服务记录；确认后可清除草稿重新填写"); return; }
     const epoch = Api.epoch,
       state = this.state;
     if (this.state.busy || this.state.uploading) return;
@@ -202,6 +285,10 @@ export class RepairController {
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
       this.submissionKeys.complete("repair");
+      this.discardDraft();
+      this.drafts?.completeKey("repair");
+      this.drafts?.clear("repair");
+      this.state.draftRestored = false;
       this.state.visitDraft = new VisitWindowDraft();
       this.aiEpoch++;
       this.state.aiBusy = false;
@@ -217,6 +304,7 @@ export class RepairController {
       this.host.flash("报修已提交，可查看处理进度");
       await this.host.openRepair(repair);
     } catch (error) {
+      if (state === this.state && [400, 403, 404, 422, 429].includes((error as ApiError).status)) this.drafts?.completeKey("repair");
       if (state === this.state) this.host.fail(error as Error);
     } finally {
       if (state === this.state && epoch === Api.epoch) this.state.busy = false;

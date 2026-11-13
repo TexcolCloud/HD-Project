@@ -1,3 +1,4 @@
+import { TravelEfficiency } from "./TravelEfficiency";
 import { CampusAnchor, DispatchTask, DispatchRoute } from '../../models/ApiModels';
 import { palette } from '../../components/Palette';
 import { common } from '@kit.AbilityKit';
@@ -6,6 +7,8 @@ import { AppVisibility } from '../dispatch/AppVisibility';
 import { DeviceActions } from './DeviceActions';
 import { MobilityController, MobilitySnapshot } from './MobilityController';
 import { DispatchController, DispatchSnapshot } from '../dispatch/DispatchController';
+
+interface MobilityActionArgs { label: string; id: string; run: () => void; }
 
 @Component
 export struct MobilityPage {
@@ -97,12 +100,13 @@ export struct MobilityPage {
       context.floorNo !== null && context.floorNo === this.target.floorNo;
   }
   @Builder
-  private Action(label: string, id: string, run: () => void) {
-    Button(label).id(id).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
-      .border({width: 1, color: palette(this.night).line}).borderRadius(4).enabled(!this.snapshot.busy).onClick(run)
+  private Action($$: MobilityActionArgs) {
+    Button($$.label).id($$.id).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
+      .border({width: 1, color: palette(this.night).line}).borderRadius(4).enabled(!this.snapshot.busy).onClick($$.run)
   }
   build() {
     Column({space: 16}) {
+      TravelEfficiency({night: this.night, onError: (error: Error) => { this.scanError = error.message; }})
       Text('本次出行辅助').fontFamily('DormSerif').fontSize(28).fontColor(palette(this.night).ink).width('100%')
       Text('设备数据帮助判断移动状态与规划依据。到达、接单、维修完工由你明确确认。').fontSize(14).lineHeight(24).fontColor(palette(this.night).muted).width('100%')
       if (this.snapshot.error) { Text(this.snapshot.error).id('mobility-error').fontSize(14).fontColor(palette(this.night).danger).width('100%') }
@@ -119,8 +123,8 @@ export struct MobilityPage {
       }.width('100%').padding(16).backgroundColor(palette(this.night).surface).borderRadius(4).border({width: 1, color: palette(this.night).line})
       if (this.possibleArrival()) {
         Text('你确认的位置与下一站楼栋／楼层相同，可能已接近目标；请现场核对房间后在路线页确认到达。').fontSize(13).lineHeight(22).fontColor(palette(this.night).accent).width('100%')
-        this.Action('核对下一站', 'mobility-open-route', this.onOpenRoute)
-        this.Action('稍后核对', 'mobility-dismiss-arrival', () => this.dismissedTarget = this.target?.orderId || '')
+        this.Action({label: '核对下一站', id: 'mobility-open-route', run: this.onOpenRoute})
+        this.Action({label: '稍后核对', id: 'mobility-dismiss-arrival', run: () => this.dismissedTarget = this.target?.orderId || ''})
       }
       if (!this.snapshot.collecting) {
         Row({space: 10}) {
@@ -141,8 +145,8 @@ export struct MobilityPage {
           })
         }
       }
-      if (this.snapshot.ownsSource && this.snapshot.view?.session?.state === 'ACTIVE') { this.Action('暂停采集', 'mobility-pause', () => this.controller.action('pause')) }
-      if (this.snapshot.ownsSource) { this.Action('结束本次出行', 'mobility-end', () => this.controller.action('end')) }
+      if (this.snapshot.ownsSource && this.snapshot.view?.session?.state === 'ACTIVE') { this.Action({label: '暂停采集', id: 'mobility-pause', run: () => this.controller.action('pause')}) }
+      if (this.snapshot.ownsSource) { this.Action({label: '结束本次出行', id: 'mobility-end', run: () => this.controller.action('end')}) }
       if (this.snapshot.view?.session?.state === 'ACTIVE' && !this.snapshot.ownsSource) {
         Text('该账号有其他来源正在发布位置。接管会使旧来源失效，不会增加在线宿管人数。').fontSize(13).lineHeight(22).fontColor(palette(this.night).muted).width('100%')
         Button('确认在本机接管').id('mobility-takeover').height(48).fontColor(palette(this.night).accent).backgroundColor(palette(this.night).surface)
@@ -150,7 +154,7 @@ export struct MobilityPage {
       }
       Text('确认当前位置').fontFamily('DormSerif').fontSize(23).fontColor(palette(this.night).ink).width('100%').margin({top: 12})
       Text('锚点只用于规划参考，二维码可被复制，不代表考勤或房间权限。请先开启工作会话。').fontSize(12).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
-      this.Action(this.scanning ? '正在扫码…' : '扫描地点二维码', 'mobility-scan', () => { if (!this.scanning) this.scan(); })
+      this.Action({label: this.scanning ? '正在扫码…' : '扫描地点二维码', id: 'mobility-scan', run: () => { if (!this.scanning) this.scan(); }})
       if (this.scanError) { Text(this.scanError).fontSize(13).fontColor(palette(this.night).danger).width('100%') }
       ForEach(this.snapshot.view?.anchors || [], (anchor: CampusAnchor) => {
         Button(anchor.buildingName + ' · ' + anchor.name + (anchor.floorNo !== null ? ' · ' + anchor.floorNo + '层' : ''))
@@ -164,10 +168,10 @@ export struct MobilityPage {
           Button('确认我在此处').id('mobility-confirm-anchor').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
             .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(this.snapshot.ownsSource && this.snapshot.view?.session?.state === 'ACTIVE')
             .onClick(() => this.confirm())
-          this.Action('取消', 'mobility-cancel-anchor', () => this.preview = null)
+          this.Action({label: '取消', id: 'mobility-cancel-anchor', run: () => this.preview = null})
         }.width('100%').padding(14).backgroundColor(palette(this.night).soft).borderRadius(4)
       }
-      this.Action('刷新会话与位置', 'mobility-refresh', () => this.controller.refresh())
+      this.Action({label: '刷新会话与位置', id: 'mobility-refresh', run: () => this.controller.refresh()})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 }

@@ -47,7 +47,7 @@ schemas = {
  'Visitor':obj(dict(id='string',visitorName='string',phone='string',visitedStudentId='string',studentName='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',purpose='string',remark='string',arrivedAt='string',leftAt='string?',status=enum('VISITING','LEFT'),version='integer')),
  'Hygiene':obj(dict(id='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',inspectionDate='string',round='string',inspectedAt='string',floorScore='integer',deskScore='integer',bedScore='integer',bathroomScore='integer',totalScore='integer',grade='Grade',issueNote='string',remediationNote='string',inspectorName='string',relatedInspectionId='string?',voidedAt='string?',version='integer',images='FileAsset[]')),
  'Overview':obj(dict(roomCount='integer',capacity='integer',occupiedCount='integer',availableCount='integer',occupancyRate='number',openRepairs='integer',pendingConfirmation='integer',visitingCount='integer',todayVisitors='integer',hygieneAverage='number?',rectifyRoomCount='integer')),
- 'User':obj(dict(id='string',username='string',displayName='string',role='Role',buildingIds='string[]',studentId='string?',currentRoom='Room?')),
+ 'User':obj(dict(id='string',username='string',displayName='string',role='Role',buildingIds='string[]',studentId='string?',currentRoom='Room?',**{'mustChangePassword?':'boolean'})),
  'LoginRequest':obj(dict(username='string',password='string',clientType=enum('WEB','MOBILE'))),
  'LoginResult':obj({'user':'User','token?':'string'}),
  'PasswordRequest':obj(dict(oldPassword='string',newPassword='string')),
@@ -93,6 +93,7 @@ schemas.update({
  'DispatchClaimRequest':obj({'expectedOrderVersion':'integer','expectedRevision?':'integer'}),
  'DispatchTaskActionRequest':obj({'expectedTaskVersion':'integer','reason?':'string'}),
  'DispatchHandoffRequest':obj(dict(targetManagerId='string',reason='string',expectedOrderVersion='integer',expectedTaskVersion='integer')),
+ 'DispatchTakeoverRequest':obj(dict(reason='string',expectedOrderVersion='integer',expectedTaskVersion='integer')),
  'RepairVisitRequest':obj({'expectedVersion':'integer','windowStart?':'string?','windowEnd?':'string?','windowConfirmed':'boolean','estimatedMinutes?':'integer','visitRequired':'boolean','waitingReason?':'string'}),
  'DispatchTravelLink':obj(dict(fromBuildingId='string',toBuildingId='string',minutes='integer',estimated='boolean',version='integer')),
  'DispatchTravel':obj(dict(floorMinutes='integer',sameFloorMinutes='integer',links='DispatchTravelLink[]')),
@@ -126,6 +127,7 @@ schemas.update({
  'MobilityTravelModel':obj(dict(fromBuildingId='string',toBuildingId='string',minutes='integer',sampleCount='integer',sessionCount='integer',enabled='boolean',version='integer',updatedAt='string')),
  'MobilityTravelModels':obj(dict(items='MobilityTravelModel[]')),
  'MobilityModelRollbackRequest':obj(dict(expectedVersion='integer')),
+ 'MobilityEfficiency':obj(dict(sampleCount='integer',measuredCount='integer',meanAbsoluteErrorMinutes='number?',predictedMinutes='number?',actualMinutes='number?',personalModelCount='integer',explanation='string')),
 })
 schemas['MobilityBatchRequest']['properties']['samples'].update(minItems=1,maxItems=20)
 schemas['MobilitySample']['properties']['sequence']['minimum']=1
@@ -135,6 +137,25 @@ schemas['MobilityBatchRequest']['properties']['batchId'].update(minLength=1,maxL
 schemas['MobilityStartRequest']['properties']['clientInstanceId'].update(minLength=1,maxLength=80)
 schemas['CampusAnchor']['description']='Scan payload is dormlink-anchor:<scanCode>. Static codes require user confirmation and server authorization; they are not proof of physical presence.'
 schemas['MobilityContext']['description']='Current own-account context, never a raw track. Coordinates expire with the working session. GPS cannot establish a floor or room.'
+
+# Persistent service follow-up: notifications are an authenticated inbox, not remote push.
+schemas.update({
+ 'ServiceMessage':obj(dict(id='string',kind='string',title='string',body='string',businessType='string',businessId='string',createdAt='string',readAt='string?',version='integer')),
+ 'ServiceMessagePage':obj(dict(items='ServiceMessage[]',total='integer',page='integer',pageSize='integer')),
+ 'ServiceMessageSummary':obj(dict(unreadCount='integer',deliveryPending='integer',deliveryFailed='integer')),
+ 'ServiceMessageReadRequest':obj(dict(expectedVersion='integer')),
+ 'RemediationStatus':enum('OPEN','SUBMITTED','CLOSED','CANCELLED'),
+ 'Remediation':obj(dict(id='string',inspectionId='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',responsibleStudentId='string',responsibleName='string',issueNote='string',dueAt='string',status='RemediationStatus',feedbackNote='string',reviewNote='string',relatedRecheckId='string?',createdAt='string',submittedAt='string?',closedAt='string?',version='integer',overdue='boolean',evidenceImages='FileAsset[]')),
+ 'RemediationPage':obj(dict(items='Remediation[]',total='integer',page='integer',pageSize='integer')),
+ 'RemediationRequest':obj(dict(inspectionId='string',responsibleStudentId='string',dueAt='string',issueNote='string')),
+ 'RemediationAssignmentRequest':obj(dict(expectedVersion='integer',responsibleStudentId='string',dueAt='string',reason='string')),
+ 'RemediationCancelRequest':obj(dict(expectedVersion='integer',reason='string')),
+ 'RemediationFeedbackRequest':obj(dict(expectedVersion='integer',feedbackNote='string',imageIds='string[]')),
+ 'RemediationReviewRequest':obj({'expectedVersion':'integer','approved':'boolean','reviewNote':'string','relatedRecheckId?':'string'}),
+ 'AssistFeedback':obj(dict(id='string',orderId='string',suggestionId='string',decision=enum('ADOPTED','MODIFIED','IGNORED'),reason='string',outcome='string',operatorName='string',createdAt='string',canFollowUp='boolean')),
+ 'AssistFeedbackList':obj(dict(items='AssistFeedback[]')),
+ 'AssistFeedbackRequest':obj(dict(suggestionId='string',decision=enum('ADOPTED','MODIFIED','IGNORED'),reason='string',outcome='string')),
+})
 
 paths={}
 def add(path, method, output=None, body=None, page=False, binary=False):
@@ -172,7 +193,7 @@ add('/hygiene-inspections/{id}/void','post','Hygiene','ActionRequest')
 add('/hygiene-inspections/{id}/history','get')
 paths['/hygiene-inspections/{id}/history']['get']['responses']['200']['content']['application/json']['schema']=obj(dict(data='CorrectionEvent[]',traceId='string'))
 for name, entity in [('overview','Overview'),('repairs','RepairStatistics'),('hygiene','HygieneStatistics'),('visitors','VisitorStatistics')]:add('/statistics/'+name,'get',entity,page=True)
-add('/files','post','FileAsset');paths['/files']['post']['requestBody']={'required':True,'content':{'multipart/form-data':{'schema':obj(dict(file={'type':'string','format':'binary'},usage=enum('REPORT','RESULT','INSPECTION')))}}}
+add('/files','post','FileAsset');paths['/files']['post']['requestBody']={'required':True,'content':{'multipart/form-data':{'schema':obj(dict(file={'type':'string','format':'binary'},usage=enum('REPORT','RESULT','INSPECTION','REMEDIATION')))}}}
 add('/files/{id}','delete');add('/files/{id}/content','get',binary=True);add('/files/{id}/thumbnail','get',binary=True)
 add('/ai/repair-suggestions','post','AiSuggestion','AiRequest');add('/health','get')
 add('/dispatch/heartbeat','post','DispatchManager','DispatchHeartbeatRequest')
@@ -183,11 +204,30 @@ add('/dispatch/tasks/{orderId}/claim','post','Repair','DispatchClaimRequest')
 for action in ('depart','arrive','block','resume'):
     add('/dispatch/tasks/{orderId}/'+action,'post','DispatchTask','DispatchTaskActionRequest')
 add('/dispatch/tasks/{orderId}/handoff','post','Repair','DispatchHandoffRequest')
+add('/dispatch/tasks/{orderId}/takeover','post','Repair','DispatchTakeoverRequest')
 add('/dispatch/travel','get','DispatchTravel')
 add('/dispatch/travel/{fromId}/{toId}','patch','DispatchTravelLink','DispatchTravelRequest')
 add('/repairs/{id}/visit','patch','Repair','RepairVisitRequest')
 add('/ai/manager/brief','post','ManagerAdvice','ManagerAssistRequest')
 add('/ai/manager/repairs/{id}','post','ManagerAdvice','ManagerAssistRequest')
+add('/ai/manager/repairs/{id}/feedback','get','AssistFeedbackList')
+add('/ai/manager/repairs/{id}/feedback','post','AssistFeedback','AssistFeedbackRequest')
+add('/messages','get','ServiceMessagePage')
+add('/messages/summary','get','ServiceMessageSummary')
+add('/messages/{id}/read','post','ServiceMessage','ServiceMessageReadRequest')
+add('/hygiene-remediations','get','RemediationPage')
+add('/hygiene-remediations','post','Remediation','RemediationRequest')
+add('/hygiene-remediations/{id}','get','Remediation')
+add('/hygiene-remediations/{id}','patch','Remediation','RemediationAssignmentRequest')
+add('/hygiene-remediations/{id}/cancel','post','Remediation','RemediationCancelRequest')
+add('/hygiene-remediations/{id}/feedback','post','Remediation','RemediationFeedbackRequest')
+add('/hygiene-remediations/{id}/review','post','Remediation','RemediationReviewRequest')
+for query_path, fields in {
+    '/messages': {'page':'integer','pageSize':'integer','unreadOnly':'boolean'},
+    '/hygiene-remediations': {'page':'integer','pageSize':'integer','status':'string','roomId':'string','buildingId':'string','inspectionId':'string','overdueOnly':'boolean'},
+}.items():
+    paths[query_path]['get']['parameters'].extend({'name':name,'in':'query','schema':{'type':value}} for name,value in fields.items())
+
 add('/mobility/session','get','MobilityView')
 add('/mobility/sessions','post','MobilityView','MobilityStartRequest')
 for action in ('pause','resume','end'):
@@ -198,6 +238,7 @@ add('/mobility/anchors','get','CampusAnchors')
 add('/mobility/anchors','post','CampusAnchor','CampusAnchorRequest')
 add('/mobility/anchors/{id}','patch','CampusAnchor','CampusAnchorRequest')
 add('/mobility/travel-models','get','MobilityTravelModels')
+add('/mobility/efficiency','get','MobilityEfficiency')
 add('/mobility/travel-models/{fromId}/{toId}/rollback','post','MobilityTravelModel','MobilityModelRollbackRequest')
-doc={'openapi':'3.0.3','info':{'title':'DormLink Student Housing API','version':'1.2.0'},'servers':[{'url':'http://127.0.0.1:8080/api/v1'}],'paths':paths,'components':{'schemas':schemas,'securitySchemes':{'bearerAuth':{'type':'http','scheme':'bearer'},'cookieAuth':{'type':'apiKey','in':'cookie','name':'HD_SESSION'}}},'security':[{'bearerAuth':[]},{'cookieAuth':[]}]}
+doc={'openapi':'3.0.3','info':{'title':'DormLink Student Housing API','version':'1.3.0'},'servers':[{'url':'http://127.0.0.1:8080/api/v1'}],'paths':paths,'components':{'schemas':schemas,'securitySchemes':{'bearerAuth':{'type':'http','scheme':'bearer'},'cookieAuth':{'type':'apiKey','in':'cookie','name':'HD_SESSION'}}},'security':[{'bearerAuth':[]},{'cookieAuth':[]}]}
 Path(__file__).with_name('openapi.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2),encoding='utf-8')

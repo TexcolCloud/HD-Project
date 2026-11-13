@@ -1,0 +1,11 @@
+{
+  "operation": "check",
+  "passed": true,
+  "database": "UP",
+  "attachmentsReadWrite": true,
+  "diskAbove64MiB": true,
+  "deliveryPending": 0,
+  "deliveryFailed": 0,
+  "plannerDirtyForOver5Minutes": false,
+  "verifiedAt": "2026-11-12T12:00:29.162150+00:00"
+}

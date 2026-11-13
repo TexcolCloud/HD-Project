@@ -10,7 +10,19 @@ public record Actor(
         String studentId,
         String csrf,
         String sessionId,
-        String clientType) {
+        String clientType,
+        boolean mustChangePassword) {
+    public Actor(
+            String id,
+            String name,
+            String role,
+            String studentId,
+            String csrf,
+            String sessionId,
+            String clientType) {
+        this(id, name, role, studentId, csrf, sessionId, clientType, false);
+    }
+
     public Actor(String id, String name, String role, String studentId, String csrf) {
         this(id, name, role, studentId, csrf, null, null);
     }

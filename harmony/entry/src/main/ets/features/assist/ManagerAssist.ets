@@ -1,3 +1,4 @@
+import { AssistFeedback } from "./AssistFeedback";
 import { util } from '@kit.ArkTS';
 import { Api, ApiError } from '../../services/Api';
 import { SubmissionKeys, shouldReleaseAiKey } from '../../services/SubmissionKeys';
@@ -116,6 +117,7 @@ export struct ManagerAssist {
           }, (item: AssistEvidence) => item.orderId)
           Text('生成于 ' + dateText(this.advice.generatedAt)).fontSize(12).fontColor(palette(this.night).muted).width('100%')
         }
+        if (this.orderId) { AssistFeedback({orderId: this.orderId, suggestionId: this.advice?.suggestionId || '', night: this.night, onError: (error: Error) => this.onUnauthorized(error)}) }
       }
     }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor(palette(this.night).soft).borderRadius(4).margin({top: 18, bottom: 16})
   }

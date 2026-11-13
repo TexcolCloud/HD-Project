@@ -470,4 +470,48 @@ public class RepairService {
         changed(id, RepairChanged.Action.HANDOFF);
         return detail(id);
     }
+
+    @Transactional
+    public Object takeover(RepairTakeover command) {
+        String id = command.orderId();
+        db.one("SELECT id FROM repair_order WHERE id=? FOR UPDATE", id);
+        var order = snapshot(id);
+        var actor = auth.current();
+        actor.requireManager();
+        if (!Set.of(RepairSnapshot.Status.ACCEPTED, RepairSnapshot.Status.PROCESSING)
+                        .contains(order.status())
+                || actor.id().equals(order.handlerUserId())
+                || !Objects.equals(command.previousManagerId(), order.handlerUserId())
+                || command.expectedOrderVersion() != order.version()) {
+            throw ApiException.conflict("办理责任或工单状态已变化，请刷新后重新核对");
+        }
+        ops.changed(
+                db.update(
+                        "UPDATE repair_order SET handler_user_id=?,handler_name=?,version=version+1"
+                                + " WHERE id=? AND version=? AND handler_user_id=?",
+                        actor.id(),
+                        actor.name(),
+                        id,
+                        command.expectedOrderVersion(),
+                        command.previousManagerId()));
+        event(
+                id,
+                order.status().name(),
+                order.status().name(),
+                "takeover",
+                command.reason()
+                        + "；由"
+                        + order.handlerName()
+                        + "接续给"
+                        + actor.name()
+                        + "，需核对现场并恢复任务");
+        ops.audit(
+                "REPAIR_TAKEOVER",
+                "REPAIR",
+                id,
+                command.reason(),
+                Map.of("fromManagerId", command.previousManagerId(), "toManagerId", actor.id()));
+        changed(id, RepairChanged.Action.TAKEOVER);
+        return detail(id);
+    }
 }

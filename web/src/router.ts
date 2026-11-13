@@ -1,11 +1,26 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { restoreSession, session } from "./session";
+import { accountDestination, restoreSession, session } from "./session";
 import LoginPage from "./pages/LoginPage.vue";
 import DashboardPage from "./pages/DashboardPage.vue";
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/login", component: LoginPage, meta: { title: "登录" } },
+    {
+      path: "/change-password",
+      component: () => import("./pages/ChangePasswordPage.vue"),
+      meta: { title: "设置登录密码" },
+    },
+    {
+      path: "/messages",
+      component: () => import("./pages/MessagesPage.vue"),
+      meta: { title: "服务消息" },
+    },
+    {
+      path: "/remediations",
+      component: () => import("./pages/RemediationsPage.vue"),
+      meta: { title: "卫生整改" },
+    },
     { path: "/", redirect: "/dashboard" },
     { path: "/dashboard", component: DashboardPage, meta: { title: "工作台" } },
     {
@@ -55,8 +70,12 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   await restoreSession();
   if (to.path === "/login")
-    return session.user?.role === "MANAGER" ? "/dashboard" : true;
+    return session.user?.role === "MANAGER"
+      ? accountDestination(session.user, "/dashboard") || "/dashboard"
+      : true;
   if (session.user?.role !== "MANAGER")
     return { path: "/login", query: { redirect: to.fullPath } };
+  const destination = accountDestination(session.user, to.path);
+  if (destination) return destination;
   return true;
 });

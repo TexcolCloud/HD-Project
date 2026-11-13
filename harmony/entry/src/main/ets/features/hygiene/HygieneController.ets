@@ -1,5 +1,6 @@
+import { LocalDrafts } from "../../services/LocalDrafts";
 import { util } from "@kit.ArkTS";
-import { Api, UploadedPhoto } from "../../services/Api";
+import { Api, ApiError, UploadedPhoto } from "../../services/Api";
 import { SubmissionKeys } from "../../services/SubmissionKeys";
 import {
   Room,
@@ -20,8 +21,24 @@ import {
 import { WorkspaceHost } from "../WorkspaceHost";
 import { ReadScope } from "../ReadScope";
 
+interface HygieneDraft {
+  inspectionRoomId: string;
+  inspectionDate: string;
+  inspectionTime: string;
+  inspectionRound: string;
+  inspectionRelated: string;
+  floorScore: string;
+  deskScore: string;
+  bedScore: string;
+  bathroomScore: string;
+  issueNote: string;
+  remediationNote: string;
+}
+
 @Observed
 export class HygieneState {
+  draftRestored: boolean = false;
+  draftBlocked: boolean = false;
   busy: boolean = false;
   uploading: boolean = false;
   loading: boolean = false;
@@ -48,6 +65,7 @@ export class HygieneState {
 export class HygieneController {
   state: HygieneState = new HygieneState();
   manager: boolean = false;
+  private drafts: LocalDrafts | null = null;
   private host: WorkspaceHost;
   private photoDrafts: PhotoDraftController;
   private inspectionDraftStarted: boolean = false;
@@ -59,6 +77,69 @@ export class HygieneController {
   constructor(host: WorkspaceHost, photos: PhotoDraftController) {
     this.host = host;
     this.photoDrafts = photos;
+  }
+  bindDrafts(drafts: LocalDrafts | null): void {
+    this.drafts = drafts;
+    if (!drafts) return;
+    const value = drafts.read("hygiene");
+    this.state.draftBlocked = drafts.hasPending("hygiene");
+    if (!value) return;
+    try {
+      const data = JSON.parse(value) as HygieneDraft;
+      if (data) {
+        if (typeof data.inspectionRoomId === "string") this.state.inspectionRoomId = data.inspectionRoomId;
+        if (typeof data.inspectionDate === "string") this.state.inspectionDate = data.inspectionDate;
+        if (typeof data.inspectionTime === "string") this.state.inspectionTime = data.inspectionTime;
+        if (typeof data.inspectionRound === "string") this.state.inspectionRound = data.inspectionRound;
+        if (typeof data.inspectionRelated === "string") this.state.inspectionRelated = data.inspectionRelated;
+        if (typeof data.floorScore === "string") this.state.floorScore = data.floorScore;
+        if (typeof data.deskScore === "string") this.state.deskScore = data.deskScore;
+        if (typeof data.bedScore === "string") this.state.bedScore = data.bedScore;
+        if (typeof data.bathroomScore === "string") this.state.bathroomScore = data.bathroomScore;
+        if (typeof data.issueNote === "string") this.state.issueNote = data.issueNote;
+        if (typeof data.remediationNote === "string") this.state.remediationNote = data.remediationNote;
+        this.inspectionDraftStarted = true;
+        this.state.draftRestored = true;
+      }
+    } catch (_) { drafts.clear("hygiene"); }
+  }
+  saveDraft(): void {
+    if (!this.drafts || !(this.state.inspectionRoomId)) return;
+    const draft: HygieneDraft = {
+      inspectionRoomId: this.state.inspectionRoomId,
+      inspectionDate: this.state.inspectionDate,
+      inspectionTime: this.state.inspectionTime,
+      inspectionRound: this.state.inspectionRound,
+      inspectionRelated: this.state.inspectionRelated,
+      floorScore: this.state.floorScore,
+      deskScore: this.state.deskScore,
+      bedScore: this.state.bedScore,
+      bathroomScore: this.state.bathroomScore,
+      issueNote: this.state.issueNote,
+      remediationNote: this.state.remediationNote
+    };
+    try { this.drafts.save("hygiene", JSON.stringify(draft)); }
+    catch (error) { this.host.setError("本机草稿保存失败：" + (error as Error).message); }
+  }
+  discardDraft(): void {
+    this.drafts?.clear("hygiene");
+    this.drafts?.completeKey("hygiene");
+    const fresh = new HygieneState();
+    this.state.inspectionRoomId = fresh.inspectionRoomId;
+    this.state.inspectionDate = fresh.inspectionDate;
+    this.state.inspectionTime = fresh.inspectionTime;
+    this.state.inspectionRound = fresh.inspectionRound;
+    this.state.inspectionRelated = fresh.inspectionRelated;
+    this.state.floorScore = fresh.floorScore;
+    this.state.deskScore = fresh.deskScore;
+    this.state.bedScore = fresh.bedScore;
+    this.state.bathroomScore = fresh.bathroomScore;
+    this.state.issueNote = fresh.issueNote;
+    this.state.remediationNote = fresh.remediationNote;
+    this.photoDrafts.clear("HYGIENE");
+    this.inspectionDraftStarted = false;
+    this.state.draftRestored = false;
+    this.state.draftBlocked = false;
   }
   suspendReads(): void {
     this.listRead.invalidate();
@@ -73,7 +154,12 @@ export class HygieneController {
     this.state = new HygieneState();
   }
   private requestKey(body: Object, scope: string): string {
-    return this.submissionKeys.reserve(scope, JSON.stringify(body));
+    const signature = JSON.stringify(body);
+    if (scope === "hygiene" && this.drafts) {
+      this.saveDraft();
+      return this.drafts.reserveKey(scope, signature, (): string => this.submissionKeys.reserve(scope, signature));
+    }
+    return this.submissionKeys.reserve(scope, signature);
   }
   photoChanged(snapshot: PhotoSnapshot): void {
     this.state.uploading = snapshot.busy;
@@ -102,7 +188,7 @@ export class HygieneController {
           (room: Room): boolean => room.id === this.state.inspectionRoomId,
         )
       )
-        this.state.inspectionRoomId = this.state.rooms.length
+        this.state.inspectionRoomId = !this.state.draftRestored && this.state.rooms.length
           ? this.state.rooms[0].id
           : "";
     } catch (error) {
@@ -182,6 +268,7 @@ export class HygieneController {
   }
 
   async submitHygiene(): Promise<void> {
+    if (this.state.draftBlocked) { this.host.setError("上次提交结果未确认，请先查看服务记录；确认后可清除草稿重新填写"); return; }
     const epoch = Api.epoch,
       state = this.state;
     if (this.state.busy || this.state.uploading) return;
@@ -251,6 +338,10 @@ export class HygieneController {
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
       this.submissionKeys.complete("hygiene");
+      this.discardDraft();
+      this.drafts?.completeKey("hygiene");
+      this.drafts?.clear("hygiene");
+      this.state.draftRestored = false;
       this.inspectionDraftStarted = false;
       this.photoDrafts.clear("HYGIENE");
       this.state.inspectionPhotos = [];
@@ -260,6 +351,7 @@ export class HygieneController {
       this.state.hygienePage = 1;
       this.host.navigate("hygiene");
     } catch (error) {
+      if (state === this.state && [400, 403, 404, 422, 429].includes((error as ApiError).status)) this.drafts?.completeKey("hygiene");
       if (state === this.state) this.host.fail(error as Error);
     } finally {
       if (state === this.state && epoch === Api.epoch) this.state.busy = false;

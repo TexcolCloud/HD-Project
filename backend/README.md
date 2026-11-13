@@ -39,7 +39,7 @@ openGauss初始结构为 `src/main/resources/db/opengauss/schema.sql`，采用PG
 | student2 | 学生，B栋405 |
 | student3 | 学生，未入住 |
 
-本地演示密码统一为 `Demo@123456`，数据库仅保存BCrypt摘要。新建学生账号用户名为学号；当前本地课程演示流程使用同一初始密码，正式对外部署前须改为校方受控账号初始化，并更换全部演示密码。`APP_SEED=false` 禁止空库自动演示初始化；已有数据永不被种子覆盖。
+上述既有种子账号的本地演示密码统一为 `Demo@123456`，数据库仅保存BCrypt摘要。新建学生账号用户名为学号，仅保存独立随机初始口令摘要并要求首次改密；核验身份后，由[受控维护工具](../docs/17-账号与恢复运行手册.md)签发24小时有效临时凭据。对外部署须关闭演示初始化并更换演示凭据；`APP_SEED=false` 禁止空库自动演示初始化，已有数据永不被种子覆盖。
 
 Web先GET `/auth/csrf`，携带Cookie和 `X-XSRF-TOKEN` 登录 `clientType=WEB`；登录后重新GET csrf。服务端为Web设置HttpOnly SameSite Cookie，对Cookie身份的写请求校验数据库会话绑定CSRF token。鸿蒙登录 `clientType=MOBILE` 取得随机Bearer token；数据库只保存其SHA-256摘要。会话绝对有效期8小时，登出、禁用账号及改密撤销；无需JWT或Redis。
 
@@ -55,8 +55,11 @@ Web先GET `/auth/csrf`，携带Cookie和 `X-XSRF-TOKEN` 登录 `clientType=WEB`�
 - 数据范围内入住、工单、卫生、访客统计；SQL持久化，当前指标与区间指标分别计算。
 - 随机会话、楼栋范围、同学生唯一在住、房间行锁、版本检查、同用户事务内幂等记录。
 - 动态多宿管路线：30秒前台心跳、服务端120秒活跃判定、账号去重、跨端共享暂停和可用时段；推荐与实际认领分离，数据库唯一有效claim，出发/到达/受阻/恢复和显式交接独立于维修状态。
+- 时间边界触发一次性调度纠偏；异常接续保留原因和双版本，个人通行校准达到证据门槛后才用于估算。
+- 服务消息与维修、任务及整改写入同事务；收件箱、已读、有限重试及有界超时跟进不会代替业务完成。
+- 卫生整改的责任、期限、图文反馈、关联复查验收、退回和取消；AI建议的本人采纳决策与实际结果留档。
 
-调度应用拆分为 `DispatchPresence`（会话与账号可用性）、`DispatchRepository`（持久化及版本发布）、`DispatchCoordinator`（合并事件与事务外计算）、`DispatchService`（权限和执行规则），纯算法为 `cn.dormlink.dispatch.RoutePlanner`。业务事务提交后只发本机dirty事件，定时器用短事务持久化revision/事件再取快照；计算不占业务事务，发布时锁版本并重新核验工单、人员资格和通行配置指纹。冲突最多重试3次，继续有变化则保留dirty等待下一轮。启动强制重规划，避免进程中断丢失本机dirty信号后继续使用旧结果。
+调度由 `DispatchPresence` 管会话与账号资格、`DispatchRepository` 管快照及发布、`DispatchCoordinator` 合并信号并在事务外计算；`DispatchService` 管看板和配置，`DispatchExecutionService` 管认领、交接及执行。纯算法为 `cn.dormlink.dispatch.RoutePlanner`。业务事实随原事务持久化，提交后只合并重算提示；定时器用短事务更新revision再取快照。发布时锁版本并重新核验工单、人员资格和通行指纹，冲突最多重试3次，仍有变化则保留dirty。启动强制重规划，时间边界同版本只消费一次，避免持续超时引发版本空转。
 
 默认出发点为首个启用授权楼栋1层，未人工确认时 `positionUpdatedAt=null`；首次可用时段为未来8小时，API清空availableUntil后不接受新推荐。楼层移动估算每层2分钟、同层1分钟，A/B栋之间初始化双向5分钟，均为可核对的估算。跨楼通行链接可通过有双方楼栋权限的宿管维护；没有连接返回待安排原因，不用房号算距离。单批最多500个任务，多余项保留明确BATCH_LIMIT原因，不丢弃。
 
@@ -89,7 +92,7 @@ python scripts/acceptance-dispatch.py --report output/acceptance/opengauss-dispa
 
 Java测试默认使用独立H2内存库和随机端口，不读取真实AI密钥。原业务集成测试覆盖登录/撤销、角色/跨楼栋/他人资源、房间筛选、并发最后一个名额、完整工单状态、重复检查与修正审计、上传绑定前后权限、损坏PNG的415错误、新建停用学生禁止登录，以及原始WebP直接multipart上传和JPEG重编码。AI协议测试使用明确的本地HTTP fixture，验证多模态组包、管理研判授权、完整结果缓存、同key并发只调用一次、失败/未知结果不静默重调，以及实际含身份文本的脱敏；它们不代表已经调用真实DeepSeek账号。调度集成测试覆盖presence去重/过期、共享暂停、唯一claim、执行互斥、显式交接和旧计划拒绝发布。`target/red-*.log` 与 `target/green-*.log` 保留本次Red→Green开发记录，实际测试数量及结果在 `target/surefire-reports/`。
 
-真实openGauss测试复用原业务、调度、AI与并发测试边界，并覆盖重构及设备能力。先建立独立的 `dormlink_platform_test`、`dormlink_dispatch_test`、`dormlink_ai_test`、`dormlink_concurrency_test`、`dormlink_refactor_test`、`dormlink_mobility_test`、`dormlink_mobility_http_test` 七个PG库，再从被忽略环境文件加载测试账号，设置 `OPENGAUSS_TEST_USER`、`OPENGAUSS_TEST_PASSWORD` 和带 `{suite}` 占位的 `OPENGAUSS_TEST_URL`（例如 `jdbc:opengauss://<host>:15432/dormlink_{suite}_test?stringtype=unspecified&use_boolean=true&currentSchema=public`），然后执行 `mvnw.cmd test`，或从根目录执行 `scripts/test-backend.ps1 -Database opengauss`。测试拒绝指向主库；未设置该URL时仍使用默认H2／可选MySQL路径。类名 `MySqlConcurrencyTest` 保留以兼容原复现命令，设置上述变量后实际连接openGauss的concurrency测试库。
+真实openGauss测试使用九个独立PG兼容库：`dormlink_platform_test`、`dormlink_dispatch_test`、`dormlink_ai_test`、`dormlink_concurrency_test`、`dormlink_refactor_test`、`dormlink_mobility_test`、`dormlink_mobility_http_test`、`dormlink_account_test`、`dormlink_followup_test`。原七库已准备的本机可按[运行手册](../docs/17-账号与恢复运行手册.md)使用 `opengauss-operations.py prepare-tests` 补齐新增账号、跟进及独立负载库；`dormlink_reliability_test`用于单独混合负载，不计入Maven测试分类。配置 `OPENGAUSS_TEST_USER`、`OPENGAUSS_TEST_PASSWORD` 和带 `{suite}` 占位的 `OPENGAUSS_TEST_URL`（例如 `jdbc:opengauss://<host>:15432/dormlink_{suite}_test?stringtype=unspecified&use_boolean=true&currentSchema=public`），然后执行 `mvnw.cmd test`，或从根目录运行 `scripts/test-backend.ps1 -Database opengauss` 加载被忽略的本机配置。测试拒绝主库；未设置URL时使用H2／可选MySQL路径。`MySqlConcurrencyTest`保留旧类名，但上述配置下实际连接openGauss的concurrency测试库。
 
 真实MySQL并发回归在单独的 `dormlink_concurrency_test` 库运行。先由本机数据库维护账号建此库并授予开发用户权限，然后从被忽略环境文件设置 `DB_USER`、`DB_PASSWORD`，设置 `MYSQL_TEST_URL` 指向该测试库，执行 `mvnw.cmd -Dtest=MySqlConcurrencyTest test`。不设置此变量时默认跳过，且测试拒绝指向正在演示的dormlink库。
 
@@ -101,6 +104,6 @@ Java测试默认使用独立H2内存库和随机端口，不读取真实AI密钥
 
 `SecurityConfig/AuthService` 管身份和CSRF；`BusinessSupport` 管事务内幂等和审计；`HousingService` 管入住锁；`RepairService` 管状态；`OperationsService` 管访客/卫生；`FileService` 管图片；`StatisticsService` 管口径；`AiService` 管外部模型。各Controller只做HTTP路由和统一响应包装。
 
-`dispatch` 单向调用维修快照与命令，`RepairChanged` 同步维护调度投影并参与原事务回滚；禁止把该监听改为异步。`DispatchService` 管看板和配置，`DispatchExecutionService` 管任务执行／交接。设备服务入口保留事务，包内按工作会话、观测、锚点组织，具名 SQL 集中在仓储。`BackendArchitectureTest` 在常规 Maven 测试中检查所有业务与共享子包的依赖环、基础设施反向依赖和公共维修接口的弱类型泄漏。最新测试与边界见[15](../docs/15-结构治理与联合回归.md)。
+`dispatch` 单向调用维修快照与命令，`RepairChanged` 同步维护调度投影并参与原事务回滚；禁止把该监听改为异步。设备服务入口保留事务，包内按工作会话、观测、锚点组织，具名SQL集中在仓储。`followup`消费同步业务事实维护私有消息，整改与AI反馈分别归属`fieldservice`与`assistance`。`BackendArchitectureTest`检查业务与共享子包依赖环、基础设施反向依赖及公共维修接口的弱类型泄漏。最新测试分类、交互证据和边界见[16](../docs/16-服务闭环与联合验收.md)，[15](../docs/15-结构治理与联合回归.md)保留前次结构治理记录。
 
-已知边界：单校单实例；按房间容量，无独立床号；受控初始化维护宿管账号和楼栋授权；普通业务界面不开放任意角色赋予或工单转派。私有附件目录和数据库需一起备份恢复。
+已知边界：单校单实例；按房间容量，无独立床号。宿管账号及楼栋授权由本机受控维护工具管理，普通业务界面不开放任意角色赋予；工单只允许满足资格和版本约束的显式交接／异常接续。私有附件和数据库需配套备份恢复，实际恢复证据及部署边界见[17](../docs/17-账号与恢复运行手册.md)。

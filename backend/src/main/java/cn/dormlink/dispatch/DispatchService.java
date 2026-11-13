@@ -104,6 +104,10 @@ class DispatchService {
                 Objects.toString(row.get("taskReason"), "").isBlank()
                         ? "行程按楼栋/楼层估算；未人工定位时使用默认出发点"
                         : row.get("taskReason"));
+        String warning = DispatchDeadlines.warning(row, stop, Instant.now());
+        if (!warning.isBlank()) {
+            out.put("reason", warning + "；" + out.get("reason"));
+        }
         return out;
     }
 

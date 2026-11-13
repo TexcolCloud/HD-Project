@@ -37,6 +37,14 @@ export class DeviceActions {
       title: '公寓服务预约', startTime: Date.parse(repair.windowStart), endTime: Date.parse(repair.windowEnd),
       description: '请在寓见公寓登录后查看工单与地点', reminderTime: [15] });
   }
+  static async serviceMessage(): Promise<void> {
+    const epoch = Api.epoch;
+    const enabled = await notificationManager.isNotificationEnabled();
+    Api.assertCurrent(epoch);
+    if (!enabled) return;
+    await notificationManager.publish({id: 43, content: {notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
+      normal: {title: '公寓服务有新消息', text: '请打开寓见并登录查看服务事项'}}});
+  }
   static async notify(context: common.UIAbilityContext): Promise<void> {
     if (!await notificationManager.isNotificationEnabled()) await notificationManager.requestEnableNotification(context);
     await notificationManager.publish({ id: 42, content: { notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,

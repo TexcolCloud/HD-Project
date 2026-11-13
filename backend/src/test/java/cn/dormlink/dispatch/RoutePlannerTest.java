@@ -13,6 +13,64 @@ class RoutePlannerTest {
     final Instant now = Instant.parse("2026-11-07T00:00:00Z");
 
     @Test
+    void personalEntranceCalibrationChangesOnlyThatWorkersTravelEstimate() {
+        var location = new RoutePlanner.Node("A", 1);
+        var worker =
+                new RoutePlanner.Worker(
+                        "1",
+                        Set.of("A", "B"),
+                        true,
+                        now.plusSeconds(7200),
+                        location,
+                        List.of(),
+                        Map.of("A:B", 6));
+        var ordinary =
+                new RoutePlanner.Worker(
+                        "2", Set.of("A", "B"), true, now.plusSeconds(7200), location, List.of());
+        var job =
+                new RoutePlanner.Job(
+                        "one",
+                        new RoutePlanner.Node("B", 1),
+                        "NORMAL",
+                        now,
+                        10,
+                        null,
+                        null,
+                        false,
+                        "1",
+                        false,
+                        null,
+                        -1);
+        var input =
+                new RoutePlanner.Snapshot(
+                        now, List.of(worker, ordinary), List.of(job), Map.of("A:B", 8), 2, 1);
+        var result = new RoutePlanner().plan(input);
+        assertThat(
+                        result.routes().stream()
+                                .filter(route -> route.managerId().equals("1"))
+                                .findFirst()
+                                .orElseThrow()
+                                .stops()
+                                .getFirst()
+                                .travelMinutes())
+                .isEqualTo(8);
+        var baselineWorker =
+                new RoutePlanner.Worker(
+                        "1", Set.of("A", "B"), true, now.plusSeconds(7200), location, List.of());
+        var baseline =
+                new RoutePlanner()
+                        .plan(
+                                new RoutePlanner.Snapshot(
+                                        now,
+                                        List.of(baselineWorker),
+                                        List.of(job),
+                                        Map.of("A:B", 8),
+                                        2,
+                                        1));
+        assertThat(baseline.routes().getFirst().stops().getFirst().travelMinutes()).isEqualTo(10);
+    }
+
+    @Test
     void exhaustedSearchReturnsOnlyCurrentlyFeasibleWorkAndExplainsEveryRemainingJob() {
         var worker =
                 new RoutePlanner.Worker(

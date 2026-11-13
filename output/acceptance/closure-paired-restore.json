@@ -1,0 +1,16 @@
+{
+  "operation": "restore",
+  "passed": true,
+  "targetDatabase": "dormlink_recovery_20261112_closure3_test",
+  "targetUploads": "data\\recovery\\dormlink_recovery_20261112_closure3_test\\uploads",
+  "tableCountsMatch": true,
+  "repairAndProgressDigestsMatch": true,
+  "attachmentMetadataMatch": true,
+  "attachmentHashesMatch": true,
+  "restoredSessionsRevoked": true,
+  "repairCount": 23,
+  "assetCount": 8,
+  "copiedFileCount": 8,
+  "liveDatabaseOverwritten": false,
+  "verifiedAt": "2026-11-12T11:35:19.905415+00:00"
+}

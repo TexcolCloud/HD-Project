@@ -62,6 +62,9 @@ async function submit() {
         <p class="section-note">宿管管理端</p>
         <h2>欢迎回来</h2>
         <p class="muted">使用宿管账号登录，查看负责楼栋的服务事项。</p>
+        <p class="muted">
+          忘记密码或未收到初始凭据，请联系学校账号维护人员核验身份后处理。
+        </p>
         <label>
           账号
           <input
@@ -91,7 +94,7 @@ async function submit() {
           <Icon name="arrow" />
         </button>
         <p class="form-note">
-          账号与楼栋范围由学校配置。学生服务请使用鸿蒙端。
+          账号与楼栋范围由学校配置。遗失密码请联系学校维护人员核验身份后重置。学生服务请使用鸿蒙端。
         </p>
       </form>
       <span class="login-footer">寓见 · 公寓服务工作台</span>

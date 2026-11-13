@@ -1,7 +1,12 @@
 import { palette } from './Palette';
 
-export interface FieldArgs { label: string; value: string; change: (value: string) => void; placeholder?: string; multiline?: boolean; }
-export interface DetailArgs { label: string; value: string; }
+export interface LabelArgs { text: string; night: boolean; }
+export interface FieldArgs { label: string; value: string; change: (value: string) => void; night: boolean; page: string; placeholder?: string; multiline?: boolean; }
+export interface DetailArgs { label: string; value: string; night: boolean; }
+export interface PrimaryArgs { label: string; click: () => void; night: boolean; page: string; busy?: boolean; uploading?: boolean; enabled?: boolean; }
+export interface SecondaryArgs { label: string; click: () => void; night: boolean; busy?: boolean; }
+export interface SectionArgs { title: string; night: boolean; action?: string; click?: () => void; }
+export interface EmptyArgs { message: string; night: boolean; }
 
 export function fieldInputId(label: string, page: string): string {
   if (label === '报修标题 *') return 'repair-title';
@@ -31,56 +36,58 @@ export function repairStatusColor(status: string, night: boolean): string {
   return palette(night).muted;
 }
 
+// ArkUI tracks Builder state only through one directly supplied object literal.
+// Keep dynamic content, theme and button state in the same reference parameter.
 @Builder
-export function serviceLabel(text: string, night: boolean) { Text(text).fontSize(15).fontColor(palette(night).ink).fontWeight(FontWeight.Medium).width('100%') }
+export function serviceLabel($$: LabelArgs) { Text($$.text).fontSize(15).fontColor(palette($$.night).ink).fontWeight(FontWeight.Medium).width('100%') }
 
 @Builder
-export function serviceField($$: FieldArgs, night: boolean, page: string) {
+export function serviceField($$: FieldArgs) {
   Column({space: 8}) {
-    serviceLabel($$.label, night)
+    serviceLabel({text: $$.label, night: $$.night})
     if ($$.multiline) {
-      TextArea({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, page)).onChange($$.change).fontSize(16).fontColor(palette(night).ink)
-        .placeholderColor(palette(night).muted).backgroundColor(palette(night).surface).border({width: 1, color: palette(night).line})
+      TextArea({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, $$.page)).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
+        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
         .borderRadius(4).padding(12).height(112).maxLength(1000)
     } else {
-      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, page)).onChange($$.change).fontSize(16).fontColor(palette(night).ink)
-        .placeholderColor(palette(night).muted).backgroundColor(palette(night).surface).border({width: 1, color: palette(night).line})
+      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, $$.page)).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
+        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
         .borderRadius(4).padding({left: 12, right: 12}).height(50).maxLength(150)
     }
   }.alignItems(HorizontalAlign.Start).width('100%').margin({bottom: 18})
 }
 
 @Builder
-export function servicePrimary(label: string, click: () => void, night: boolean, page: string, busy: boolean = false, uploading: boolean = false, enabled: boolean = true) {
-  Button(busy ? '正在保存…' : label).id(primaryInputId(page)).width('100%').height(50).fontSize(16).fontWeight(FontWeight.Medium)
-    .backgroundColor(palette(night).ink).fontColor(palette(night).onPrimary).borderRadius(4)
-    .enabled(enabled && !busy && !uploading).onClick(click)
+export function servicePrimary($$: PrimaryArgs) {
+  Button($$.busy ? '正在保存…' : $$.label).id(primaryInputId($$.page)).width('100%').height(50).fontSize(16).fontWeight(FontWeight.Medium)
+    .backgroundColor(palette($$.night).ink).fontColor(palette($$.night).onPrimary).borderRadius(4)
+    .enabled($$.enabled !== false && !$$.busy && !$$.uploading).onClick($$.click)
 }
 
 @Builder
-export function serviceSecondary(label: string, click: () => void, night: boolean, busy: boolean = false) {
-  Button(label).height(48).fontSize(14).fontColor(palette(night).ink).backgroundColor(palette(night).surface)
-    .border({width: 1, color: palette(night).line}).borderRadius(4).enabled(!busy).onClick(click)
+export function serviceSecondary($$: SecondaryArgs) {
+  Button($$.label).height(48).fontSize(14).fontColor(palette($$.night).ink).backgroundColor(palette($$.night).surface)
+    .border({width: 1, color: palette($$.night).line}).borderRadius(4).enabled(!$$.busy).onClick($$.click)
 }
 
 @Builder
-export function serviceSection(title: string, night: boolean, action: string = '', click: () => void = () => {}) {
+export function serviceSection($$: SectionArgs) {
   Row() {
-    Text(title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(palette(night).ink).layoutWeight(1)
-    if (action) { Button(action + ' →').fontSize(13).fontColor(palette(night).ink).backgroundColor(Color.Transparent).height(48).onClick(click) }
+    Text($$.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(palette($$.night).ink).layoutWeight(1)
+    if ($$.action) { Button($$.action + ' →').fontSize(13).fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).height(48).onClick(() => { if ($$.click) $$.click(); }) }
   }.width('100%').margin({top: 18, bottom: 8})
 }
 
 @Builder
-export function serviceEmpty(message: string, night: boolean) {
-  Text(message).fontSize(14).fontColor(palette(night).muted).lineHeight(24).width('100%').padding(24)
-    .backgroundColor(palette(night).soft).borderRadius(4).textAlign(TextAlign.Center)
+export function serviceEmpty($$: EmptyArgs) {
+  Text($$.message).fontSize(14).fontColor(palette($$.night).muted).lineHeight(24).width('100%').padding(24)
+    .backgroundColor(palette($$.night).soft).borderRadius(4).textAlign(TextAlign.Center)
 }
 
 @Builder
-export function serviceDetail($$: DetailArgs, night: boolean) {
+export function serviceDetail($$: DetailArgs) {
   Row({space: 16}) {
-    Text($$.label).fontSize(13).fontColor(palette(night).muted).width(88)
-    Text($$.value || '未填写').fontSize(14).fontColor(palette(night).ink).layoutWeight(1).textAlign(TextAlign.End)
-  }.width('100%').padding({top: 10, bottom: 10}).border({width: {bottom: 0.5}, color: palette(night).line})
+    Text($$.label).fontSize(13).fontColor(palette($$.night).muted).width(88)
+    Text($$.value || '未填写').fontSize(14).fontColor(palette($$.night).ink).layoutWeight(1).textAlign(TextAlign.End)
+  }.width('100%').padding({top: 10, bottom: 10}).border({width: {bottom: 0.5}, color: palette($$.night).line})
 }

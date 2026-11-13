@@ -916,6 +916,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dispatch/tasks/{orderId}/takeover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_dispatch_tasks_orderId_takeover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dispatch/travel": {
         parameters: {
             query?: never;
@@ -990,6 +1006,150 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["post_ai_manager_repairs_id"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/manager/repairs/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_ai_manager_repairs_id_feedback"];
+        put?: never;
+        post: operations["post_ai_manager_repairs_id_feedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_messages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_messages_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_messages_id_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hygiene-remediations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_hygiene_remediations"];
+        put?: never;
+        post: operations["post_hygiene_remediations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hygiene-remediations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_hygiene_remediations_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["patch_hygiene_remediations_id"];
+        trace?: never;
+    };
+    "/hygiene-remediations/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_hygiene_remediations_id_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hygiene-remediations/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_hygiene_remediations_id_feedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hygiene-remediations/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_hygiene_remediations_id_review"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1148,6 +1308,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_mobility_travel_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mobility/efficiency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_mobility_efficiency"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1352,6 +1528,7 @@ export interface components {
             buildingIds: string[];
             studentId: string | null;
             currentRoom: components["schemas"]["Room"] | null;
+            mustChangePassword?: boolean;
         };
         LoginRequest: {
             username: string;
@@ -1652,6 +1829,11 @@ export interface components {
             expectedOrderVersion: number;
             expectedTaskVersion: number;
         };
+        DispatchTakeoverRequest: {
+            reason: string;
+            expectedOrderVersion: number;
+            expectedTaskVersion: number;
+        };
         RepairVisitRequest: {
             expectedVersion: number;
             windowStart?: string | null;
@@ -1844,6 +2026,119 @@ export interface components {
         };
         MobilityModelRollbackRequest: {
             expectedVersion: number;
+        };
+        MobilityEfficiency: {
+            sampleCount: number;
+            measuredCount: number;
+            meanAbsoluteErrorMinutes: number | null;
+            predictedMinutes: number | null;
+            actualMinutes: number | null;
+            personalModelCount: number;
+            explanation: string;
+        };
+        ServiceMessage: {
+            id: string;
+            kind: string;
+            title: string;
+            body: string;
+            businessType: string;
+            businessId: string;
+            createdAt: string;
+            readAt: string | null;
+            version: number;
+        };
+        ServiceMessagePage: {
+            items: components["schemas"]["ServiceMessage"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        ServiceMessageSummary: {
+            unreadCount: number;
+            deliveryPending: number;
+            deliveryFailed: number;
+        };
+        ServiceMessageReadRequest: {
+            expectedVersion: number;
+        };
+        /** @enum {string} */
+        RemediationStatus: "OPEN" | "SUBMITTED" | "CLOSED" | "CANCELLED";
+        Remediation: {
+            id: string;
+            inspectionId: string;
+            roomId: string;
+            roomNo: string;
+            buildingId: string;
+            buildingName: string;
+            responsibleStudentId: string;
+            responsibleName: string;
+            issueNote: string;
+            dueAt: string;
+            status: components["schemas"]["RemediationStatus"];
+            feedbackNote: string;
+            reviewNote: string;
+            relatedRecheckId: string | null;
+            createdAt: string;
+            submittedAt: string | null;
+            closedAt: string | null;
+            version: number;
+            overdue: boolean;
+            evidenceImages: components["schemas"]["FileAsset"][];
+        };
+        RemediationPage: {
+            items: components["schemas"]["Remediation"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        RemediationRequest: {
+            inspectionId: string;
+            responsibleStudentId: string;
+            dueAt: string;
+            issueNote: string;
+        };
+        RemediationAssignmentRequest: {
+            expectedVersion: number;
+            responsibleStudentId: string;
+            dueAt: string;
+            reason: string;
+        };
+        RemediationCancelRequest: {
+            expectedVersion: number;
+            reason: string;
+        };
+        RemediationFeedbackRequest: {
+            expectedVersion: number;
+            feedbackNote: string;
+            imageIds: string[];
+        };
+        RemediationReviewRequest: {
+            expectedVersion: number;
+            approved: boolean;
+            reviewNote: string;
+            relatedRecheckId?: string;
+        };
+        AssistFeedback: {
+            id: string;
+            orderId: string;
+            suggestionId: string;
+            /** @enum {string} */
+            decision: "ADOPTED" | "MODIFIED" | "IGNORED";
+            reason: string;
+            outcome: string;
+            operatorName: string;
+            createdAt: string;
+            canFollowUp: boolean;
+        };
+        AssistFeedbackList: {
+            items: components["schemas"]["AssistFeedback"][];
+        };
+        AssistFeedbackRequest: {
+            suggestionId: string;
+            /** @enum {string} */
+            decision: "ADOPTED" | "MODIFIED" | "IGNORED";
+            reason: string;
+            outcome: string;
         };
     };
     responses: never;
@@ -3997,7 +4292,7 @@ export interface operations {
                     /** Format: binary */
                     file: string;
                     /** @enum {string} */
-                    usage: "REPORT" | "RESULT" | "INSPECTION";
+                    usage: "REPORT" | "RESULT" | "INSPECTION" | "REMEDIATION";
                 };
             };
         };
@@ -4583,6 +4878,46 @@ export interface operations {
             };
         };
     };
+    post_dispatch_tasks_orderId_takeover: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispatchTakeoverRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Repair"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     get_dispatch_travel: {
         parameters: {
             query?: never;
@@ -4759,6 +5094,460 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ManagerAdvice"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_ai_manager_repairs_id_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AssistFeedbackList"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_ai_manager_repairs_id_feedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AssistFeedback"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_messages: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                unreadOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ServiceMessagePage"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_messages_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ServiceMessageSummary"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_messages_id_read: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceMessageReadRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ServiceMessage"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_hygiene_remediations: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: string;
+                roomId?: string;
+                buildingId?: string;
+                inspectionId?: string;
+                overdueOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RemediationPage"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_hygiene_remediations: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_hygiene_remediations_id: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    patch_hygiene_remediations_id: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_hygiene_remediations_id_cancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_hygiene_remediations_id_feedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_hygiene_remediations_id_review: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemediationReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Remediation"];
                         traceId: string;
                     };
                 };
@@ -5171,6 +5960,38 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["MobilityTravelModels"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_mobility_efficiency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MobilityEfficiency"];
                         traceId: string;
                     };
                 };

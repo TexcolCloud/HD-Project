@@ -1,3 +1,4 @@
+import { LocalDrafts } from "../../services/LocalDrafts";
 import { util } from "@kit.ArkTS";
 import { Api, ApiError } from "../../services/Api";
 import { SubmissionKeys } from "../../services/SubmissionKeys";
@@ -14,8 +15,18 @@ import { WorkspaceHost } from "../WorkspaceHost";
 import { ReadScope } from "../ReadScope";
 interface EmptyRequest {}
 
+interface VisitorDraft {
+  visitorName: string;
+  visitorPhone: string;
+  visitedStudentId: string;
+  visitorPurpose: string;
+  visitorRemark: string;
+}
+
 @Observed
 export class VisitorState {
+  draftRestored: boolean = false;
+  draftBlocked: boolean = false;
   busy: boolean = false;
   loading: boolean = false;
   students: Student[] = [];
@@ -34,6 +45,7 @@ export class VisitorState {
 
 export class VisitorController {
   state: VisitorState = new VisitorState();
+  private drafts: LocalDrafts | null = null;
   private host: WorkspaceHost;
   private listRead: ReadScope = new ReadScope();
   private studentRead: ReadScope = new ReadScope();
@@ -42,6 +54,48 @@ export class VisitorController {
   );
   constructor(host: WorkspaceHost) {
     this.host = host;
+  }
+  bindDrafts(drafts: LocalDrafts | null): void {
+    this.drafts = drafts;
+    if (!drafts) return;
+    const value = drafts.read("visitor");
+    this.state.draftBlocked = drafts.hasPending("visitor");
+    if (!value) return;
+    try {
+      const data = JSON.parse(value) as VisitorDraft;
+      if (data) {
+        if (typeof data.visitorName === "string") this.state.visitorName = data.visitorName;
+        if (typeof data.visitorPhone === "string") this.state.visitorPhone = data.visitorPhone;
+        if (typeof data.visitedStudentId === "string") this.state.visitedStudentId = data.visitedStudentId;
+        if (typeof data.visitorPurpose === "string") this.state.visitorPurpose = data.visitorPurpose;
+        if (typeof data.visitorRemark === "string") this.state.visitorRemark = data.visitorRemark;
+        this.state.draftRestored = true;
+      }
+    } catch (_) { drafts.clear("visitor"); }
+  }
+  saveDraft(): void {
+    if (!this.drafts || !(this.state.visitorName.trim() || this.state.visitorPhone.trim())) return;
+    const draft: VisitorDraft = {
+      visitorName: this.state.visitorName,
+      visitorPhone: this.state.visitorPhone,
+      visitedStudentId: this.state.visitedStudentId,
+      visitorPurpose: this.state.visitorPurpose,
+      visitorRemark: this.state.visitorRemark
+    };
+    try { this.drafts.save("visitor", JSON.stringify(draft)); }
+    catch (error) { this.host.setError("本机草稿保存失败：" + (error as Error).message); }
+  }
+  discardDraft(): void {
+    this.drafts?.clear("visitor");
+    this.drafts?.completeKey("visitor");
+    const fresh = new VisitorState();
+    this.state.visitorName = fresh.visitorName;
+    this.state.visitorPhone = fresh.visitorPhone;
+    this.state.visitedStudentId = fresh.visitedStudentId;
+    this.state.visitorPurpose = fresh.visitorPurpose;
+    this.state.visitorRemark = fresh.visitorRemark;
+    this.state.draftRestored = false;
+    this.state.draftBlocked = false;
   }
   suspendReads(): void {
     this.listRead.invalidate();
@@ -55,7 +109,12 @@ export class VisitorController {
     this.state = new VisitorState();
   }
   private requestKey(body: Object, scope: string): string {
-    return this.submissionKeys.reserve(scope, JSON.stringify(body));
+    const signature = JSON.stringify(body);
+    if (scope === "visitor" && this.drafts) {
+      this.saveDraft();
+      return this.drafts.reserveKey(scope, signature, (): string => this.submissionKeys.reserve(scope, signature));
+    }
+    return this.submissionKeys.reserve(scope, signature);
   }
   async loadVisitors(): Promise<void> {
     const ticket = this.listRead.begin();
@@ -96,7 +155,7 @@ export class VisitorController {
             student.id === this.state.visitedStudentId,
         )
       )
-        this.state.visitedStudentId = this.state.students.length
+        this.state.visitedStudentId = !this.state.draftRestored && this.state.students.length
           ? this.state.students[0].id
           : "";
     } catch (error) {
@@ -105,6 +164,7 @@ export class VisitorController {
     }
   }
   async submitVisitor(confirmDuplicate: boolean = false): Promise<void> {
+    if (this.state.draftBlocked) { this.host.setError("上次提交结果未确认，请先查看服务记录；确认后可清除草稿重新填写"); return; }
     const epoch = Api.epoch,
       state = this.state;
     if (this.state.busy) return;
@@ -136,6 +196,10 @@ export class VisitorController {
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
       this.submissionKeys.complete("visitor");
+      this.discardDraft();
+      this.drafts?.completeKey("visitor");
+      this.drafts?.clear("visitor");
+      this.state.draftRestored = false;
       this.state.visitorName = "";
       this.state.visitorPhone = "";
       this.state.visitorPurpose = "";
@@ -144,9 +208,12 @@ export class VisitorController {
       this.state.visitorPage = 1;
       this.host.navigate("visitors");
     } catch (error) {
+      if (state === this.state && [400, 403, 404, 422, 429].includes((error as ApiError).status)) this.drafts?.completeKey("visitor");
       if (state !== this.state) return;
       const apiError = error as ApiError;
       if (apiError.code === "VISITOR_DUPLICATE_CONFIRMATION_REQUIRED") {
+        // The server rejected this attempt and asks for a distinct explicit confirmation.
+        this.drafts?.completeKey("visitor");
         this.state.busy = false;
         const accepted = await this.host.confirm(
           "已有相同电话的在访记录",

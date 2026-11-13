@@ -36,6 +36,15 @@ function fixture() {
     controller: new Controller((error) => errors.push(error)),
   };
 }
+test('remediation proof images never share a draft with inspection images', async () => {
+  const f = fixture();
+  await f.controller.choose('HYGIENE', {});
+  await f.controller.choose('REMEDIATION', {});
+  assert.equal(f.controller.snapshot('HYGIENE').draft.uploaded.length, 1);
+  f.controller.clear('REMEDIATION');
+  assert.equal(f.controller.snapshot('HYGIENE').draft.uploaded.length, 1);
+  assert.equal(f.controller.snapshot('REMEDIATION').draft.uploaded.length, 0);
+});
 test("system camera and gallery share the six-image ceiling and keep prior draft on cancel", async () => {
   const f = fixture();
   await f.controller.choose("REPORT", {}, true);

@@ -6,7 +6,10 @@ import VisitorsPage from "./VisitorsPage.vue";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
-vi.mock("vue-router", () => ({ onBeforeRouteLeave: vi.fn() }));
+vi.mock("vue-router", () => ({
+  onBeforeRouteLeave: vi.fn(),
+  useRoute: () => ({ query: {} }),
+}));
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),
   vModelText: {},

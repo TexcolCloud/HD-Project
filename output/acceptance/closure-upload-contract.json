@@ -1,0 +1,39 @@
+{
+  "verifiedAt": "2026-11-13T02:31:29.708856+00:00",
+  "passed": true,
+  "scope": "Upload request enum contract correction; no Java or Harmony business source change from this correction",
+  "contract": {
+    "version": "1.3.0",
+    "schemaCount": 104,
+    "uploadUsage": [
+      "REPORT",
+      "RESULT",
+      "INSPECTION",
+      "REMEDIATION"
+    ],
+    "api11Compatible": true,
+    "generatedArtifactsNoDrift": true
+  },
+  "red": {
+    "missingRemediationDetected": true,
+    "failure": "Multipart upload contract must include the student REMEDIATION evidence usage"
+  },
+  "compatibilityFixtures": {
+    "requestEnumExtension": "PASS",
+    "requestEnumRemoval": "REJECTED",
+    "responseEnumExtension": "REJECTED",
+    "sharedComponentEnumExtension": "REJECTED",
+    "additionalRequiredInput": "REJECTED"
+  },
+  "web": {
+    "testsPassed": 33,
+    "typescriptAndVite": "PASS",
+    "prettier": "PASS"
+  },
+  "arktsModel": {
+    "unchanged": true,
+    "sha256": "332e8c1556d0725eb6502b6cc21d1a59e821a7302aa7abdcb282cd55448d8735",
+    "note": "Only the upload operation enum changed. Separate native UI fixes and HAP acceptance are recorded in closure-harmony-delivery.json."
+  },
+  "logs": "Detailed RED/GREEN and Web logs remain local ignored files; no credential or token is recorded."
+}

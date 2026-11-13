@@ -5,6 +5,13 @@ export const session = reactive<{ user: User | null; checked: boolean }>({
   user: null,
   checked: false,
 });
+export function accountDestination(user: User, path: string) {
+  if (user.mustChangePassword && path !== "/change-password")
+    return "/change-password";
+  if (!user.mustChangePassword && path === "/change-password")
+    return "/dashboard";
+  return undefined;
+}
 export async function restoreSession() {
   if (session.checked) return;
   try {

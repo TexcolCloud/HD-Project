@@ -128,6 +128,15 @@ public final class MobilityModels {
 
     public record TravelModels(List<TravelModel> items) {}
 
+    public record Efficiency(
+            int sampleCount,
+            int measuredCount,
+            Double meanAbsoluteErrorMinutes,
+            Double predictedMinutes,
+            Double actualMinutes,
+            int personalModelCount,
+            String explanation) {}
+
     public record Rollback(@JsonProperty(required = true) int expectedVersion) {}
 
     public record PlannerContext(

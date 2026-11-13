@@ -89,6 +89,12 @@ public class DispatchSignals {
         return pending.get() != null || flushing.get();
     }
 
+    public void taskChanged(
+            String orderId, String buildingId, String action, String actorId, int version) {
+        changed(orderId, actorId, "TASK_" + action);
+        events.publishEvent(new DispatchTaskChanged(orderId, buildingId, action, actorId, version));
+    }
+
     public void flush() {
         if (!flushing.compareAndSet(false, true)) {
             return;

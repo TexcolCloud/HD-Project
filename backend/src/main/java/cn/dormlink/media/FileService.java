@@ -67,10 +67,10 @@ public class FileService {
     }
 
     private Object processUpload(MultipartFile file, String usage) throws IOException {
-        if (!List.of("REPORT", "RESULT", "INSPECTION").contains(usage)) {
+        if (!List.of("REPORT", "RESULT", "INSPECTION", "REMEDIATION").contains(usage)) {
             throw ApiException.bad("图片用途无效");
         }
-        if (usage.equals("REPORT")) {
+        if (usage.equals("REPORT") || usage.equals("REMEDIATION")) {
             auth.current().requireStudent();
         } else {
             auth.current().requireManager();
@@ -295,6 +295,21 @@ public class FileService {
             if (a.manager()) {
                 ops.building(h.get("buildingId"));
             } else if (!hygieneVisible(h, a.studentId())) {
+                throw ApiException.missing();
+            }
+        } else if (List.of("REMEDIATION", "REMEDIATION_HISTORY").contains(f.get("businessType"))) {
+            var task =
+                    db.one(
+                            "SELECT t.*,h.inspected_at,h.voided_at FROM hygiene_remediation t JOIN"
+                                    + " hygiene_inspection h ON h.id=t.inspection_id WHERE t.id=?",
+                            f.get("businessId"));
+            if (a.manager()) {
+                ops.building(task.get("buildingId"));
+            } else if (task.get("voidedAt") != null
+                    || !("REMEDIATION_HISTORY".equals(f.get("businessType"))
+                            ? Objects.equals(a.id(), f.get("ownerUserId"))
+                            : Objects.equals(a.studentId(), task.get("responsibleStudentId")))
+                    || !hygieneVisible(task, a.studentId())) {
                 throw ApiException.missing();
             }
         } else {

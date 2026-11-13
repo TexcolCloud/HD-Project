@@ -7,7 +7,9 @@ import { errorText, notices, notify } from "./ui";
 import Icon from "./components/Icon.vue";
 import Drawer from "./components/Drawer.vue";
 import { useManagerPresence } from "./composables/useManagerPresence";
+import { useInboxBadge } from "./composables/useInboxBadge";
 useManagerPresence(() => session.user);
+const unreadMessages = useInboxBadge(() => session.user);
 const route = useRoute(),
   router = useRouter();
 const theme = ref(
@@ -21,7 +23,9 @@ const links = [
   ["/dispatch", "route", "任务调度"],
   ["/mobility", "building", "现场位置"],
   ["/hygiene", "shield", "卫生巡检"],
+  ["/remediations", "clipboard", "卫生整改"],
   ["/visitors", "clipboard", "访客登记"],
+  ["/messages", "clipboard", "服务消息"],
   ["/statistics", "chart", "数据统计"],
 ];
 function applyTheme(value: string) {
@@ -74,7 +78,9 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
 </script>
 <template>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <template v-if="route.path === '/login'"><RouterView /></template>
+  <template v-if="route.path === '/login' || route.path === '/change-password'">
+    <RouterView />
+  </template>
   <div v-else class="app-shell">
     <aside class="sidebar">
       <RouterLink class="brand" to="/dashboard">
@@ -120,6 +126,14 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
               暖黑夜间
             </button>
           </div>
+          <RouterLink
+            class="btn"
+            to="/messages"
+            :aria-label="`服务消息，${unreadMessages}条未读`"
+          >
+            消息
+            <span v-if="unreadMessages" class="num">{{ unreadMessages }}</span>
+          </RouterLink>
           <div class="profile">
             <span class="avatar">
               {{ session.user?.displayName?.slice(0, 1) }}

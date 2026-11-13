@@ -18,6 +18,13 @@
 .tools/
 output/runtime/
 output/acceptance/harmony-current-layout.json
+output/acceptance/closure-native-*.json
+output/acceptance/_closure_native.py
+output/acceptance/_convert_service_parts.py
+output/acceptance/_finish_native_reports.py
+output/analysis/closure-planner/
+output/analysis/deadline-probe/
+output/analysis/DeadlineBoundaryProbe.java
 
 # Downloaded Maven distribution; wrapper bootstrap remains versioned.
 backend/.mvn/apache-maven-*/

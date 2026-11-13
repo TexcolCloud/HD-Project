@@ -311,6 +311,9 @@ onMounted(load);
         姓名 *
         <input v-model.trim="studentForm.name" required maxlength="50" />
       </label>
+      <p v-if="!selected" class="form-note">
+        新账号凭据由学校维护人员核验身份后单独发放，学生首次登录需设置自己的密码。
+      </p>
       <label>
         学院 *
         <input v-model.trim="studentForm.college" required maxlength="100" />

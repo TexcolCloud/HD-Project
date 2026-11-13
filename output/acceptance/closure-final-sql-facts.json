@@ -1,0 +1,88 @@
+{
+  "verifiedAt": "2026-11-13T02:51:48.795668+00:00",
+  "passed": true,
+  "task1": {
+    "status": "CLOSED",
+    "version": 2,
+    "sourceInspectionId": "10",
+    "recheckId": "11"
+  },
+  "recheck11": {
+    "relatedInspectionId": "10",
+    "totalScore": 92
+  },
+  "repairs": [
+    {
+      "id": "24",
+      "status": "COMPLETED",
+      "handlerUserId": "2",
+      "version": 5,
+      "actions": [
+        "submit",
+        "accept",
+        "handoff",
+        "start",
+        "finish",
+        "confirm"
+      ],
+      "eventCount": 6,
+      "handoffCount": 1
+    },
+    {
+      "id": "25",
+      "status": "COMPLETED",
+      "handlerUserId": "2",
+      "version": 7,
+      "actions": [
+        "submit",
+        "accept",
+        "handoff",
+        "handoff",
+        "handoff",
+        "start",
+        "finish",
+        "confirm"
+      ],
+      "eventCount": 8,
+      "handoffCount": 3
+    }
+  ],
+  "aiFeedback": [
+    {
+      "id": "1",
+      "orderId": "23",
+      "decision": "IGNORED"
+    },
+    {
+      "id": "2",
+      "orderId": "23",
+      "decision": "IGNORED"
+    }
+  ],
+  "evidence11": {
+    "state": "BOUND",
+    "businessType": "REMEDIATION",
+    "businessId": "1"
+  },
+  "qa16": {
+    "enabled": false,
+    "accountVersion": 1,
+    "unrevokedSessions": 0,
+    "privateCredentialFileRemoved": true
+  },
+  "managers": [
+    {
+      "userId": "1",
+      "acceptingNewTasks": false,
+      "positionBuildingId": null,
+      "positionFloorNo": null
+    },
+    {
+      "userId": "2",
+      "acceptingNewTasks": false,
+      "positionBuildingId": null,
+      "positionFloorNo": null
+    }
+  ],
+  "apiKeyRead": false
+}

@@ -1,0 +1,15 @@
+{
+  "database": "dormlink_reliability_test",
+  "counts": {
+    "repairs": 8,
+    "completed": 8,
+    "events": 40,
+    "bound_report_images": 8,
+    "coordinate_snapshots": 0,
+    "batch_receipts": 16,
+    "open_test_visitors": 0,
+    "pending_messages": 0,
+    "active_work_sessions": 0
+  },
+  "passed": true
+}

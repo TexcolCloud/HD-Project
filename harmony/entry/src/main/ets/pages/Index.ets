@@ -1,3 +1,8 @@
+import { ServiceCenterController, ServiceCenterState } from "../features/service/ServiceCenterController";
+import { ServiceCenterWorkspace } from "../features/service/ServiceCenterWorkspace";
+import { InboxPoller } from "../features/service/InboxPoller";
+import { DeviceActions } from "../features/mobility/DeviceActions";
+import { LocalDrafts, DraftStorage } from "../services/LocalDrafts";
 import {
   serviceLabel,
   serviceField,
@@ -23,6 +28,7 @@ import {
 import {
   User,
   Repair,
+  Hygiene,
   LoginRequest,
   LoginResult,
   PasswordRequest,
@@ -118,12 +124,45 @@ struct Index {
     this.host,
     this.photoDrafts,
   );
+  private serviceCenter: ServiceCenterController = new ServiceCenterController(this.host, this.photoDrafts);
+  private inbox: InboxPoller = new InboxPoller();
+  @State serviceState: ServiceCenterState = this.serviceCenter.state;
+  @State unreadCount: number = 0;
+  @State messageNotifications: boolean = false;
   private home: HomeController = new HomeController(this.host);
   @State repairState: RepairState = this.repairs.state;
   @State visitorState: VisitorState = this.visitors.state;
   @State hygieneState: HygieneState = this.hygiene.state;
   @State homeState: HomeState = this.home.state;
+  private saveDrafts(): void {
+    if (this.page === "repair-create") this.repairs.saveDraft();
+    if (this.page === "visitor-create") this.visitors.saveDraft();
+    if (this.page === "hygiene-create") this.hygiene.saveDraft();
+  }
+  private bindDrafts(): void {
+    if (!this.user) return;
+    try {
+      const prefs = preferences.getPreferencesSync(this.getUIContext().getHostContext() as common.UIAbilityContext, {name: "dormlink-private-drafts"});
+      const storage: DraftStorage = {
+        get: (key: string): string => prefs.getSync(key, "") as string,
+        put: (key: string, value: string): void => { prefs.putSync(key, value); prefs.flushSync(); },
+        remove: (key: string): void => { prefs.deleteSync(key); prefs.flushSync(); }
+      };
+      const drafts = new LocalDrafts(storage, Api.base, this.user.id);
+      this.repairs.bindDrafts(drafts);
+      this.visitors.bindDrafts(drafts);
+      this.hygiene.bindDrafts(drafts);
+    } catch (_) { this.error = "本机草稿存储暂不可用，请保留填写内容并及时提交"; }
+  }
+  onPageHide(): void { this.saveDrafts(); }
   private clearSession(): void {
+    this.saveDrafts();
+    this.repairs.bindDrafts(null);
+    this.visitors.bindDrafts(null);
+    this.hygiene.bindDrafts(null);
+    this.inbox.stop();
+    this.unreadCount = 0;
+    this.messageNotifications = false;
     this.mobility.detach();
     this.photoDrafts.reset();
     this.dispatch.stopSession();
@@ -142,6 +181,8 @@ struct Index {
     this.visitors.reset();
     this.hygiene.reset();
     this.home.reset();
+    this.serviceCenter.reset();
+    this.serviceState = this.serviceCenter.state;
     this.repairState = this.repairs.state;
     this.visitorState = this.visitors.state;
     this.hygieneState = this.hygiene.state;
@@ -158,14 +199,20 @@ struct Index {
     return false;
   }
   private go(page: string): void {
+    if (this.user?.mustChangePassword && page !== "password") { this.page = "password"; return; }
+    this.saveDrafts();
     this.home.suspendReads();
     this.repairs.suspendReads();
     this.visitors.suspendReads();
     this.hygiene.suspendReads();
+    this.serviceCenter.suspend();
     this.page = page;
     this.error = "";
     this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
-    if (page === "home") this.home.loadHome();
+    if (page === "messages") this.serviceCenter.loadMessages();
+    else if (page === "remediations") this.serviceCenter.loadRemediations();
+    else if (["remediation-create", "remediation-assignment"].includes(page)) this.serviceCenter.findResidents();
+    else if (page === "home") this.home.loadHome();
     else if (page === "repairs") this.repairs.loadRepairs();
     else if (page === "visitors") this.visitors.loadVisitors();
     else if (page === "visitor-create") this.visitors.loadStudents();
@@ -198,6 +245,8 @@ struct Index {
   }
 
   aboutToDisappear(): void {
+    this.saveDrafts();
+    this.inbox.stop();
     this.unsubscribePhotos();
     this.photoDrafts.reset();
     this.resetWorkspaces();
@@ -295,6 +344,7 @@ struct Index {
     if (apiError.code === "SESSION_REPLACED") return;
     this.error = apiError.message || "操作未完成，请稍后重试";
     if (apiError.traceId) this.error += "\n查询编号：" + apiError.traceId;
+    if (apiError.code === "PASSWORD_CHANGE_REQUIRED") this.page = "password";
     if (apiError.status === 401) {
       this.clearSession();
     }
@@ -328,6 +378,12 @@ struct Index {
       Api.token = result.token;
       epoch = Api.epoch;
       this.user = result.user;
+      if (result.user.mustChangePassword) {
+        this.page = "password";
+        await this.saveSettings();
+        return;
+      }
+
       this.dispatch.startSession(result.user, result.token, (error: Error) =>
         this.fail(error),
       );
@@ -337,6 +393,10 @@ struct Index {
         (error: Error) => this.fail(error),
       );
       this.repairs.state.contactName = result.user.displayName;
+      this.bindDrafts();
+      this.inbox.start((count: number): void => { this.unreadCount = count; }, async (): Promise<void> => {
+        if (this.messageNotifications) await DeviceActions.serviceMessage();
+      }, (error: Error): void => { if ((error as ApiError).status === 401) this.fail(error); });
       this.home.initialize(result.user);
       this.hygiene.manager = this.home.manager;
       this.page = "home";
@@ -375,8 +435,8 @@ struct Index {
   private async changePassword(): Promise<void> {
     const epoch = Api.epoch;
     if (this.busy) return;
-    if (this.newPassword.length < 8 || !this.oldPassword) {
-      this.error = "请填写原密码，新密码至少8位";
+    if (this.newPassword.length < 10 || !this.oldPassword) {
+      this.error = "请填写原密码，新密码至少10位";
       return;
     }
     this.busy = true;
@@ -403,6 +463,11 @@ struct Index {
 
   private pageTitle(): string {
     switch (this.page) {
+      case "messages": return "服务消息";
+      case "remediations": return "卫生整改";
+      case "remediation-create": return "安排整改";
+      case "remediation-assignment": return "调整责任与期限";
+      case "remediation-detail": return "整改详情";
       case "repair-create":
         return "提交报修";
       case "repairs":
@@ -444,12 +509,12 @@ struct Index {
       Text('公寓里的日常，\n清楚，也从容。').fontFamily('DormSerif').fontWeight(FontWeight.Medium).fontSize(32)
         .fontColor(this.ink()).lineHeight(48).width('100%').margin({top: 40, bottom: 16})
       Text('报修、来访与巡检，从这里开始。').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 38})
-      serviceLabel('账号', this.night)
+      serviceLabel({text: '账号', night: this.night})
       TextInput({text: this.username, placeholder: '请输入学校提供的账号'}).id('login-username')
         .onChange((value: string) => this.username = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
         .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(64)
-      serviceLabel('密码', this.night)
+      serviceLabel({text: '密码', night: this.night})
       TextInput({text: this.password, placeholder: '请输入密码'}).id('login-password').type(InputType.Password)
         .onChange((value: string) => this.password = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
@@ -461,10 +526,11 @@ struct Index {
         Button(this.night ? '日间' : '夜间').height(48).fontSize(13).fontColor(this.ink())
           .backgroundColor(Color.Transparent).onClick(() => { this.night = !this.night; this.saveSettings(); })
       }.margin({top: 12})
+      Text('忘记密码或未收到初始凭据，请联系学校账号维护人员。').fontSize(12).fontColor(this.muted()).lineHeight(21).margin({top: 12})
       Button(this.showServer ? '收起服务连接设置' : '服务连接设置').fontSize(12).fontColor(this.muted())
         .backgroundColor(Color.Transparent).height(48).onClick(() => this.showServer = !this.showServer)
       if (this.showServer) {
-        serviceField({label: '服务地址', value: this.server, change: (value: string) => this.server = value, placeholder: 'http://电脑地址:8080/api/v1'}, this.night, this.page)
+        serviceField({label: '服务地址', value: this.server, change: (value: string) => this.server = value, placeholder: 'http://电脑地址:8080/api/v1', night: this.night, page: this.page})
         Text('模拟器默认通过本机端口转发连接；真机请填写可访问的服务地址。').fontSize(12).fontColor(this.muted()).lineHeight(21)
       }
     }.width('100%').alignItems(HorizontalAlign.Start).padding({left: 24, right: 24, top: 32, bottom: 36})
@@ -473,13 +539,20 @@ struct Index {
   @Builder
   private Profile() {
     Column({space: 0}) {
+      serviceSecondary({label: '服务消息（' + this.unreadCount + ' 条未读）', click: () => this.go('messages'), night: this.night, busy: this.busy})
+      serviceSecondary({label: '卫生整改任务', click: () => this.go('remediations'), night: this.night, busy: this.busy})
+      serviceSecondary({label: this.messageNotifications ? '关闭前台新消息系统提醒' : '开启前台新消息系统提醒', click: async () => {
+        if (this.messageNotifications) { this.messageNotifications = false; return; }
+        try { await DeviceActions.notify(this.getUIContext().getHostContext() as common.UIAbilityContext); this.messageNotifications = true; }
+        catch (error) { this.fail(error as Error); }
+      }, night: this.night, busy: this.busy})
       Text(this.user?.displayName || '').fontFamily('DormSerif').fontSize(30).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 18})
-      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生'}, this.night)
-      serviceDetail({label: '登录账号', value: this.user?.username || ''}, this.night)
-      if (!this.manager()) { serviceDetail({label: '当前宿舍', value: this.homeState.room ? this.homeState.room.buildingName + ' ' + this.homeState.room.roomNo : '尚未入住'}, this.night) }
+      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生', night: this.night})
+      serviceDetail({label: '登录账号', value: this.user?.username || '', night: this.night})
+      if (!this.manager()) { serviceDetail({label: '当前宿舍', value: this.homeState.room ? this.homeState.room.buildingName + ' ' + this.homeState.room.roomNo : '尚未入住', night: this.night}) }
       Blank().height(24)
-      if (!this.manager()) { servicePrimary('查看入住信息', () => this.go('room'), this.night, this.page, this.busy, false); Blank().height(12) }
-      serviceSecondary('修改密码', () => this.go('password'), this.night, this.busy)
+      if (!this.manager()) { servicePrimary({label: '查看入住信息', click: () => this.go('room'), night: this.night, page: this.page, busy: this.busy, uploading: false}); Blank().height(12) }
+      serviceSecondary({label: '修改密码', click: () => this.go('password'), night: this.night, busy: this.busy})
       Row() {
         Text('暖黑夜间').fontSize(16).fontColor(this.ink()).layoutWeight(1)
         Toggle({type: ToggleType.Switch, isOn: this.night}).selectedColor(this.accent()).onChange((v: boolean) => { this.night = v; this.saveSettings(); })
@@ -493,12 +566,13 @@ struct Index {
   @Builder
   private Password() {
     Column({space: 18}) {
-      serviceLabel('原密码 *', this.night)
+      serviceLabel({text: '原密码 *', night: this.night})
       TextInput({text: this.oldPassword, placeholder: '请输入原密码'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.oldPassword = v)
-      serviceLabel('新密码 *', this.night)
-      TextInput({text: this.newPassword, placeholder: '至少8位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.newPassword = v)
-      Text('修改成功后需要重新登录。').fontSize(13).fontColor(this.muted())
-      servicePrimary('确认修改密码', () => this.changePassword(), this.night, this.page, this.busy, false)
+      serviceLabel({text: '新密码 *', night: this.night})
+      TextInput({text: this.newPassword, placeholder: '至少10位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.newPassword = v)
+      Text(this.user?.mustChangePassword ? '首次使用或密码重置后，请先设置个人密码。修改成功后重新登录。' : '修改成功后需要重新登录。').fontSize(13).fontColor(this.muted())
+      servicePrimary({label: '确认修改密码', click: () => this.changePassword(), night: this.night, page: this.page, busy: this.busy, uploading: false})
+      serviceSecondary({label: '退出当前账号', click: () => this.logout(), night: this.night, busy: this.busy})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
@@ -521,6 +595,7 @@ struct Index {
           .onClick(() => this.go(this.page === 'action' ? 'detail' : this.page === 'detail' ? this.repairReturnPage : 'home'))
       }
       Text(this.pageTitle()).fontFamily('DormSerif').fontSize(24).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
+      if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').height(48).fontSize(13).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
       Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(13).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
         .onClick(() => { this.night = !this.night; this.saveSettings(); })
     }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
@@ -559,12 +634,14 @@ struct Index {
           if (this.user) { this.Content() } else { this.Login() }
         }.width('100%').constraintSize({maxWidth: 720}).padding({left: this.user ? 16 : 0, right: this.user ? 16 : 0, top: this.user ? 16 : 0, bottom: 28}).alignItems(HorizontalAlign.Start)
       }.id('page-scroll').layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
-      if (this.user) { this.BottomTabs() }
+      if (this.user && !this.user.mustChangePassword) { this.BottomTabs() }
     }.width('100%').height('100%').backgroundColor(this.bg())
   }
   @Builder
   private Content() {
-    if (this.page === 'home' || this.page === 'room') {
+    if (['messages', 'remediations', 'remediation-create', 'remediation-detail', 'remediation-assignment'].includes(this.page)) {
+      ServiceCenterWorkspace({state: this.serviceState, page: this.page, night: this.night, manager: this.manager(), host: this.host, controller: this.serviceCenter, photos: this.photoDrafts})
+    } else if (this.page === 'home' || this.page === 'room') {
       HomeWorkspace({state: this.homeState, page: this.page, night: this.night, user: this.user, host: this.host,
         onRepairListReset: () => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; }, onHygieneListReset: () => { this.hygieneState.hygienePage = 1; }})
     } else if (['repairs', 'repair-create', 'detail', 'action'].includes(this.page)) {
@@ -572,7 +649,7 @@ struct Index {
     } else if (['visitors', 'visitor-create'].includes(this.page) && this.manager()) {
       VisitorWorkspace({state: this.visitorState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.visitors})
     } else if (['hygiene', 'hygiene-create'].includes(this.page)) {
-      HygieneWorkspace({state: this.hygieneState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.hygiene, photoDrafts: this.photoDrafts})
+      HygieneWorkspace({state: this.hygieneState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.hygiene, photoDrafts: this.photoDrafts, onRemediate: (item: Hygiene): void => { this.serviceCenter.prepare(item); }})
     } else if (this.page === 'route' && this.manager()) {
       RoutePage({controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => { this.repairReturnPage = 'route'; this.openRepair(repair); }})
     } else if (this.page === 'mobility' && this.manager()) {

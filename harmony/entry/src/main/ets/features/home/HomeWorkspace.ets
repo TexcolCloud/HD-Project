@@ -65,7 +65,7 @@ export struct HomeWorkspace {
           Text(this.state.room.buildingName + ' ' + this.state.room.roomNo).fontSize(17).fontColor(this.ink()).layoutWeight(1)
           Text(this.state.room.capacity + '人间 · 在住').fontSize(13).fontColor(this.muted())
         }.width('100%').height(54).border({width: {top: 1, bottom: 1}, color: this.line()}).onClick(() => this.host.navigate('room'))
-      } else { serviceEmpty('尚未关联宿舍，请联系宿管办理入住。', this.night) }
+      } else { serviceEmpty({message: '尚未关联宿舍，请联系宿管办理入住。', night: this.night}) }
       Image($rawfile('campus-courtyard.jpg')).width('100%').height(150).objectFit(ImageFit.Cover).borderRadius(2).margin({top: 16})
       Text('校园氛围示意 · Nick Allen / CC BY-SA 3.0  ↗').fontSize(11).fontColor(this.muted()).width('100%').height(36)
         .onClick(() => this.host.navigate('credits'))
@@ -78,8 +78,8 @@ export struct HomeWorkspace {
         }.width('100%')
       }.id('create-repair').width('100%').height(82).padding({left: 18, right: 18}).borderRadius(4)
         .backgroundColor(this.accent()).fontColor(this.onPrimary()).enabled(!!this.state.room).onClick(() => this.host.navigate('repair-create'))
-      serviceSection('最近报修', this.night, '查看全部', () => { this.onRepairListReset();  this.host.navigate('repairs'); })
-      if (this.state.repairs.length) { this.RepairCard({order: this.state.repairs[0]}) } else { serviceEmpty('暂时没有报修记录。遇到设施问题时可在这里提交。', this.night) }
+      serviceSection({title: '最近报修', night: this.night, action: '查看全部', click: () => { this.onRepairListReset();  this.host.navigate('repairs'); }})
+      if (this.state.repairs.length) { this.RepairCard({order: this.state.repairs[0]}) } else { serviceEmpty({message: '暂时没有报修记录。遇到设施问题时可在这里提交。', night: this.night}) }
       Row() {
         Text('卫生记录').fontSize(15).fontColor(this.ink()).layoutWeight(1)
         Text(this.state.hygiene.length ? this.state.hygiene[0].totalScore + ' 分 · ' + gradeLabel(this.state.hygiene[0].grade) + ' →' : '查看 →')
@@ -114,13 +114,13 @@ export struct HomeWorkspace {
           .id('create-hygiene').layoutWeight(1).height(88).borderRadius(4).backgroundColor(this.surface()).fontColor(this.ink())
           .border({width: 1, color: this.line()}).onClick(() => this.host.navigate('hygiene-create'))
       }.width('100%')
-      Row({space: 12}) { serviceSecondary('访客记录', () => this.host.navigate('visitors'), this.night, false); serviceSecondary('卫生记录', () => this.host.navigate('hygiene'), this.night, false) }.margin({top: 12})
+      Row({space: 12}) { serviceSecondary({label: '访客记录', click: () => this.host.navigate('visitors'), night: this.night, busy: false}); serviceSecondary({label: '卫生记录', click: () => this.host.navigate('hygiene'), night: this.night, busy: false}) }.margin({top: 12})
       Button('本次路线 · 查看下一站 →').id('open-route').width('100%').height(52).fontSize(16).fontColor(this.onPrimary())
         .backgroundColor(this.ink()).borderRadius(4).margin({top: 18, bottom: 4}).onClick(() => this.host.navigate('route'))
       Button('本次出行辅助 · 位置与设备').id('open-mobility').width('100%').height(48).fontSize(14).fontColor(this.accent())
         .backgroundColor(this.surface()).borderRadius(4).margin({top: 8}).onClick(() => this.host.navigate('mobility'))
-      serviceSection('待跟进工单', this.night, '查看全部', () => { this.onRepairListReset(); this.host.navigate('repairs'); })
-      if (!this.state.repairs.length) { serviceEmpty('暂时没有工单。', this.night) }
+      serviceSection({title: '待跟进工单', night: this.night, action: '查看全部', click: () => { this.onRepairListReset(); this.host.navigate('repairs'); }})
+      if (!this.state.repairs.length) { serviceEmpty({message: '暂时没有工单。', night: this.night}) }
       ForEach(this.state.repairs.slice(0, 3), (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
       ManagerAssist({night: this.night, onOpenRepair: (repair: Repair) => this.host.openRepair(repair), onUnauthorized: (error: Error) => this.host.fail(error)})
     }.width('100%').alignItems(HorizontalAlign.Start)
@@ -131,11 +131,11 @@ export struct HomeWorkspace {
     Column({space: 0}) {
       if (this.state.room) {
         Text(this.state.room.buildingName + ' ' + this.state.room.roomNo).fontFamily('DormSerif').fontSize(30).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 20})
-        serviceDetail({label: '楼层', value: this.state.room.floorNo + ' 层'}, this.night)
-        serviceDetail({label: '房间容量', value: this.state.room.capacity + ' 人'}, this.night)
-        serviceDetail({label: '当前状态', value: '在住'}, this.night)
-      } else { serviceEmpty('尚未关联宿舍，请联系宿管办理入住。', this.night) }
-      serviceSection('入住历史', this.night)
+        serviceDetail({label: '楼层', value: this.state.room.floorNo + ' 层', night: this.night})
+        serviceDetail({label: '房间容量', value: this.state.room.capacity + ' 人', night: this.night})
+        serviceDetail({label: '当前状态', value: '在住', night: this.night})
+      } else { serviceEmpty({message: '尚未关联宿舍，请联系宿管办理入住。', night: this.night}) }
+      serviceSection({title: '入住历史', night: this.night})
       ForEach(this.state.residences, (r: Residence) => {
         Column({space: 8}) {
           Text(r.buildingName + ' ' + r.roomNo).fontSize(18).fontColor(this.ink()).width('100%')

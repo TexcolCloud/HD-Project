@@ -22,6 +22,7 @@ import Pagination from "../components/Pagination.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import UploadField from "../components/UploadField.vue";
 import RepairVisitPanel from "../components/dispatch/RepairVisitPanel.vue";
+import TaskTransfer from "../components/dispatch/TaskTransfer.vue";
 import ManagerAssist from "../components/ManagerAssist.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 const listQuery = useLatestQuery();
@@ -52,7 +53,10 @@ const selected = ref<Repair>(),
   uploadBlocked = ref(false),
   visitDirty = ref(false),
   visitBusy = ref(false),
-  visitEditing = ref(false);
+  visitEditing = ref(false),
+  transferDirty = ref(false),
+  transferBusy = ref(false),
+  transferEditing = ref(false);
 async function load() {
   await listQuery.run(
     (signal) =>
@@ -309,8 +313,8 @@ watch(
     v-if="selected"
     title="报修工单详情"
     :subtitle="selected.orderNo"
-    :busy="saving || visitBusy"
-    :dirty="(!!action && !!note) || visitDirty"
+    :busy="saving || visitBusy || transferBusy"
+    :dirty="(!!action && !!note) || visitDirty || transferDirty"
     @close="close"
   >
     <p v-if="detailError" class="error-banner">{{ detailError }}</p>
@@ -354,7 +358,7 @@ watch(
     </section>
     <RepairVisitPanel
       :repair="selected"
-      :disabled="!!action || saving"
+      :disabled="!!action || saving || transferEditing"
       @updated="
         selected = $event;
         load();
@@ -362,6 +366,17 @@ watch(
       @dirty="visitDirty = $event"
       @busy="visitBusy = $event"
       @editing="visitEditing = $event"
+    />
+    <TaskTransfer
+      :repair="selected"
+      :disabled="!!action || saving || visitEditing"
+      @updated="
+        detail($event.id);
+        load();
+      "
+      @dirty="transferDirty = $event"
+      @busy="transferBusy = $event"
+      @editing="transferEditing = $event"
     />
     <section class="detail-section">
       <h3>故障描述</h3>
@@ -483,14 +498,18 @@ watch(
           :key="name"
           class="btn"
           :class="name === 'reject' ? 'danger' : 'primary'"
-          :disabled="visitEditing || visitBusy"
+          :disabled="
+            visitEditing || visitBusy || transferEditing || transferBusy
+          "
           @click="begin(name)"
         >
           {{ actionNames[name] }}
         </button>
         <button
           class="btn"
-          :disabled="visitEditing || visitBusy"
+          :disabled="
+            visitEditing || visitBusy || transferEditing || transferBusy
+          "
           @click="detail(selected.id)"
         >
           刷新详情

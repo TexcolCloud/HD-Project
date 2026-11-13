@@ -10,7 +10,7 @@ export const managerPresence = reactive<{
 }>({ state: "inactive", lastResponseAt: null, error: "" });
 
 export function useManagerPresence(
-  getUser: () => Pick<User, "id" | "role"> | null,
+  getUser: () => Pick<User, "id" | "role" | "mustChangePassword"> | null,
 ): void {
   let timer: ReturnType<typeof setInterval> | undefined;
   let controller: AbortController | undefined;
@@ -18,7 +18,7 @@ export function useManagerPresence(
   let inFlight = false;
   const managerId = () => {
     const user = getUser();
-    return user?.role === "MANAGER" ? user.id : "";
+    return user?.role === "MANAGER" && !user.mustChangePassword ? user.id : "";
   };
   function stop() {
     generation++;

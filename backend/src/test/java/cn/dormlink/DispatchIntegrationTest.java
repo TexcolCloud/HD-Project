@@ -58,14 +58,106 @@ class DispatchIntegrationTest {
                 java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(28800)));
     }
 
+    @Test
+    void exceptionalTakeoverRequiresUnavailableOwnerAndPreservesExplicitContinuation()
+            throws Exception {
+        String owner = login("manager1"),
+                successor = login("manager2"),
+                student = login("student2");
+        ok(owner, "POST", "/dispatch/heartbeat", Map.of());
+        var manager = ok(successor, "POST", "/dispatch/heartbeat", Map.of());
+        var order = repair(student, "异常离岗接续回归", "NORMAL");
+        String id = order.path("id").asText();
+        var accepted =
+                ok(owner, "POST", "/repairs/" + id + "/accept", Map.of("expectedVersion", 0));
+        var body =
+                Map.of(
+                        "reason",
+                        "原办理人停用，现场核对后接续",
+                        "expectedOrderVersion",
+                        accepted.path("version").asInt(),
+                        "expectedTaskVersion",
+                        0);
+        assertThat(
+                        call(successor, "POST", "/dispatch/tasks/" + id + "/takeover", body)
+                                .statusCode())
+                .isEqualTo(409);
+        db.update("UPDATE sys_user SET enabled=FALSE WHERE username='manager1'");
+        try {
+            String key = UUID.randomUUID().toString();
+            var first = call(successor, "POST", "/dispatch/tasks/" + id + "/takeover", body, key);
+            assertThat(first.statusCode()).as(first.body()).isEqualTo(200);
+            var taken = json.readTree(first.body()).path("data");
+            assertThat(taken.path("handlerUserId").asText())
+                    .isEqualTo(manager.path("userId").asText());
+            assertThat(taken.path("status").asText()).isEqualTo("ACCEPTED");
+            assertThat(
+                            db.one("SELECT state FROM dispatch_task WHERE active_order_id=?", id)
+                                    .get("state"))
+                    .isEqualTo("BLOCKED");
+            assertThat(ok(student, "GET", "/repairs/" + id + "/events", null).toString())
+                    .contains("takeover");
+            assertThat(
+                            call(
+                                            successor,
+                                            "POST",
+                                            "/dispatch/tasks/" + id + "/takeover",
+                                            body,
+                                            key)
+                                    .statusCode())
+                    .isEqualTo(200);
+            assertThat(
+                            db.count(
+                                    "SELECT COUNT(*) FROM repair_event WHERE order_id=? AND"
+                                            + " action='takeover'",
+                                    id))
+                    .isEqualTo(1);
+            db.update(
+                    "DELETE FROM manager_building WHERE manager_user_id=? AND building_id=?",
+                    manager.path("userId").asText(),
+                    order.path("buildingId").asText());
+            try {
+                assertThat(
+                                call(
+                                                successor,
+                                                "POST",
+                                                "/dispatch/tasks/" + id + "/takeover",
+                                                body,
+                                                key)
+                                        .statusCode())
+                        .isEqualTo(403);
+            } finally {
+                db.update(
+                        "INSERT INTO manager_building(manager_user_id,building_id) VALUES(?,?)",
+                        manager.path("userId").asText(),
+                        order.path("buildingId").asText());
+            }
+            assertThat(
+                            call(successor, "POST", "/dispatch/tasks/" + id + "/takeover", body)
+                                    .statusCode())
+                    .isEqualTo(409);
+            assertThat(
+                            call(student, "POST", "/dispatch/tasks/" + id + "/takeover", body)
+                                    .statusCode())
+                    .isEqualTo(403);
+        } finally {
+            db.update("UPDATE sys_user SET enabled=TRUE WHERE username='manager1'");
+        }
+    }
+
     HttpResponse<String> call(String token, String method, String path, Object body)
+            throws Exception {
+        return call(token, method, path, body, UUID.randomUUID().toString());
+    }
+
+    HttpResponse<String> call(String token, String method, String path, Object body, String key)
             throws Exception {
         var b = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/v1" + path));
         if (token != null) b.header("Authorization", "Bearer " + token);
         if (body == null) b.method(method, HttpRequest.BodyPublishers.noBody());
         else
             b.header("Content-Type", "application/json")
-                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .header("Idempotency-Key", key)
                     .method(
                             method,
                             HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));

@@ -76,6 +76,14 @@ class DispatchController {
         return command(b, r, () -> execution.handoff(orderId, b));
     }
 
+    @PostMapping("/tasks/{orderId}/takeover")
+    Object takeover(
+            @PathVariable String orderId,
+            @RequestBody Map<String, Object> b,
+            HttpServletRequest r) {
+        return command(b, r, () -> execution.takeover(orderId, b));
+    }
+
     @PostMapping("/tasks/{orderId}/{action:depart|arrive|block|resume}")
     Object action(
             @PathVariable String orderId,

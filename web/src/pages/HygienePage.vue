@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { get, post, patch } from "../api/client";
 import type { Model, Hygiene, Building, FileAsset } from "../api/types";
 import {
@@ -18,6 +19,8 @@ import StatusBadge from "../components/StatusBadge.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 const listQuery = useLatestQuery();
+const route = useRoute(),
+  router = useRouter();
 const detailQuery = useLatestQuery();
 const { busy, error } = listQuery;
 const items = ref<Hygiene[]>([]),
@@ -124,17 +127,22 @@ function edit(
   uploadBlocked.value = false;
   modal.value = "form";
 }
-async function detail(h: Hygiene) {
-  selected.value = h;
+async function detail(h: Hygiene | string) {
+  const id = typeof h === "string" ? h : h.id;
+  selected.value = typeof h === "string" ? undefined : h;
   history.value = [];
   modal.value = "detail";
   formError.value = "";
   await detailQuery.run(
     (signal) =>
       Promise.all([
-        get<Hygiene>(`/hygiene-inspections/${h.id}`, {}, signal),
+        get<Hygiene>(
+          `/hygiene-inspections/${encodeURIComponent(id)}`,
+          {},
+          signal,
+        ),
         get<Model<"CorrectionEvent">[]>(
-          `/hygiene-inspections/${h.id}/history`,
+          `/hygiene-inspections/${encodeURIComponent(id)}/history`,
           {},
           signal,
         ),
@@ -144,7 +152,7 @@ async function detail(h: Hygiene) {
       history.value = events;
     },
   );
-  if (modal.value === "detail" && selected.value?.id === h.id)
+  if (modal.value === "detail" && selected.value?.id === id)
     formError.value = detailQuery.error.value;
 }
 async function save() {
@@ -172,6 +180,15 @@ async function save() {
         : "卫生评分已保存",
     );
     await load();
+    if (
+      mode.value === "recheck" &&
+      typeof route.query.returnTask === "string"
+    ) {
+      await router.push({
+        path: "/remediations",
+        query: { taskId: route.query.returnTask },
+      });
+    }
   } catch (e) {
     formError.value = errorText(e);
   } finally {
@@ -222,6 +239,22 @@ onMounted(async () => {
   }
   await load();
 });
+watch(
+  () => [route.query.inspectionId, route.query.recheckOf],
+  async ([id, recheckOf]) => {
+    if (typeof id === "string" && id) await detail(id);
+    else if (typeof recheckOf === "string" && recheckOf) {
+      await detail(recheckOf);
+      if (
+        route.query.recheckOf === recheckOf &&
+        selected.value?.id === recheckOf &&
+        !detailQuery.error.value
+      )
+        edit(selected.value, "recheck");
+    }
+  },
+  { immediate: true },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -235,6 +268,13 @@ onMounted(async () => {
     </button>
   </div>
   <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
+  <p
+    v-if="detailQuery.error.value && !selected"
+    class="error-banner"
+    role="alert"
+  >
+    {{ detailQuery.error.value }}
+  </p>
   <section class="panel">
     <form class="filters" @submit.prevent="search">
       <label>
@@ -512,6 +552,13 @@ onMounted(async () => {
       <p v-if="!history.length" class="muted">当前记录尚无更正。</p>
     </section>
     <template #footer>
+      <RouterLink
+        v-if="!selected.voidedAt"
+        class="btn"
+        :to="{ path: '/remediations', query: { inspectionId: selected.id } }"
+      >
+        安排整改
+      </RouterLink>
       <button class="btn primary" @click="edit(selected, 'correction')">
         更正评分
       </button>

@@ -1,0 +1,12 @@
+[
+  {
+    "databaseGuard": "dormlink_reliability_test",
+    "portGuard": "8080",
+    "refusedBeforeLogin": true
+  },
+  {
+    "databaseGuard": "dormlink",
+    "portGuard": "8081",
+    "refusedBeforeLogin": true
+  }
+]
