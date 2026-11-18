@@ -14,10 +14,12 @@ import java.util.*;
 class AuthController {
     final AuthService auth;
     final Db db;
+    final AccountSecurityService security;
 
-    AuthController(AuthService auth, Db db) {
+    AuthController(AuthService auth, Db db, AccountSecurityService security) {
         this.auth = auth;
         this.db = db;
+        this.security = security;
     }
 
     @GetMapping("/health")
@@ -63,5 +65,64 @@ class AuthController {
             @RequestBody Map<String, Object> b, HttpServletRequest r, HttpServletResponse s) {
         auth.changePassword(b, s);
         return ApiResponses.ok(Map.of("changed", true), r);
+    }
+
+    @PostMapping("/auth/phone/challenges")
+    Object requestPhone(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return ApiResponses.ok(security.requestPhone(body, request), request);
+    }
+
+    @PostMapping("/auth/activate")
+    Object activate(
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        var result = security.submitPhone(body, request, AccountSecurityService.Purpose.ACTIVATE);
+        auth.clearCookies(response);
+        return ApiResponses.ok(result, request);
+    }
+
+    @PostMapping("/auth/phone/bind")
+    Object bindPhone(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return ApiResponses.ok(
+                security.submitPhone(body, request, AccountSecurityService.Purpose.BIND), request);
+    }
+
+    @PostMapping("/auth/phone/change")
+    Object changePhone(
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        var result = security.changePhone(body, request);
+        auth.clearCookies(response);
+        return ApiResponses.ok(result, request);
+    }
+
+    @PostMapping("/auth/recovery-code/replace")
+    Object replaceRecoveryCode(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return ApiResponses.ok(
+                security.submitPhone(
+                        body, request, AccountSecurityService.Purpose.REPLACE_RECOVERY_CODE),
+                request);
+    }
+
+    @PostMapping("/auth/password-recovery/challenges")
+    Object requestRecovery(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return ApiResponses.ok(security.requestRecovery(body, request), request);
+    }
+
+    @PostMapping("/auth/password-recovery/verify")
+    Object verifyRecovery(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        return ApiResponses.ok(security.verifyRecovery(body, request), request);
+    }
+
+    @PostMapping("/auth/password-recovery/complete")
+    Object completeRecovery(
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        security.completeRecovery(body, request);
+        auth.clearCookies(response);
+        return ApiResponses.ok(null, request);
     }
 }

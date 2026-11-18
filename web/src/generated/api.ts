@@ -84,6 +84,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/phone/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_phone_challenges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_activate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/phone/bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_phone_bind"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/phone/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_phone_change"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/recovery-code/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_recovery_code_replace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password-recovery/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_password_recovery_challenges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password-recovery/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_password_recovery_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password-recovery/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["post_auth_password_recovery_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buildings": {
         parameters: {
             query?: never;
@@ -1483,6 +1611,7 @@ export interface components {
             /** @enum {string} */
             status: "VISITING" | "LEFT";
             version: number;
+            overdue?: boolean;
         };
         Hygiene: {
             id: string;
@@ -1529,12 +1658,16 @@ export interface components {
             studentId: string | null;
             currentRoom: components["schemas"]["Room"] | null;
             mustChangePassword?: boolean;
+            phoneMasked?: string;
+            recoveryCodeConfigured?: boolean;
         };
         LoginRequest: {
             username: string;
             password: string;
             /** @enum {string} */
             clientType: "WEB" | "MOBILE";
+            /** @enum {string} */
+            identifierType?: "USERNAME" | "PHONE";
         };
         LoginResult: {
             user: components["schemas"]["User"];
@@ -1543,6 +1676,55 @@ export interface components {
         PasswordRequest: {
             oldPassword: string;
             newPassword: string;
+        };
+        PhoneChallengeRequest: {
+            /** @enum {string} */
+            purpose: "ACTIVATE" | "BIND" | "CHANGE_PHONE_OLD" | "CHANGE_PHONE_NEW" | "REPLACE_RECOVERY_CODE";
+            phone?: string;
+            currentPassword?: string;
+        };
+        PhoneChallengeResult: {
+            challengeId: string;
+        };
+        PhoneCodeRequest: {
+            challengeId: string;
+            code: string;
+        };
+        ActivateRequest: {
+            challengeId: string;
+            code: string;
+            newPassword: string;
+        };
+        PhoneChangeRequest: {
+            oldChallengeId: string;
+            oldCode: string;
+            newChallengeId: string;
+            newCode: string;
+        };
+        AccountSecurityResult: {
+            recoveryCode?: string;
+        };
+        PasswordRecoveryChallengeRequest: {
+            phone: string;
+            /** @enum {string} */
+            clientType: "WEB" | "MOBILE";
+        };
+        PasswordRecoveryVerifyRequest: {
+            challengeId: string;
+            code: string;
+            /** @enum {string} */
+            clientType: "WEB" | "MOBILE";
+        };
+        PasswordRecoveryVerifyResult: {
+            resetToken: string;
+            recoveryCodeRequired: boolean;
+        };
+        PasswordRecoveryCompleteRequest: {
+            resetToken: string;
+            newPassword: string;
+            /** @enum {string} */
+            clientType: "WEB" | "MOBILE";
+            recoveryCode?: string;
         };
         LeaveRequest: {
             expectedVersion: number;
@@ -2315,6 +2497,312 @@ export interface operations {
                         data: {
                             [key: string]: unknown;
                         };
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_phone_challenges: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PhoneChallengeResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_activate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivateRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AccountSecurityResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_phone_bind: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AccountSecurityResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_phone_change: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AccountSecurityResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_recovery_code_replace: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AccountSecurityResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_password_recovery_challenges: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordRecoveryChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PhoneChallengeResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_password_recovery_verify: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordRecoveryVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PasswordRecoveryVerifyResult"];
+                        traceId: string;
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_auth_password_recovery_complete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordRecoveryCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        } | null;
                         traceId: string;
                     };
                 };

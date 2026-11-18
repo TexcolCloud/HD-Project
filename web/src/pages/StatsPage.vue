@@ -86,7 +86,6 @@ onMounted(async () => {
   <div class="page-heading">
     <div>
       <h1>数据统计</h1>
-      <p>在相同楼栋和时间范围内，查看入住、报修、卫生与来访。</p>
     </div>
   </div>
   <section class="panel" style="margin-bottom: 24px">

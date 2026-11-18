@@ -86,7 +86,6 @@ onScopeDispose(() => {
   <div class="page-heading">
     <div>
       <h1>服务消息</h1>
-      <p>把工单变化、预约与待办跟进，留在同一份收件箱。</p>
     </div>
     <button class="btn" :disabled="busy || saving" @click="load">
       刷新消息
@@ -97,9 +96,7 @@ onScopeDispose(() => {
     <div class="panel-head">
       <div>
         <h2>我的收件箱</h2>
-        <p class="muted">
-          {{ summary?.unreadCount ?? 0 }} 条未读 · 页面打开时每30秒同步
-        </p>
+        <p class="muted">{{ summary?.unreadCount ?? 0 }} 条未读</p>
       </div>
       <label>
         <input v-model="unreadOnly" type="checkbox" @change="search" />
@@ -162,9 +159,6 @@ onScopeDispose(() => {
       "
     />
   </section>
-  <p class="form-note">
-    这里只显示当前账号及授权范围内的消息。应用关闭后的消息可在下次打开时同步查看。
-  </p>
   <Drawer
     v-if="selected"
     :title="selected.title"

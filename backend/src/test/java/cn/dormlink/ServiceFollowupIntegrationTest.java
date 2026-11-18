@@ -494,9 +494,139 @@ class ServiceFollowupIntegrationTest {
     }
 
     @Test
+    void visitorReadMarksOnlyOpenVisitsOlderThanTwentyFourHours() throws Exception {
+        String manager = token("manager1"), student = token("student1");
+        String studentId = ok(student, "GET", "/auth/me", null).path("studentId").asText();
+        String visitorName = "QA-overdue-" + UUID.randomUUID().toString().substring(0, 8);
+        var visit =
+                ok(
+                        manager,
+                        "POST",
+                        "/visitors",
+                        Map.of(
+                                "visitorName",
+                                visitorName,
+                                "phone",
+                                "13800000000",
+                                "visitedStudentId",
+                                studentId,
+                                "purpose",
+                                "fictional visit",
+                                "confirmDuplicate",
+                                true,
+                                "arrivedAt",
+                                Instant.now().minus(Duration.ofHours(25)).toString()));
+        String id = visit.path("id").asText();
+        String path = "/visitors/" + id;
+        assertThat(ok(manager, "GET", path, null).path("overdue").asBoolean()).isTrue();
+        var listed = ok(manager, "GET", "/visitors?q=" + visitorName, null).path("items").path(0);
+        assertThat(listed.path("id").asText()).isEqualTo(id);
+        assertThat(listed.path("overdue").asBoolean()).isTrue();
+        var left =
+                ok(
+                        manager,
+                        "POST",
+                        path + "/leave",
+                        Map.of("expectedVersion", visit.path("version").asInt()));
+        assertThat(left.path("status").asText()).isEqualTo("LEFT");
+        assertThat(left.path("overdue").asBoolean(true)).isFalse();
+    }
+
+    @Test
+    void businessPhoneWritesValidateNewValuesAndPreserveLegacyContacts() throws Exception {
+        String manager = token("manager1"), student = token("student1");
+        String studentId = ok(student, "GET", "/auth/me", null).path("studentId").asText();
+        var visitor =
+                new LinkedHashMap<String, Object>(
+                        Map.of(
+                                "visitorName",
+                                "QA-phone-" + UUID.randomUUID().toString().substring(0, 8),
+                                "phone",
+                                "555-0123",
+                                "visitedStudentId",
+                                studentId,
+                                "purpose",
+                                "fictional contact",
+                                "confirmDuplicate",
+                                true));
+        assertThat(
+                        request(manager, "POST", "/visitors", visitor, UUID.randomUUID().toString())
+                                .statusCode())
+                .isEqualTo(400);
+        visitor.put("phone", "13800000006");
+        var created = ok(manager, "POST", "/visitors", visitor);
+        String id = created.path("id").asText();
+        String path = "/visitors/" + id;
+        db.update("UPDATE visitor_registration SET phone=? WHERE id=?", "555-0123", id);
+        var corrected =
+                ok(
+                        manager,
+                        "PATCH",
+                        path,
+                        Map.of(
+                                "phone",
+                                "555-0123",
+                                "remark",
+                                "QA correction",
+                                "correctionReason",
+                                "keep legacy contact",
+                                "expectedVersion",
+                                created.path("version").asInt()));
+        assertThat(corrected.path("remark").asText()).isEqualTo("QA correction");
+
+        var profile = ok(manager, "GET", "/students/" + studentId, null);
+        var studentUpdate =
+                new LinkedHashMap<String, Object>(
+                        Map.of(
+                                "studentNo",
+                                profile.path("studentNo").asText(),
+                                "name",
+                                profile.path("name").asText(),
+                                "college",
+                                profile.path("college").asText(),
+                                "phone",
+                                "555-0123",
+                                "expectedVersion",
+                                profile.path("version").asInt()));
+        assertThat(
+                        request(
+                                        manager,
+                                        "PATCH",
+                                        "/students/" + studentId,
+                                        studentUpdate,
+                                        UUID.randomUUID().toString())
+                                .statusCode())
+                .isEqualTo(400);
+        assertThat(
+                        request(
+                                        student,
+                                        "POST",
+                                        "/repairs",
+                                        Map.of(
+                                                "title",
+                                                "QA contact",
+                                                "description",
+                                                "fictional repair",
+                                                "category",
+                                                "OTHER",
+                                                "priority",
+                                                "NORMAL",
+                                                "contactName",
+                                                "QA reporter",
+                                                "contactPhone",
+                                                "555-0123",
+                                                "reportImageIds",
+                                                List.of()),
+                                        UUID.randomUUID().toString())
+                                .statusCode())
+                .isEqualTo(400);
+    }
+
+    @Test
     void overdueSweepAdvancesBeyondFirstBatchAndNeverFakesCheckout() throws Exception {
         String manager = token("manager1"), student = token("student1");
         String studentId = ok(student, "GET", "/auth/me", null).path("studentId").asText();
+        String arrivedAt = Instant.now().minus(Duration.ofHours(13)).toString();
         String first = null;
         for (int i = 0; i < 101; i++) {
             var visit =
@@ -513,17 +643,19 @@ class ServiceFollowupIntegrationTest {
                                     studentId,
                                     "purpose",
                                     "fictional batch",
+                                    "arrivedAt",
+                                    arrivedAt,
                                     "confirmDuplicate",
                                     true));
             String id = visit.path("id").asText();
             if (first == null) {
                 first = id;
             }
-            db.update(
-                    "UPDATE visitor_registration SET arrived_at=? WHERE id=?",
-                    java.sql.Timestamp.from(Instant.now().minusSeconds(13 * 3600L)),
-                    id);
         }
+        // Start at this fixture even if the persistent test database has older overdue visits.
+        db.update(
+                "UPDATE service_followup_lock SET visitor_cursor=? WHERE id=1",
+                Long.parseLong(first) - 1);
         messages.followUp();
         messages.followUp();
         messages.followUp();

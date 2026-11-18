@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { clearCsrf, post } from "../api/client";
+import { post } from "../api/client";
 import type { Model } from "../api/types";
-import { logout, session } from "../session";
+import { clearLocalSession, logout, session } from "../session";
 import { errorText, notify } from "../ui";
 const router = useRouter();
 const oldPassword = ref(""),
@@ -27,8 +27,7 @@ async function save() {
       oldPassword: oldPassword.value,
       newPassword: password.value,
     } satisfies Model<"PasswordRequest">);
-    session.user = null;
-    clearCsrf();
+    clearLocalSession();
     oldPassword.value = password.value = confirmation.value = "";
     notify("密码已设置，请使用新密码登录");
     await router.replace("/login");
@@ -51,19 +50,11 @@ async function leave() {
 }
 </script>
 <template>
-  <main class="login-page">
+  <main id="main-content" class="login-page">
     <section class="login-story">
-      <a class="brand" href="/">
-        寓见
-        <span>DormLink</span>
-      </a>
+      <a class="brand" href="/">寓见</a>
       <div>
-        <p class="section-note">首次使用 · 账号保护</p>
-        <h1>
-          从自己的密码，
-          <br />
-          开始本次值班。
-        </h1>
+        <h1>账号安全</h1>
         <p>临时凭据仅用于首次设置。完成后，原有登录会话会失效。</p>
       </div>
       <p class="form-note">
@@ -111,6 +102,9 @@ async function leave() {
         <button class="btn primary full" :disabled="busy">
           {{ busy ? "正在设置…" : "设置密码并重新登录" }}
         </button>
+        <RouterLink class="btn full" to="/activate-phone">
+          绑定手机号并激活
+        </RouterLink>
         <button class="btn full" type="button" :disabled="busy" @click="leave">
           退出当前账号
         </button>

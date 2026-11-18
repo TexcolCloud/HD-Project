@@ -86,3 +86,35 @@ it("入住历史读取期间不将未知状态当成未入住，成功后才显�
   await nextTick();
   expect(checkIn()).toBeDefined();
 });
+
+it("新建学生档案时保留粘贴内容，并阻止提交12位手机号", async () => {
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+  api.get.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+  const root = node("root");
+  const app = renderer.createApp(StudentsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  const create = find(
+    root,
+    (candidate) =>
+      candidate.tag === "button" && text(candidate).includes("新建学生档案"),
+  )!;
+  (create.props.onClick as () => void)();
+  await nextTick();
+  const dialog = find(root, (candidate) => candidate.tag === "dialog")!;
+  const phone = find(dialog, (candidate) => candidate.props.type === "tel")!;
+  (phone.props["onUpdate:modelValue"] as (value: string) => void)(
+    "138000000001",
+  );
+  const form = find(dialog, (candidate) => candidate.tag === "form")!;
+  (form.props.onSubmit as (event: { preventDefault: () => void }) => void)({
+    preventDefault() {},
+  });
+  await nextTick();
+  expect(text(dialog)).toContain("请输入11位手机号");
+  expect(phone.props.maxlength).toBeUndefined();
+  expect(api.post).not.toHaveBeenCalled();
+});

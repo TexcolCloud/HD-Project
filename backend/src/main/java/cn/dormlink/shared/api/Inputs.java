@@ -114,9 +114,13 @@ public final class Inputs {
     }
 
     public static String phone(Map<String, Object> b, String k) {
+        return phone(b, k, null);
+    }
+
+    public static String phone(Map<String, Object> b, String k, String existing) {
         String s = text(b, k, 20, true);
-        if (!s.matches("[+0-9 ()-]{6,20}")) {
-            throw ApiException.bad("联系方式格式无效");
+        if (!s.equals(existing) && !s.matches("[0-9]{11}")) {
+            throw ApiException.bad(k + "须为11位手机号");
         }
         return s;
     }

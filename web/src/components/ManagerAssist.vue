@@ -72,8 +72,7 @@ onBeforeUnmount(() => {
   <section class="manager-assist" :class="{ compact: !repairId }">
     <header>
       <div>
-        <p class="section-note">DeepSeek · 宿管辅助</p>
-        <h2>{{ repairId ? "工单研判" : "值班简报" }}</h2>
+        <h2>{{ repairId ? "AI 工单研判" : "AI 值班简报" }}</h2>
       </div>
       <button
         class="text-link"
@@ -84,7 +83,7 @@ onBeforeUnmount(() => {
         {{ opened ? "收起" : "展开" }}
       </button>
     </header>
-    <p class="manager-assist-intro">
+    <p v-if="opened" class="manager-assist-intro">
       {{
         repairId
           ? "整理可见故障现象、沟通问题与办理建议。"

@@ -1,20 +1,44 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { login } from "../session";
-import { errorText } from "../ui";
+import { login, session } from "../session";
+import { errorText, notify } from "../ui";
 import Icon from "../components/Icon.vue";
+import { isMobilePhone, mobilePhoneError } from "../phone";
 const username = ref(""),
   password = ref(""),
   busy = ref(false),
-  error = ref("");
+  error = ref(""),
+  mode = ref<"USERNAME" | "PHONE" | "ACTIVATE">("USERNAME");
 const router = useRouter(),
   route = useRoute();
+function selectMode(next: typeof mode.value) {
+  if (mode.value === next) return;
+  mode.value = next;
+  username.value = password.value = error.value = "";
+}
 async function submit() {
-  busy.value = true;
+  if (busy.value) return;
   error.value = "";
+  const identifier = username.value.trim();
+  if (mode.value === "PHONE" && !isMobilePhone(identifier)) {
+    error.value = mobilePhoneError;
+    return;
+  }
+  busy.value = true;
   try {
-    await login(username.value.trim(), password.value);
+    const activating = mode.value === "ACTIVATE";
+    await login(
+      identifier,
+      password.value,
+      mode.value === "PHONE" ? "PHONE" : "USERNAME",
+    );
+    password.value = "";
+    if (activating && session.user?.mustChangePassword) {
+      await router.replace("/activate-phone");
+      return;
+    }
+    if (activating) notify("账号可以正常登录，请在账号安全中管理登录手机号");
     const target =
       typeof route.query.redirect === "string" &&
       route.query.redirect.startsWith("/") &&
@@ -30,20 +54,15 @@ async function submit() {
 }
 </script>
 <template>
-  <main class="login-page">
+  <main id="main-content" class="login-page">
     <section class="login-story">
-      <a class="brand" href="/">
-        寓见
-        <span>DormLink</span>
-      </a>
+      <a class="brand" href="/">寓见</a>
       <div>
-        <p class="section-note">学生公寓综合服务管理平台</p>
         <h1>
-          公寓里的日常，
+          学生公寓
           <br />
-          有序照应。
+          综合服务平台
         </h1>
-        <p>入住、来访、巡检与报修，在同一处清楚办理。</p>
       </div>
       <figure>
         <img
@@ -58,15 +77,62 @@ async function submit() {
     </section>
     <section class="login-form">
       <form @submit.prevent="submit">
-        <div class="login-icon"><Icon name="building" /></div>
-        <p class="section-note">宿管管理端</p>
-        <h2>欢迎回来</h2>
-        <p class="muted">使用宿管账号登录，查看负责楼栋的服务事项。</p>
+        <h2>{{ mode === "ACTIVATE" ? "宿管注册 / 激活" : "宿管登录" }}</h2>
         <p class="muted">
-          忘记密码或未收到初始凭据，请联系学校账号维护人员核验身份后处理。
+          {{
+            mode === "ACTIVATE"
+              ? "使用学校发放的账号和临时密码激活。"
+              : "学生请使用鸿蒙端登录。"
+          }}
         </p>
-        <label>
-          账号
+        <div
+          v-if="mode !== 'ACTIVATE'"
+          class="theme-switch"
+          aria-label="登录方式"
+        >
+          <button
+            type="button"
+            :aria-pressed="mode === 'USERNAME'"
+            :disabled="busy"
+            @click="selectMode('USERNAME')"
+          >
+            账号
+          </button>
+          <button
+            type="button"
+            :aria-pressed="mode === 'PHONE'"
+            :disabled="busy"
+            @click="selectMode('PHONE')"
+          >
+            手机号
+          </button>
+        </div>
+        <label v-if="mode === 'PHONE'">
+          手机号
+          <input
+            v-model="username"
+            name="username"
+            type="tel"
+            inputmode="numeric"
+            autocomplete="username"
+            placeholder="请输入11位已绑定手机号"
+            :aria-invalid="error === mobilePhoneError"
+            :aria-describedby="
+              error === mobilePhoneError ? 'login-phone-error' : undefined
+            "
+            @input="error = ''"
+          />
+          <small
+            v-if="error === mobilePhoneError"
+            id="login-phone-error"
+            class="field-error"
+            role="alert"
+          >
+            {{ error }}
+          </small>
+        </label>
+        <label v-else>
+          学校账号
           <input
             v-model="username"
             name="username"
@@ -77,7 +143,7 @@ async function submit() {
           />
         </label>
         <label>
-          密码
+          {{ mode === "ACTIVATE" ? "临时密码" : "密码" }}
           <input
             v-model="password"
             name="password"
@@ -88,16 +154,48 @@ async function submit() {
             placeholder="请输入登录密码"
           />
         </label>
-        <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
+        <div
+          v-if="error && error !== mobilePhoneError"
+          class="error-banner"
+          role="alert"
+        >
+          {{ error }}
+        </div>
         <button class="btn primary full" type="submit" :disabled="busy">
-          {{ busy ? "正在登录…" : "登录管理端" }}
+          {{
+            busy
+              ? "正在验证…"
+              : mode === "ACTIVATE"
+                ? "验证并继续"
+                : "登录管理端"
+          }}
           <Icon name="arrow" />
         </button>
+        <div class="button-row login-links">
+          <button
+            v-if="mode === 'ACTIVATE'"
+            type="button"
+            class="text-link"
+            :disabled="busy"
+            @click="selectMode('USERNAME')"
+          >
+            返回登录
+          </button>
+          <button
+            v-else
+            type="button"
+            class="text-link"
+            :disabled="busy"
+            @click="selectMode('ACTIVATE')"
+          >
+            注册 / 激活
+          </button>
+          <RouterLink to="/password-recovery">忘记密码</RouterLink>
+        </div>
         <p class="form-note">
-          账号与楼栋范围由学校配置。遗失密码请联系学校维护人员核验身份后重置。学生服务请使用鸿蒙端。
+          未收到初始账号或需要人工恢复，请联系学校账号维护人员核验身份。
         </p>
       </form>
-      <span class="login-footer">寓见 · 公寓服务工作台</span>
     </section>
   </main>
 </template>

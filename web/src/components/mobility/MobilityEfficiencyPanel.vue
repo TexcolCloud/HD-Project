@@ -97,26 +97,26 @@ const minutes = (number: number | null | undefined) =>
 }
 .efficiency-values dt {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   margin-bottom: 10px;
 }
 .efficiency-values dd {
   margin: 0;
   color: var(--text);
-  font-size: 22px;
+  font-size: var(--type-section);
 }
 .efficiency-values dd small {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .efficiency-comparison {
   border-top: 1px solid var(--border);
   padding-top: 18px;
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .efficiency-updated {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 @media (max-width: 800px) {
   .efficiency-values {

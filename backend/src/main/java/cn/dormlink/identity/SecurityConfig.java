@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,6 +25,17 @@ import java.util.*;
 
 @Configuration
 class SecurityConfig {
+    private static final Set<String> TEMPORARY_ACCOUNT_PATHS =
+            Set.of(
+                    "/api/v1/auth/me",
+                    "/api/v1/auth/csrf",
+                    "/api/v1/auth/change-password",
+                    "/api/v1/auth/logout",
+                    "/api/v1/health");
+    private static final Set<String> ACTIVATION_PATHS =
+            Set.of("/api/v1/auth/phone/challenges", "/api/v1/auth/activate");
+    private static final String RECOVERY_PATH = "/api/v1/auth/password-recovery/";
+
     @Bean
     SecurityFilterChain security(HttpSecurity http, AuthService auth, JsonMapper json)
             throws Exception {
@@ -41,20 +53,20 @@ class SecurityConfig {
                                         mobile
                                                 ? bearer.substring(7)
                                                 : auth.cookie(req, "HD_SESSION"));
-                        if (actor != null) {
+                        if (actor != null
+                                && (mobile
+                                        ? "MOBILE".equals(actor.clientType())
+                                        : "WEB".equals(actor.clientType()) && actor.manager())) {
                             SecurityContextHolder.getContext()
                                     .setAuthentication(
                                             new UsernamePasswordAuthenticationToken(
                                                     actor, null, List.of()));
+                            String path = req.getRequestURI();
                             if (actor.mustChangePassword()
-                                    && req.getRequestURI().startsWith("/api/v1/")
-                                    && !Set.of(
-                                                    "/api/v1/auth/me",
-                                                    "/api/v1/auth/csrf",
-                                                    "/api/v1/auth/change-password",
-                                                    "/api/v1/auth/logout",
-                                                    "/api/v1/health")
-                                            .contains(req.getRequestURI())) {
+                                    && path.startsWith("/api/v1/")
+                                    && !TEMPORARY_ACCOUNT_PATHS.contains(path)
+                                    && !("POST".equals(req.getMethod())
+                                            && ACTIVATION_PATHS.contains(path))) {
                                 fail(
                                         res,
                                         403,
@@ -92,6 +104,12 @@ class SecurityConfig {
                                                 "/api/v1/auth/login",
                                                 "/api/v1/auth/csrf",
                                                 "/api/v1/health")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                RECOVERY_PATH + "challenges",
+                                                RECOVERY_PATH + "verify",
+                                                RECOVERY_PATH + "complete")
                                         .permitAll()
                                         .requestMatchers("/api/v1/**")
                                         .authenticated()

@@ -8,6 +8,7 @@ param(
     [ValidateSet('true', 'false')][string]$Enabled,
     [string]$CredentialFile,
     [string]$Database,
+    [switch]$ClearPhoneBinding,
     [switch]$SelfTest
 )
 $ErrorActionPreference = 'Stop'
@@ -22,6 +23,7 @@ if ($SelfTest) {
     return
 }
 if (-not $Username) { throw 'Specify -Username. Inspect status before changes.' }
+if ($ClearPhoneBinding -and $Action -ne 'reset-password') { throw '-ClearPhoneBinding requires -Action reset-password.' }
 if ($Action -ne 'status' -and -not $Reason) { throw 'A maintenance reason is required.' }
 if ($Action -notin @('status', 'create-manager') -and $ExpectedVersion -lt 0) { throw 'Specify the AccountVersion returned by status.' }
 $names = @('OG_USER', 'OG_PASSWORD', 'ACCOUNT_DB_URL')
@@ -47,6 +49,7 @@ try {
         '--action', $Action, '--username', $Username, '--project-root', $projectRoot)
     if ($Action -ne 'status') { $arguments += @('--reason', $Reason) }
     if ($ExpectedVersion -ge 0) { $arguments += @('--expected-version', "$ExpectedVersion") }
+    if ($ClearPhoneBinding) { $arguments += @('--clear-phone-binding', 'true') }
     if ($Action -in @('reset-password', 'create-manager')) {
         if (-not $CredentialFile) { $CredentialFile = Join-Path $projectRoot ("data/credentials/delivery-$(Get-Date -Format 'yyyyMMddHHmmssfff').json") }
         $arguments += @('--credential-file', [IO.Path]::GetFullPath($CredentialFile))

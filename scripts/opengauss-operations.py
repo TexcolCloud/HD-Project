@@ -271,20 +271,31 @@ def restore(host: DatabaseHost, config: dict[str, str], folder: Path, database: 
              + identifier(config["OG_USER"]) + " DBCOMPATIBILITY 'PG'")
     host.allow_application_host(database)
     host.upload_restore(database, folder / "database.dump")
-    restored = snapshot(host, database, tables(host, database))
+    restored_tables = tables(host, database)
+    restored = snapshot(host, database, restored_tables)
     if restored != manifest["snapshot"]:
         raise RuntimeError("Restored business rows differ from the backup manifest")
     shutil.copytree(folder / "uploads", target / "uploads")
     for key, metadata in manifest["files"].items():
         if digest(target / "uploads" / key) != metadata["sha256"]:
             raise RuntimeError("Restored attachment cannot be read correctly")
-    # A recovery environment must not accept sessions copied from the live service.
-    host.sql(database, "UPDATE auth_session SET revoked_at=CURRENT_TIMESTAMP,last_seen_at=NULL WHERE revoked_at IS NULL")
+    # Restoring an older snapshot must never restore the usability of one-time proofs.
+    invalidation = ["UPDATE auth_session SET revoked_at=CURRENT_TIMESTAMP,last_seen_at=NULL WHERE revoked_at IS NULL"]
+    has_phone_security = "auth_phone_challenge" in restored_tables
+    if has_phone_security:
+        invalidation.extend([
+            "DELETE FROM auth_password_reset",
+            "DELETE FROM auth_phone_challenge",
+            "DELETE FROM auth_verification_limit WHERE expires_at IS NOT NULL",
+            "UPDATE sys_user SET recovery_code_hash=NULL WHERE recovery_code_hash IS NOT NULL",
+        ])
+    host.sql(database, "; ".join(["BEGIN", *invalidation, "COMMIT"]))
     return {"operation": "restore", "passed": True, "targetDatabase": database,
             "targetUploads": str((target / "uploads").relative_to(ROOT)),
             "tableCountsMatch": True, "repairAndProgressDigestsMatch": True,
             "attachmentMetadataMatch": True, "attachmentHashesMatch": True,
-            "restoredSessionsRevoked": True, "repairCount": restored["tableCounts"]["repair_order"],
+            "restoredSessionsRevoked": True, "restoredPhoneProofsRevoked": has_phone_security,
+            "repairCount": restored["tableCounts"]["repair_order"],
             "assetCount": len(restored["assets"]), "copiedFileCount": len(manifest["files"]),
             "liveDatabaseOverwritten": False}
 

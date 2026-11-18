@@ -87,7 +87,6 @@ onMounted(refresh);
   <div class="page-heading">
     <div>
       <h1>宿舍档案</h1>
-      <p>维护楼栋与房间，让入住名额和服务范围清楚可查。</p>
     </div>
     <div class="page-actions">
       <button class="btn subtle" @click="editBuilding()">

@@ -44,13 +44,23 @@ schemas = {
  'FileAsset':obj(dict(id='string',originalName='string',mime='string',sizeBytes='integer',url='string',thumbnailUrl='string',usage='string')),
  'RepairEvent':obj(dict(id='string',orderId='string',fromStatus='string?',toStatus='RepairStatus',action='string',operatorName='string',note='string',createdAt='string')),
  'Repair':obj(dict(id='string',orderNo='string',reporterStudentId='string',reporterName='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',title='string',description='string',category='Category',priority='Priority',urgentReason='string',contactName='string',contactPhone='string',contactTimeSlot='string',status='RepairStatus',handlerUserId='string?',handlerName='string?',relatedOrderId='string?',submittedAt='string',completedAt='string?',version='integer',allowedActions='string[]',reportImages='FileAsset[]',resultImages='FileAsset[]',latestResult='string?')),
- 'Visitor':obj(dict(id='string',visitorName='string',phone='string',visitedStudentId='string',studentName='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',purpose='string',remark='string',arrivedAt='string',leftAt='string?',status=enum('VISITING','LEFT'),version='integer')),
+ 'Visitor':obj(dict(id='string',visitorName='string',phone='string',visitedStudentId='string',studentName='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',purpose='string',remark='string',arrivedAt='string',leftAt='string?',status=enum('VISITING','LEFT'),version='integer',**{'overdue?':'boolean'})),
  'Hygiene':obj(dict(id='string',roomId='string',roomNo='string',buildingId='string',buildingName='string',inspectionDate='string',round='string',inspectedAt='string',floorScore='integer',deskScore='integer',bedScore='integer',bathroomScore='integer',totalScore='integer',grade='Grade',issueNote='string',remediationNote='string',inspectorName='string',relatedInspectionId='string?',voidedAt='string?',version='integer',images='FileAsset[]')),
  'Overview':obj(dict(roomCount='integer',capacity='integer',occupiedCount='integer',availableCount='integer',occupancyRate='number',openRepairs='integer',pendingConfirmation='integer',visitingCount='integer',todayVisitors='integer',hygieneAverage='number?',rectifyRoomCount='integer')),
- 'User':obj(dict(id='string',username='string',displayName='string',role='Role',buildingIds='string[]',studentId='string?',currentRoom='Room?',**{'mustChangePassword?':'boolean'})),
- 'LoginRequest':obj(dict(username='string',password='string',clientType=enum('WEB','MOBILE'))),
+ 'User':obj(dict(id='string',username='string',displayName='string',role='Role',buildingIds='string[]',studentId='string?',currentRoom='Room?',**{'mustChangePassword?':'boolean','phoneMasked?':'string','recoveryCodeConfigured?':'boolean'})),
+ 'LoginRequest':obj(dict(username='string',password='string',clientType=enum('WEB','MOBILE'),**{'identifierType?':enum('USERNAME','PHONE')})),
  'LoginResult':obj({'user':'User','token?':'string'}),
  'PasswordRequest':obj(dict(oldPassword='string',newPassword='string')),
+ 'PhoneChallengeRequest':obj({'purpose':enum('ACTIVATE','BIND','CHANGE_PHONE_OLD','CHANGE_PHONE_NEW','REPLACE_RECOVERY_CODE'),'phone?':'string','currentPassword?':'string'}),
+ 'PhoneChallengeResult':obj(dict(challengeId='string')),
+ 'PhoneCodeRequest':obj(dict(challengeId='string',code='string')),
+ 'ActivateRequest':obj(dict(challengeId='string',code='string',newPassword='string')),
+ 'PhoneChangeRequest':obj(dict(oldChallengeId='string',oldCode='string',newChallengeId='string',newCode='string')),
+ 'AccountSecurityResult':obj({'recoveryCode?':'string'}),
+ 'PasswordRecoveryChallengeRequest':obj(dict(phone='string',clientType=enum('WEB','MOBILE'))),
+ 'PasswordRecoveryVerifyRequest':obj(dict(challengeId='string',code='string',clientType=enum('WEB','MOBILE'))),
+ 'PasswordRecoveryVerifyResult':obj(dict(resetToken='string',recoveryCodeRequired='boolean')),
+ 'PasswordRecoveryCompleteRequest':obj(dict(resetToken='string',newPassword='string',clientType=enum('WEB','MOBILE'),**{'recoveryCode?':'string'})),
  'LeaveRequest':obj({'expectedVersion':'integer','leftAt?':'string'}),
  'ContactResult':obj(dict(phone='string')),
  'Csrf':obj(dict(token='string',headerName='string')),
@@ -175,6 +185,17 @@ def add(path, method, output=None, body=None, page=False, binary=False):
     paths.setdefault(path,{})[method]=op
 
 add('/auth/csrf','get','Csrf');add('/auth/login','post','LoginResult','LoginRequest');add('/auth/me','get','User');add('/auth/logout','post');add('/auth/change-password','post',body=schemas['PasswordRequest'])
+add('/auth/phone/challenges','post','PhoneChallengeResult','PhoneChallengeRequest')
+add('/auth/activate','post','AccountSecurityResult','ActivateRequest')
+add('/auth/phone/bind','post','AccountSecurityResult','PhoneCodeRequest')
+add('/auth/phone/change','post','AccountSecurityResult','PhoneChangeRequest')
+add('/auth/recovery-code/replace','post','AccountSecurityResult','PhoneCodeRequest')
+add('/auth/password-recovery/challenges','post','PhoneChallengeResult','PasswordRecoveryChallengeRequest')
+add('/auth/password-recovery/verify','post','PasswordRecoveryVerifyResult','PasswordRecoveryVerifyRequest')
+add('/auth/password-recovery/complete','post',body='PasswordRecoveryCompleteRequest')
+paths['/auth/password-recovery/complete']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['nullable']=True
+for path in ('/auth/csrf','/auth/login','/auth/password-recovery/challenges','/auth/password-recovery/verify','/auth/password-recovery/complete'):
+    next(iter(paths[path].values()))['security']=[]
 for path, entity, req in [('buildings','Building',None),('rooms','Room','RoomRequest'),('students','Student','StudentRequest'),('repairs','Repair','RepairRequest'),('visitors','Visitor','VisitorRequest'),('hygiene-inspections','Hygiene','HygieneRequest')]:
     add('/'+path,'get',entity+'Page',page=True);add('/'+path+'/{id}','get',entity);add('/'+path,'post',entity,req or obj({'code':'string','name':'string','floorCount':'integer','enabled?':'boolean'}))
     if path!='repairs': add('/'+path+'/{id}','patch',entity,req or obj({'code':'string','name':'string','floorCount':'integer','enabled?':'boolean','expectedVersion':'integer'}))

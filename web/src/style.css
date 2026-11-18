@@ -23,6 +23,10 @@
   font-display: swap;
 }
 :root {
+  --type-caption: 12px;
+  --type-body: 14px;
+  --type-section: 17px;
+  --type-display: 28px;
   --primary: #242622;
   --on-primary: #fffdf8;
   --canvas: #f5f1e8;
@@ -45,7 +49,7 @@
   font-family: "Dorm Plex", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background: var(--canvas);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.7;
   font-synthesis: none;
 }
@@ -85,17 +89,16 @@ figure {
   margin: 0;
 }
 h1 {
-  font:
-    600 32px/1.5 "Dorm Serif",
-    serif;
-  letter-spacing: 0.3px;
+  font-size: var(--type-display);
+  line-height: 1.5;
+  font-weight: 600;
 }
 h2 {
-  font-size: 17px;
+  font-size: var(--type-section);
   font-weight: 600;
 }
 h3 {
-  font-size: 16px;
+  font-size: var(--type-body);
 }
 a {
   color: var(--accent);
@@ -154,7 +157,7 @@ svg {
   font-variant-numeric: tabular-nums;
 }
 .section-note {
-  font-size: 12px;
+  font-size: var(--type-caption);
   margin-bottom: 8px;
 }
 .skip-link {
@@ -184,29 +187,21 @@ svg {
 .brand {
   color: inherit;
   font:
-    600 28px/1.3 "Dorm Serif",
+    600 var(--type-display) / 1.3 "Dorm Serif",
     serif;
   letter-spacing: 2px;
   display: flex;
   align-items: center;
   gap: 9px;
 }
-.brand span {
-  font:
-    11px "Dorm Chivo",
-    monospace;
-  letter-spacing: 0;
-  color: inherit;
-  opacity: 0.8;
-}
 .sidebar .brand {
   padding: 0 14px;
   color: #f1eee3;
 }
 .sidebar-note {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: #bfc0b2;
-  margin: 8px 14px 30px;
+  margin: 8px 14px 24px;
 }
 .sidebar nav {
   display: grid;
@@ -221,7 +216,7 @@ svg {
   padding: 11px 14px;
   color: #cfd0c3;
   border-radius: 3px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .sidebar nav a.active {
   background: #ece8db;
@@ -241,20 +236,10 @@ svg {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: #bfc0b2;
   margin-top: auto;
   padding: 45px 13px 0;
-}
-.sidebar-foot svg {
-  width: 15px;
-}
-.sidebar-foot small {
-  width: 100%;
-  font-size: 11px;
-  border-top: 1px solid #ffffff24;
-  margin-top: 12px;
-  padding-top: 13px;
 }
 .workspace,
 .content {
@@ -275,14 +260,7 @@ svg {
   align-items: center;
   gap: 12px;
   color: var(--muted);
-  font-size: 12px;
-}
-.breadcrumb strong {
-  color: var(--text);
-  font-weight: 400;
-}
-.breadcrumb > span {
-  color: var(--border-strong);
+  font-size: var(--type-caption);
 }
 .top-actions {
   display: flex;
@@ -305,8 +283,8 @@ svg {
   gap: 5px;
   min-height: 32px;
   padding: 5px 8px;
-  font-size: 11px;
-  border-radius: 2px;
+  font-size: var(--type-caption);
+  border-radius: calc(4px - 3px);
 }
 .theme-switch button[aria-pressed="true"] {
   background: var(--primary);
@@ -330,15 +308,15 @@ svg {
   display: grid;
   place-items: center;
   background: var(--soft);
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .profile strong {
-  font-size: 12px;
+  font-size: var(--type-caption);
   display: block;
   font-weight: 600;
 }
 .profile small {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .icon-button {
@@ -360,26 +338,17 @@ svg {
   max-width: 1720px;
   margin: auto;
 }
-.app-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 11px;
-  color: var(--muted);
-  padding: 0 32px 22px;
-}
 .page-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 24px;
-  animation: enter 0.24s ease-out;
 }
 .page-heading p {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .page-actions,
 .button-row,
@@ -400,7 +369,7 @@ svg {
   border-radius: 4px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--type-body);
   white-space: nowrap;
 }
 .btn svg {
@@ -429,8 +398,8 @@ svg {
 }
 .text-link {
   background: transparent;
-  color: var(--accent);
-  font-size: 13px;
+  color: var(--text);
+  font-size: var(--type-body);
   min-height: 32px;
   padding: 4px 0;
   white-space: nowrap;
@@ -441,8 +410,6 @@ svg {
 }
 .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
   min-width: 0;
   overflow: clip;
 }
@@ -454,7 +421,7 @@ svg {
   gap: 14px;
 }
 .panel-head p {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-top: 4px;
 }
@@ -474,10 +441,10 @@ table {
   border-collapse: collapse;
   white-space: nowrap;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 th {
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 400;
   background: var(--raised);
   color: var(--muted);
@@ -497,13 +464,13 @@ tbody tr:hover {
 }
 td strong {
   display: block;
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
 }
 td small {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   margin-top: 4px;
 }
 .cell-actions {
@@ -519,13 +486,32 @@ td small {
   border-radius: 3px;
   background: var(--soft);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .status.SUBMITTED,
 .status.PENDING_CONFIRMATION,
 .status.VISITING {
   background: var(--warning-bg);
   color: var(--warning);
+}
+.inspection-comparison {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+.inspection-comparison h3 {
+  margin: 0 0 6px;
+}
+.details.comparison-scores {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.comparison-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .status.ACCEPTED,
 .status.PROCESSING {
@@ -541,6 +527,7 @@ td small {
 }
 .status.REJECTED,
 .status.RECTIFY,
+.status.VISITOR_OVERDUE,
 .status.INACTIVE {
   background: var(--danger-bg);
   color: var(--danger);
@@ -556,7 +543,7 @@ td small {
   align-items: center;
   gap: 12px;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .pagination > div {
@@ -575,13 +562,13 @@ td small {
   padding: 32px 20px !important;
   color: var(--muted);
   text-align: center;
-  font-size: 14px;
+  font-size: var(--type-body);
   white-space: normal;
 }
 .loading {
   padding: 18px 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .error-banner {
   padding: 13px 15px;
@@ -590,7 +577,7 @@ td small {
   border: 1px solid var(--danger);
   border-radius: 4px;
   margin: 15px 0;
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
@@ -601,7 +588,7 @@ td small {
   margin-left: 12px;
 }
 .form-note {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   line-height: 1.85;
   margin: 8px 0 18px;
@@ -611,7 +598,7 @@ td small {
   background: var(--soft);
   border-radius: 4px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.8;
   margin-bottom: 18px;
 }
@@ -623,7 +610,7 @@ td small {
   padding: 18px 20px 0;
 }
 .filters label {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   display: flex;
   flex-direction: column;
@@ -634,7 +621,7 @@ td small {
   padding: 8px 10px;
   min-height: 39px;
   max-width: 220px;
-  font-size: 13px;
+  font-size: var(--type-body);
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   background: var(--surface);
@@ -650,7 +637,7 @@ td small {
   background: transparent;
   color: var(--muted);
   padding: 10px 17px;
-  font-size: 14px;
+  font-size: var(--type-body);
   border-bottom: 2px solid transparent;
 }
 .tabs button.active {
@@ -659,24 +646,13 @@ td small {
   font-weight: 600;
 }
 .dashboard-lead {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.8fr);
-  gap: 34px;
   align-items: center;
-  margin-bottom: 27px;
-}
-.dashboard-lead h1 {
-  font-size: 35px;
-}
-.lead-description {
-  margin-top: 8px;
-  font-size: 14px;
 }
 .lead-actions {
-  margin-top: 19px;
+  margin-top: 0;
 }
 .inline-label {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   display: flex;
   align-items: center;
@@ -689,35 +665,7 @@ td small {
   padding: 8px 10px;
   min-height: 40px;
   color: var(--text);
-  font-size: 13px;
-}
-.photo-panel {
-  height: 174px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--soft);
-}
-.photo-panel img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 58%;
-  display: block;
-}
-.photo-panel figcaption {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 13px 12px 9px;
-  background: linear-gradient(transparent, #151a1690);
-  color: white;
-  font-size: 10px;
-}
-.photo-panel a {
-  color: white;
-  text-decoration: underline;
+  font-size: var(--type-body);
 }
 .summary-strip {
   display: grid;
@@ -739,25 +687,25 @@ td small {
 }
 .summary-strip span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .summary-strip strong {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  font-size: 34px;
+  font-size: var(--type-display);
   line-height: 1.5;
   font-weight: 500;
   letter-spacing: -1px;
 }
 .summary-strip small {
   font:
-    12px "Dorm Plex",
+    var(--type-caption) "Dorm Plex",
     sans-serif;
   letter-spacing: 0;
 }
 .summary-strip p {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .dashboard-grid {
@@ -772,6 +720,21 @@ td small {
   align-content: start;
   min-width: 0;
 }
+.aside-column .panel {
+  background: transparent;
+}
+.aside-column .panel-head {
+  padding-left: 0;
+  padding-right: 0;
+}
+.aside-column .compact-list {
+  padding-left: 0;
+  padding-right: 0;
+}
+.aside-column .manager-assist {
+  padding-left: 0;
+  padding-right: 0;
+}
 .task-panel {
   border: 0;
 }
@@ -782,7 +745,7 @@ td small {
 }
 .floor-tabs button {
   font:
-    12px "Dorm Chivo",
+    var(--type-caption) "Dorm Chivo",
     monospace;
   min-height: 32px;
   padding: 4px 10px;
@@ -797,35 +760,34 @@ td small {
 }
 .room-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 0 12px;
   padding: 0 20px 20px;
 }
 .room-grid a {
   padding: 10px 9px;
-  background: var(--raised);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  border-bottom: 1px solid var(--border);
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .room-grid a:hover {
   border-color: var(--text);
 }
 .room-grid .vacant {
-  border-style: dashed;
+  border-bottom-style: dashed;
 }
 .room-grid .disabled {
-  opacity: 0.6;
+  color: var(--muted);
 }
 .room-grid strong {
   display: block;
-  font-size: 20px;
+  font-size: var(--type-section);
   font-weight: 500;
   line-height: 1.3;
 }
 .room-grid small {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
   display: block;
   margin-top: 5px;
@@ -849,17 +811,17 @@ td small {
 }
 .compact-list strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--type-body);
   font-weight: 500;
 }
 .compact-list small {
   display: block;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-top: 3px;
 }
 .compact-list .score-number {
-  font-size: 23px;
+  font-size: var(--type-section);
 }
 .service-note {
   background: var(--soft);
@@ -867,11 +829,11 @@ td small {
   padding: 20px;
 }
 .service-note h2 {
-  font-size: 17px;
+  font-size: var(--type-section);
   margin-bottom: 8px;
 }
 .service-note > p:last-child {
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.85;
   color: var(--muted);
 }
@@ -905,12 +867,11 @@ dialog::backdrop {
   z-index: 3;
 }
 .drawer-head h2 {
-  font:
-    600 24px/1.5 "Dorm Serif",
-    serif;
+  font-size: var(--type-section);
+  line-height: 1.5;
 }
 .drawer-head p {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-top: 4px;
 }
@@ -935,7 +896,7 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  font-size: 14px;
+  font-size: var(--type-body);
   min-width: 0;
 }
 .form input,
@@ -949,14 +910,14 @@ dialog::backdrop {
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .form textarea {
   resize: vertical;
   min-height: 108px;
 }
 .form small {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   line-height: 1.8;
 }
@@ -986,10 +947,10 @@ dialog::backdrop {
 }
 .detail-section h3 {
   margin-bottom: 12px;
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 .detail-title {
-  font-size: 20px;
+  font-size: var(--type-section);
   margin-top: 12px;
   line-height: 1.7;
   overflow-wrap: anywhere;
@@ -1001,22 +962,19 @@ dialog::backdrop {
   margin: 18px 0 0;
 }
 .details dt {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .details dd {
-  font-size: 14px;
+  font-size: var(--type-body);
   margin: 4px 0 0;
   overflow-wrap: anywhere;
 }
 .description {
   white-space: pre-wrap;
   line-height: 1.9;
-  padding: 14px;
-  background: var(--soft);
-  border-radius: 4px;
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .timeline {
   list-style: none;
@@ -1026,7 +984,7 @@ dialog::backdrop {
 .timeline li {
   position: relative;
   padding: 0 0 24px 25px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .timeline li:before {
   content: "";
@@ -1059,7 +1017,7 @@ dialog::backdrop {
 .timeline small {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   margin-top: 3px;
 }
 .image-grid {
@@ -1109,16 +1067,16 @@ dialog::backdrop {
   min-width: 0;
 }
 .upload-item p {
-  font-size: 12px;
+  font-size: var(--type-caption);
   overflow-wrap: anywhere;
 }
 .upload-item small {
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .upload-item button {
   color: var(--accent);
   background: transparent;
-  font-size: 12px;
+  font-size: var(--type-caption);
   min-height: 34px;
 }
 .score-total {
@@ -1128,11 +1086,11 @@ dialog::backdrop {
   padding: 17px;
   background: var(--soft);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .score-total strong {
   font:
-    500 35px "Dorm Chivo",
+    500 var(--type-display) "Dorm Chivo",
     monospace;
 }
 .score-row {
@@ -1147,7 +1105,7 @@ dialog::backdrop {
   width: 82px;
   text-align: center;
   font:
-    18px "Dorm Chivo",
+    var(--type-section) "Dorm Chivo",
     monospace;
 }
 .notice-stack {
@@ -1168,7 +1126,7 @@ dialog::backdrop {
   color: var(--surface);
   border-radius: 4px;
   box-shadow: 0 8px 30px #171d1930;
-  font-size: 13px;
+  font-size: var(--type-body);
   overflow-wrap: anywhere;
 }
 .toast.error {
@@ -1189,7 +1147,7 @@ dialog::backdrop {
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  font-size: 14px;
+  font-size: var(--type-body);
   margin-bottom: 7px;
 }
 .stat-bar {
@@ -1205,7 +1163,7 @@ dialog::backdrop {
   padding: 16px 22px 22px;
 }
 .stat-trend table {
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .stat-trend th,
 .stat-trend td {
@@ -1232,14 +1190,17 @@ dialog::backdrop {
 .login-story .section-note {
   color: #bcbeb1;
 }
+.login-story .form-note {
+  color: #c7c9bc;
+}
 .login-story h1 {
-  font-size: 44px;
+  font-size: var(--type-display);
   line-height: 1.65;
   font-weight: 600;
   margin: 18px 0;
 }
 .login-story > div > p:last-child {
-  font-size: 14px;
+  font-size: var(--type-body);
   color: #c7c9bc;
 }
 .login-story figure {
@@ -1253,7 +1214,7 @@ dialog::backdrop {
   border-radius: 3px;
 }
 .login-story figcaption {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: #bfc0b2;
   margin-top: 9px;
 }
@@ -1269,18 +1230,18 @@ dialog::backdrop {
   align-items: center;
   position: relative;
 }
-.login-form form {
+.login-form form,
+.login-form > .form {
   width: 100%;
   max-width: 365px;
 }
 .login-form h2 {
-  font:
-    600 32px/1.6 "Dorm Serif",
-    serif;
+  font-size: var(--type-display);
+  font-weight: 600;
   margin-bottom: 6px;
 }
 .login-form form > .muted {
-  font-size: 13px;
+  font-size: var(--type-body);
   margin-bottom: 27px;
 }
 .login-form label {
@@ -1288,7 +1249,7 @@ dialog::backdrop {
   flex-direction: column;
   gap: 7px;
   margin-bottom: 18px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .login-form input {
   padding: 12px 14px;
@@ -1303,32 +1264,22 @@ dialog::backdrop {
   min-height: 48px;
   justify-content: space-between;
   padding: 11px 16px;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
-.login-icon {
-  height: 44px;
-  width: 44px;
+.login-links {
+  justify-content: space-between;
+}
+.account-panel {
+  max-width: 560px;
+  padding: 24px;
+}
+.recovery-code {
+  display: block;
+  padding: 14px;
+  border: 1px solid var(--border);
   background: var(--soft);
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  margin-bottom: 25px;
-}
-.login-footer {
-  position: absolute;
-  bottom: 30px;
-  font-size: 11px;
-  color: var(--muted);
-}
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  overflow-wrap: anywhere;
+  user-select: all;
 }
 @media (max-width: 1200px) {
   .app-shell {
@@ -1339,7 +1290,7 @@ dialog::backdrop {
     padding-right: 10px;
   }
   .sidebar nav a {
-    font-size: 13px;
+    font-size: var(--type-body);
     padding-left: 12px;
     gap: 10px;
   }
@@ -1353,24 +1304,17 @@ dialog::backdrop {
     grid-template-columns: minmax(0, 1.75fr) minmax(245px, 1fr);
     gap: 18px;
   }
-  .dashboard-lead {
-    gap: 24px;
-    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.8fr);
-  }
-  .dashboard-lead h1 {
-    font-size: 31px;
-  }
   .summary-strip > div {
     padding: 0 15px;
   }
   .summary-strip strong {
-    font-size: 30px;
+    font-size: var(--type-display);
   }
   .login-story {
     padding: 40px;
   }
   .login-story h1 {
-    font-size: 38px;
+    font-size: var(--type-display);
   }
 }
 @media (max-width: 1020px) {
@@ -1396,12 +1340,6 @@ dialog::backdrop {
   .profile > div {
     display: none;
   }
-  .dashboard-lead {
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 0.7fr);
-  }
-  .dashboard-lead h1 {
-    font-size: 28px;
-  }
   .stat-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1417,13 +1355,7 @@ dialog::backdrop {
     margin-left: auto;
   }
   .breadcrumb {
-    font-size: 11px;
-  }
-  .dashboard-lead {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .photo-panel {
-    height: 155px;
+    font-size: var(--type-caption);
   }
   .aside-column {
     grid-template-columns: minmax(0, 1fr);
@@ -1438,7 +1370,7 @@ dialog::backdrop {
     padding: 30px;
   }
   .login-story h1 {
-    font-size: 32px;
+    font-size: var(--type-display);
   }
   .login-story img {
     height: 160px;
@@ -1449,11 +1381,11 @@ dialog::backdrop {
   .page-heading {
     align-items: flex-start;
   }
-  .page-heading h1 {
-    font-size: 28px;
-  }
 }
 @media (max-width: 700px) {
+  :root {
+    --type-body: 16px;
+  }
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1461,7 +1393,7 @@ dialog::backdrop {
     padding: 13px 12px;
   }
   .sidebar > .brand {
-    font-size: 22px;
+    font-size: var(--type-section);
     padding: 0 6px;
     margin-bottom: 13px;
   }
@@ -1479,7 +1411,7 @@ dialog::backdrop {
   .sidebar nav a {
     flex: none;
     min-height: 40px;
-    font-size: 12px;
+    font-size: var(--type-caption);
     padding: 8px 10px;
     gap: 6px;
     white-space: nowrap;
@@ -1498,7 +1430,7 @@ dialog::backdrop {
     gap: 4px;
   }
   .theme-switch button {
-    font-size: 10px;
+    font-size: var(--type-caption);
     padding: 5px 6px;
     min-height: 32px;
   }
@@ -1509,45 +1441,30 @@ dialog::backdrop {
   .content {
     padding: 24px 16px;
   }
-  .app-footer {
-    padding: 0 16px 20px;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 10px;
-  }
   .page-heading {
     margin-bottom: 20px;
     gap: 12px;
     flex-wrap: wrap;
   }
-  .page-heading h1 {
-    font-size: 28px;
-  }
   .page-heading p {
-    font-size: 13px;
+    font-size: var(--type-body);
   }
   .page-actions {
     gap: 8px;
   }
   .page-actions .btn {
-    font-size: 12px;
+    font-size: var(--type-caption);
     padding: 8px 11px;
     min-height: 40px;
-  }
-  .dashboard-lead h1 {
-    font-size: 29px;
-  }
-  .lead-description {
-    font-size: 13px;
   }
   .lead-actions {
     gap: 10px;
   }
   .summary-strip strong {
-    font-size: 30px;
+    font-size: var(--type-display);
   }
   .summary-strip p {
-    font-size: 11px;
+    font-size: var(--type-caption);
   }
   .summary-strip > div {
     padding: 0 13px;
@@ -1564,17 +1481,17 @@ dialog::backdrop {
     padding: 17px 16px 0;
   }
   .panel-head h2 {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .room-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 0 15px 16px;
   }
   .room-grid a {
     padding: 9px 6px;
   }
   .room-grid small {
-    font-size: 11px;
+    font-size: var(--type-caption);
   }
   .filters {
     padding: 16px 15px 0;
@@ -1583,10 +1500,10 @@ dialog::backdrop {
   .filters input,
   .filters select {
     max-width: 145px;
-    font-size: 12px;
+    font-size: var(--type-caption);
   }
   .filters .btn {
-    font-size: 12px;
+    font-size: var(--type-caption);
     padding: 8px 10px;
   }
   .pagination {
@@ -1606,7 +1523,7 @@ dialog::backdrop {
   .form input,
   .form select,
   .form textarea {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .form input,
   .form select {
@@ -1614,14 +1531,14 @@ dialog::backdrop {
   }
   .form small,
   .form-note {
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .form .form-row {
     grid-template-columns: minmax(0, 1fr);
   }
   .form .btn {
     min-height: 48px;
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .details {
     gap: 16px;
@@ -1634,14 +1551,14 @@ dialog::backdrop {
     gap: 23px;
   }
   .login-story h1 {
-    font-size: 30px;
+    font-size: var(--type-display);
     margin: 10px 0;
   }
   .login-story h1 br {
     display: none;
   }
   .login-story > div > p:last-child {
-    font-size: 13px;
+    font-size: var(--type-body);
   }
   .login-story img {
     height: 130px;
@@ -1653,22 +1570,16 @@ dialog::backdrop {
     padding: 31px 24px 75px;
   }
   .login-form h2 {
-    font-size: 30px;
+    font-size: var(--type-display);
   }
   .login-form input {
-    font-size: 16px;
-  }
-  .login-icon {
-    display: none;
-  }
-  .login-footer {
-    bottom: 24px;
+    font-size: var(--type-body);
   }
   .notice-stack {
     bottom: 16px;
   }
   .toast {
-    font-size: 13px;
+    font-size: var(--type-body);
   }
   .table-wrap {
     scrollbar-width: thin;
@@ -1693,7 +1604,7 @@ dialog::backdrop {
   background: var(--soft);
   border-radius: 4px;
   padding: 12px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .form .form-note {
   margin-top: 0;

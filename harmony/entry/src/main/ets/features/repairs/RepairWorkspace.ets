@@ -2,7 +2,7 @@ import { TaskTransfer } from "../dispatch/TaskTransfer";
 import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceSection, serviceEmpty, serviceDetail, repairStatusColor } from '../../components/ServiceParts';
 import { User, Room, Repair, RepairEvent, FileAsset } from '../../models/ApiModels';
-import { statusLabel, categoryLabel, actionLabel, dateText } from '../../services/Labels';
+import { statusLabel, categoryLabel, actionLabel, dateText, appointment } from '../../services/Labels';
 import { palette } from '../../components/Palette';
 import { SecureImage } from '../../components/SecureImage';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
@@ -47,18 +47,22 @@ export struct RepairWorkspace {
   private RepairCard($$: RepairCardArgs) {
     Column({space: 10}) {
       Row() {
-        Text($$.order.orderNo).fontSize(12).fontColor(this.muted()).layoutWeight(1)
-        Text(statusLabel($$.order.status)).fontSize(12).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
+        Text($$.order.orderNo).fontSize(14).fontColor(this.muted()).layoutWeight(1)
+        Text(statusLabel($$.order.status)).fontSize(14).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
           .backgroundColor(this.soft()).borderRadius(3)
       }.width('100%')
-      Text($$.order.title).fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
-      Text($$.order.buildingName + ' ' + $$.order.roomNo + ' · ' + categoryLabel($$.order.category)).fontSize(13).fontColor(this.muted()).width('100%')
+      Text($$.order.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
+      Text($$.order.buildingName + ' ' + $$.order.roomNo + ' · ' + categoryLabel($$.order.category)).fontSize(14).fontColor(this.muted()).width('100%')
+      if (!this.manager()) {
+        Text(appointment($$.order).label + (appointment($$.order).window ? ' · ' + appointment($$.order).window : ''))
+          .fontSize(14).lineHeight(22).fontColor(this.accent()).width('100%')
+      }
       Row() {
-        Text(dateText($$.order.submittedAt)).fontSize(12).fontColor(this.muted()).layoutWeight(1)
-        Text('查看进度 →').fontSize(13).fontColor(this.accent())
+        Text(dateText($$.order.submittedAt)).fontSize(14).fontColor(this.muted()).layoutWeight(1)
+        Text('查看进度 →').fontSize(14).fontColor(this.accent())
       }.width('100%')
-    }.padding(18).width('100%').alignItems(HorizontalAlign.Start).backgroundColor(this.surface())
-      .border({width: 1, color: this.line()}).borderRadius(6).margin({bottom: 12}).onClick(() => this.host.openRepair($$.order))
+    }.padding({top: 18, bottom: 18}).width('100%').alignItems(HorizontalAlign.Start)
+      .border({width: {bottom: 1}, color: this.line()}).onClick(() => this.host.openRepair($$.order))
   }
 
   @Builder
@@ -70,8 +74,6 @@ export struct RepairWorkspace {
   private RepairCreate() {
     Column({space: 0}) {
       DraftNotice({restored: this.state.draftRestored, blocked: this.state.draftBlocked, night: this.night, onDiscard: () => this.controller.discardDraft()})
-      Text('报修房间依据当前入住信息关联，请描述现象和发生位置。').fontSize(14).fontColor(this.muted()).lineHeight(24)
-        .width('100%').padding(14).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 22})
       serviceDetail({label: '报修宿舍', value: this.room ? this.room.buildingName + ' ' + this.room.roomNo : '尚未关联宿舍', night: this.night})
       StudentPlaceCheck({room: this.room, night: this.night, onUnauthorized: (error: Error) => this.host.fail(error)})
       Blank().height(20)
@@ -83,7 +85,10 @@ export struct RepairWorkspace {
         .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
         .onSelect((index: number) => { this.state.repairCategory = ['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'][index]; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
       serviceField({label: '联系人 *', value: this.state.contactName, change: (v: string)  => { this.state.contactName = v; this.controller.saveDraft(); }, placeholder: '方便宿管联系的姓名', night: this.night, page: this.page})
-      serviceField({label: '联系电话 *', value: this.state.contactPhone, change: (v: string)  => { this.state.contactPhone = v; this.controller.saveDraft(); }, placeholder: '请输入方便接听的电话', night: this.night, page: this.page})
+      serviceField({label: '联系电话 *', value: this.state.contactPhone, change: (v: string) => {
+        this.state.contactPhone = v; this.state.phoneError = ''; this.controller.saveDraft();
+      }, invalidPhonePaste: () => { this.state.phoneError = '请输入11位手机号'; }, error: this.state.phoneError,
+        placeholder: '请输入11位手机号', inputType: InputType.PhoneNumber, night: this.night, page: this.page})
       serviceField({label: '方便联系时段', value: this.state.contactTime, change: (v: string)  => { this.state.contactTime = v; this.controller.saveDraft(); }, placeholder: '例如：工作日18:00后', night: this.night, page: this.page})
       VisitWindowFields({draft: this.state.visitDraft, night: this.night, onChange: (draft: VisitWindowDraft) => { this.state.visitDraft = draft; this.controller.saveDraft(); }})
       serviceLabel({text: '紧急程度', night: this.night})
@@ -93,26 +98,25 @@ export struct RepairWorkspace {
       if (this.state.repairPriority === 'URGENT') { serviceField({label: '较急原因 *', value: this.state.repairUrgentReason, change: (v: string)  => { this.state.repairUrgentReason = v; this.controller.saveDraft(); }, placeholder: '说明需要优先处理的情况', multiline: true, night: this.night, page: this.page}) }
       this.Uploads('REPORT')
       Column({space: 12}) {
-        Text('报修填写助手').fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
-        Text('根据本次描述和最多3张所选图片整理建议，核对后再采纳。').fontSize(13).fontColor(this.muted()).lineHeight(22).width('100%')
+        Text('报修填写助手').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
+        Text('根据本次描述和最多3张所选图片整理建议，核对后再采纳。').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%')
         Row({space: 8}) {
           Checkbox({name: 'analysis-consent'}).select(this.state.aiConsent).selectedColor(this.accent()).onChange((v: boolean) => this.state.aiConsent = v)
-          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(13).fontColor(this.ink()).layoutWeight(1).lineHeight(22)
+          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22)
         }.width('100%')
-        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(15)
+        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(16)
           .backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).enabled(!this.state.aiBusy && !this.state.uploading && !this.state.busy).onClick(() => this.controller.suggest())
-        if (this.state.aiError) { Text(this.state.aiError).fontSize(13).fontColor(this.night ? '#F1A99C' : '#A13E37').lineHeight(22).width('100%') }
+        if (this.state.aiError) { Text(this.state.aiError).fontSize(14).fontColor(this.night ? '#F1A99C' : '#A13E37').lineHeight(22).width('100%') }
         if (this.state.ai) {
           Text('AI建议，请核对').fontSize(14).fontColor(this.accent()).width('100%')
           Text(this.state.ai.title + '\n' + categoryLabel(this.state.ai.category) + '\n' + this.state.ai.summary).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%')
-          if (this.state.ai.uncertainty) { Text(this.state.ai.uncertainty).fontSize(13).fontColor(this.muted()).width('100%') }
-          ForEach(this.state.ai.questions, (question: string) => { Text('待补充：' + question).fontSize(13).fontColor(this.muted()).width('100%') })
-          Button(this.state.aiAdopted ? '已采纳，可继续修改' : '采纳建议').height(48).width('100%').fontSize(15).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+          if (this.state.ai.uncertainty) { Text(this.state.ai.uncertainty).fontSize(14).fontColor(this.muted()).width('100%') }
+          ForEach(this.state.ai.questions, (question: string) => { Text('待补充：' + question).fontSize(14).fontColor(this.muted()).width('100%') })
+          Button(this.state.aiAdopted ? '已采纳，可继续修改' : '采纳建议').height(48).width('100%').fontSize(16).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
             .onClick(() => { if (this.state.ai) { this.state.repairTitle = this.state.ai.title; this.state.repairDescription = this.state.ai.summary; this.state.repairCategory = this.state.ai.category; this.state.aiAdopted = true; } })
         }
-      }.padding(16).width('100%').alignItems(HorizontalAlign.Start).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 24})
+      }.padding({top: 16, bottom: 16}).width('100%').alignItems(HorizontalAlign.Start).border({width: {top: 1}, color: this.line()}).margin({bottom: 24})
       servicePrimary({label: '提交报修', click: () => this.controller.submitRepair(), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading, enabled: !!this.room})
-      Text('确认内容后提交。AI暂不可用时，仍可手动完成报修。').fontSize(12).fontColor(this.muted()).lineHeight(21).margin({top: 12})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
@@ -121,7 +125,7 @@ export struct RepairWorkspace {
     Column({space: 0}) {
       Row({space: 8}) {
         TextInput({text: this.state.repairSearch, placeholder: '搜索工单或宿舍'}).id('repair-search').layoutWeight(1).height(48)
-          .fontSize(15).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
+          .fontSize(16).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
           .onChange((v: string) => this.state.repairSearch = v).onSubmit(() => { this.state.repairPage = 1; this.controller.loadRepairs(); })
         serviceSecondary({label: '查询', click: () => { this.state.repairPage = 1; this.controller.loadRepairs(); }, night: this.night, busy: this.state.busy})
       }.width('100%').margin({bottom: 12})
@@ -132,8 +136,8 @@ export struct RepairWorkspace {
           this.state.repairFilter = ['', 'SUBMITTED', 'ACCEPTED', 'PROCESSING', 'PENDING_CONFIRMATION', 'COMPLETED', 'CANCELLED', 'REJECTED'][index];
           this.state.repairPage = 1; this.controller.loadRepairs();
         }).margin({bottom: 18})
-      if (!this.manager()) { servicePrimary({label: '＋ 提交报修', click: () => this.host.navigate('repair-create'), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading, enabled: !!this.room}); Blank().height(18) }
-      Text('共 ' + this.state.repairTotal + ' 条记录').fontSize(12).fontColor(this.muted()).width('100%').margin({bottom: 12})
+      if (!this.manager()) { servicePrimary({label: '提交报修', click: () => this.host.navigate('repair-create'), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading, enabled: !!this.room}); Blank().height(18) }
+      Text('共 ' + this.state.repairTotal + ' 条记录').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 12})
       if (!this.state.repairs.length && !this.state.listLoading) { serviceEmpty({message: '暂无符合条件的工单，请调整筛选条件。', night: this.night}) }
       ForEach(this.state.repairs, (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
       Row({space: 12}) {
@@ -147,15 +151,22 @@ export struct RepairWorkspace {
   }
 
   @Builder
+  private Visit() {
+    VisitArrangement({repair: this.state.selected, manager: this.manager(), userId: this.user?.id || '', night: this.night,
+      onSaved: (repair: Repair) => { this.host.openRepair(repair); this.dispatch.refresh(false); }, onUnauthorized: (error: Error) => this.host.fail(error)})
+  }
+
+  @Builder
   private RepairDetail() {
     if (this.state.selected) {
     Column({space: 0}) {
       Row() {
-        Text(this.state.selected.orderNo).fontSize(12).fontColor(this.muted()).layoutWeight(1)
-        Text(statusLabel(this.state.selected.status)).fontSize(13).fontColor(repairStatusColor(this.state.selected.status, this.night)).padding(6).backgroundColor(this.soft()).borderRadius(3)
+        Text(this.state.selected.orderNo).fontSize(14).fontColor(this.muted()).layoutWeight(1)
+        Text(statusLabel(this.state.selected.status)).fontSize(14).fontColor(repairStatusColor(this.state.selected.status, this.night)).padding(6).backgroundColor(this.soft()).borderRadius(3)
       }.width('100%')
-      Text(this.state.selected.title).fontFamily('DormSerif').fontSize(27).fontWeight(FontWeight.Medium).fontColor(this.ink()).lineHeight(38)
+      Text(this.state.selected.title).fontSize(28).fontWeight(FontWeight.Medium).fontColor(this.ink()).lineHeight(38)
         .width('100%').margin({top: 16, bottom: 20})
+      if (!this.manager()) { this.Visit() }
       serviceDetail({label: '报修宿舍', value: this.state.selected.buildingName + ' ' + this.state.selected.roomNo, night: this.night})
       serviceDetail({label: '报修学生', value: this.state.selected.reporterName, night: this.night})
       serviceDetail({label: '故障分类', value: categoryLabel(this.state.selected.category), night: this.night})
@@ -165,8 +176,7 @@ export struct RepairWorkspace {
       serviceDetail({label: '联系时段', value: this.state.selected.contactTimeSlot, night: this.night})
       serviceDetail({label: '办理宿管', value: this.state.selected.handlerName || '等待接单', night: this.night})
       serviceDetail({label: '提交时间', value: dateText(this.state.selected.submittedAt), night: this.night})
-      VisitArrangement({repair: this.state.selected, manager: this.manager(), night: this.night,
-        onSaved: (repair: Repair) => { this.host.openRepair(repair); this.dispatch.refresh(false); }, onUnauthorized: (error: Error) => this.host.fail(error)})
+      if (this.manager()) { this.Visit() }
       if (this.manager()) { TaskTransfer({repair: this.state.selected!, userId: this.user?.id || '', night: this.night, onUpdated: (repair: Repair) => this.host.openRepair(repair), onError: (error: Error) => this.host.fail(error)}) }
       RepairReminders({repair: this.state.selected, night: this.night})
       if (this.manager()) { ManagerAssist({orderId: this.state.selected.id, night: this.night, onOpenRepair: (repair: Repair) => this.host.openRepair(repair), onUnauthorized: (error: Error) => this.host.fail(error)}) }
@@ -186,11 +196,11 @@ export struct RepairWorkspace {
       serviceSection({title: '处理进度', night: this.night})
       ForEach(this.state.events, (event: RepairEvent) => {
         Row({space: 12}) {
-          Text('●').fontSize(9).fontColor(this.accent()).margin({top: 5})
+          Text('●').fontSize(14).fontColor(this.accent()).margin({top: 5})
           Column({space: 6}) {
-            Text(statusLabel(event.toStatus) + ' · ' + event.operatorName).fontSize(15).fontColor(this.ink()).width('100%')
+            Text(statusLabel(event.toStatus) + ' · ' + event.operatorName).fontSize(16).fontColor(this.ink()).width('100%')
             if (event.note) { Text(event.note).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%') }
-            Text(dateText(event.createdAt)).fontSize(12).fontColor(this.muted()).width('100%')
+            Text(dateText(event.createdAt)).fontSize(14).fontColor(this.muted()).width('100%')
           }.layoutWeight(1).alignItems(HorizontalAlign.Start)
         }.width('100%').alignItems(VerticalAlign.Top).padding({top: 8, bottom: 18})
       }, (event: RepairEvent) => event.id)
@@ -209,11 +219,11 @@ export struct RepairWorkspace {
   @Builder
   private ActionForm() {
     Column({space: 0}) {
-      Text(this.state.selected?.title || '').fontSize(19).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 20})
+      Text(this.state.selected?.title || '').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 20})
       serviceField({label: this.state.action === 'finish' ? '处理结果 *' : this.state.action === 'notes' ? '进度说明 *' : '具体原因 *', value: this.state.actionNote, change: (v: string) => this.state.actionNote = v, placeholder: '记录现场情况，便于后续跟进', multiline: true, night: this.night, page: this.page})
       if (this.state.action === 'finish') {
         this.Uploads('RESULT')
-        Text('提交后进入待确认，由报修学生确认是否解决。').fontSize(13).fontColor(this.muted()).lineHeight(23).margin({bottom: 20})
+        Text('提交后进入待确认，由报修学生确认是否解决。').fontSize(14).fontColor(this.muted()).lineHeight(23).margin({bottom: 20})
       }
       servicePrimary({label: this.state.action === 'finish' ? '提交完工结果' : '确认提交', click: () => this.controller.runAction(), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading})
     }.width('100%').alignItems(HorizontalAlign.Start)

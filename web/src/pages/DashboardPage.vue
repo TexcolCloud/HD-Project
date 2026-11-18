@@ -83,39 +83,23 @@ onMounted(async () => {
 watch(buildingId, load);
 </script>
 <template>
-  <div class="dashboard-lead">
-    <div>
-      <p class="section-note">学生公寓 · 值班工作台</p>
-      <h1>公寓服务工作台</h1>
-      <p class="muted lead-description">
-        从正在跟进的事项开始，照应每一间宿舍。
-      </p>
-      <div class="lead-actions">
-        <label class="inline-label">
-          数据范围
-          <select v-model="buildingId" aria-label="工作台楼栋">
-            <option value="">全部负责楼栋</option>
-            <option v-for="b in buildings" :key="b.id" :value="b.id">
-              {{ b.name }}
-            </option>
-          </select>
-        </label>
-        <RouterLink class="btn primary" to="/visitors">
-          <Icon name="plus" />
-          登记访客
-        </RouterLink>
-      </div>
+  <div class="page-heading dashboard-lead">
+    <h1>工作台</h1>
+    <div class="lead-actions">
+      <label class="inline-label">
+        数据范围
+        <select v-model="buildingId" aria-label="工作台楼栋">
+          <option value="">全部负责楼栋</option>
+          <option v-for="b in buildings" :key="b.id" :value="b.id">
+            {{ b.name }}
+          </option>
+        </select>
+      </label>
+      <RouterLink class="btn primary" to="/visitors">
+        <Icon name="plus" />
+        登记访客
+      </RouterLink>
     </div>
-    <figure class="photo-panel">
-      <img
-        src="/assets/images/campus-courtyard.jpg"
-        alt="庭院与树影，校园氛围示意"
-      />
-      <figcaption>
-        校园生活氛围示意 ·
-        <a href="/assets/images/SOURCES.md" target="_blank">来源与许可</a>
-      </figcaption>
-    </figure>
   </div>
   <div v-if="error" class="error-banner" role="alert">
     {{ error }}
@@ -169,8 +153,7 @@ watch(buildingId, load);
         <section class="panel task-panel">
           <header class="panel-head">
             <div>
-              <h2>需要跟进的报修</h2>
-              <p>最近提交的未结事项</p>
+              <h2>待跟进报修</h2>
             </div>
             <RouterLink to="/repairs" class="text-link">全部工单 →</RouterLink>
           </header>
@@ -213,7 +196,6 @@ watch(buildingId, load);
           <header class="panel-head">
             <div>
               <h2>楼层房间概览</h2>
-              <p>房间容量与当前入住</p>
             </div>
             <RouterLink to="/housing/rooms" class="text-link">
               宿舍档案 →
@@ -241,6 +223,7 @@ watch(buildingId, load);
               <strong class="num">{{ r.roomNo }}</strong>
               <small>
                 {{ r.buildingName }} · {{ r.occupiedCount }}/{{ r.capacity }} 人
+                {{ !r.enabled ? " · 停用" : "" }}
               </small>
             </RouterLink>
             <p v-if="!rooms.length" class="empty-state">

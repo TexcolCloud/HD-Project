@@ -24,7 +24,7 @@ export struct SecureImage {
     Column({space: 16}) {
       Row() {
         Text('故障与现场图片').fontSize(18).fontColor(this.night ? '#ECE6D9' : '#242622').layoutWeight(1)
-        Button('关闭').height(48).fontSize(15).fontColor(this.night ? '#ECE6D9' : '#242622')
+        Button('关闭').height(48).fontSize(16).fontColor(this.night ? '#ECE6D9' : '#242622')
           .backgroundColor(Color.Transparent).onClick(() => this.expanded = false)
       }.width('100%')
       if (this.pixels) { Image(this.pixels).objectFit(ImageFit.Contain).width('100%').layoutWeight(1) }
@@ -33,7 +33,7 @@ export struct SecureImage {
   build() {
     Stack() {
       if (this.pixels) { Image(this.pixels).objectFit(ImageFit.Cover).width('100%').height(100) }
-      else { Text(this.failed ? '图片加载失败，点击重试' : '加载图片…').fontSize(12).fontColor('#62665C') }
+      else { Text(this.failed ? '图片加载失败，点击重试' : '加载图片…').fontSize(14).fontColor('#62665C') }
     }.width('100%').height(100).backgroundColor('#EDE8DF').borderRadius(4).accessibilityText('查看现场图片')
       .onClick(() => {
         if (this.failed) { this.failed = false; this.load(); }

@@ -74,7 +74,7 @@ export struct TaskTransfer {
       Column({space: 12}) {
         Button(this.opened ? '收起责任接续' : this.own() ? '交接办理责任' : '申请异常接续').id('task-transfer-open').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).enabled(!this.busy).onClick(() => { if (this.opened) this.opened = false; else this.open(); })
         if (this.opened) {
-          Text(this.own() ? '仅未开始、未出发的工单可以正常交接。' : '仅原办理人停用、失去负责范围或持续离线时可接续。接续后先核对现场，再恢复路线。').fontSize(13).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
+          Text(this.own() ? '仅未开始、未出发的工单可以正常交接。' : '仅原办理人停用、失去负责范围或持续离线时可接续。接续后先核对现场，再恢复路线。').fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
           if (this.own()) {
             Select(this.candidates().map((m: DispatchManager): SelectOption => ({value: m.displayName}))).value(this.candidates().find((m: DispatchManager): boolean => m.userId === this.target)?.displayName || '选择接续宿管')
               .width('100%').height(48).onSelect((index: number) => this.target = this.candidates()[index].userId)

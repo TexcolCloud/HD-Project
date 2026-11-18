@@ -1,6 +1,6 @@
 # 调度、设备能力、图片与管理AI模块
 
-本轮沿用R3暖白／暖黑；主题取自`components/Palette.ets`。`Index.ets`负责认证、主题、导航和页面组合；业务表单与记录由各功能控制器及Workspace管理，设备采集、消息跟进、草稿和图片生命周期分别归属对应模块。当前闭环及验收见[16](../docs/16-服务闭环与联合验收.md)。
+2026年11月15日对双角色界面完成排版与文案收敛，沿用R3暖白／暖黑；主题取自`components/Palette.ets`。`Index.ets`负责认证、主题、导航和页面组合；业务表单与记录由各功能控制器及Workspace管理，设备采集、消息跟进、草稿和图片生命周期分别归属对应模块。当前闭环及验收见[16](../docs/16-服务闭环与联合验收.md)，界面与当前安装包见[18](../docs/18-界面收敛与交付版本.md)。
 
 ## 模块与接口
 
@@ -16,6 +16,8 @@
 | `features/dispatch/RouteSettings.ets` | 接单意愿、负责范围内当前位置、本次有效可用截止时间 | `manager/buildings`与`onSave/onCancel` |
 | `features/visits/VisitWindowFields.ets` | 学生可上门范围的独立输入及不可变草稿 | `draft/night/onChange` |
 | `features/visits/VisitArrangement.ets` | 原工单中的访问范围修改、宿管确认／时长／等待原因 | `repair/manager/night/onSaved` |
+| `features/visitors/VisitorController.ets` | 授权楼栋筛选、到访与详情读取、确认离访和版本保护 | `loadBuildings/loadVisitors/loadDetail/leave` |
+| `features/hygiene/HygieneController.ets` | 现场巡检和复查、同轮记录匹配、上次评分对照、带原因更正与并发处理 | `loadComparison/usePreviousScores/correct/recheck/submitHygiene` |
 | `features/assist/ManagerAssist.ets` | 值班简报／单单研判的主动调用、展示事实和引用 | 可选`orderId`、`night/onOpenRepair/onUnauthorized` |
 | `features/mobility/MobilityController.ets` | 独立工作会话、唯一来源租约、代际门控、有界低频批次、手工锚点 | `attach/detach/subscribe/start/action/confirm/refresh` |
 | `features/mobility/SystemMobility.ets` | API24位置／传感器／权限成对订阅、低电量退避、后台持续任务 | `start/stop/isCollecting/isBackgroundEnabled` |

@@ -8,6 +8,7 @@ import Pagination from "../components/Pagination.vue";
 import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
+import { isMobilePhone, mobilePhoneError } from "../phone";
 const listQuery = useLatestQuery();
 const historyQuery = useLatestQuery();
 const { busy: historyBusy, error: historyError } = historyQuery;
@@ -25,7 +26,8 @@ const modal = ref<
   current = ref<Residence>(),
   saving = ref(false),
   dirty = ref(false),
-  formError = ref("");
+  formError = ref(""),
+  phoneError = ref("");
 const studentForm = reactive<Model<"StudentRequest">>({
   studentNo: "",
   name: "",
@@ -71,6 +73,10 @@ function turn(p: number) {
   void load();
 }
 function edit(s?: Student) {
+  if (s?.phone?.includes("*")) {
+    notify("未入住学生资料仅可由档案创建宿管维护", "error");
+    return;
+  }
   historyQuery.cancel();
   selected.value = s;
   Object.assign(studentForm, {
@@ -86,6 +92,7 @@ function edit(s?: Student) {
   });
   dirty.value = false;
   formError.value = "";
+  phoneError.value = "";
   modal.value = "student";
 }
 async function showHistory(s: Student) {
@@ -130,6 +137,15 @@ function residenceAction(
   modal.value = action;
 }
 async function save() {
+  if (saving.value) return;
+  if (modal.value === "student") {
+    const phone = studentForm.phone.trim();
+    if (phone !== selected.value?.phone && !isMobilePhone(phone)) {
+      phoneError.value = mobilePhoneError;
+      return;
+    }
+    studentForm.phone = phone;
+  }
   saving.value = true;
   formError.value = "";
   try {
@@ -179,7 +195,6 @@ onMounted(load);
   <div class="page-heading">
     <div>
       <h1>学生入住</h1>
-      <p>维护学生档案，办理入住、调宿与退宿，保留每一段居住历史。</p>
     </div>
     <div class="page-actions">
       <button
@@ -341,11 +356,19 @@ onMounted(load);
         <input
           v-model.trim="studentForm.phone"
           type="tel"
-          required
-          pattern="[0-9+ ]{7,20}"
-          maxlength="20"
+          inputmode="numeric"
+          aria-required="true"
+          :aria-invalid="!!phoneError"
+          aria-describedby="student-phone-note"
+          @input="phoneError = ''"
         />
-        <small>联系方式受权限限制；如显示掩码，请由档案创建宿管维护。</small>
+        <small
+          id="student-phone-note"
+          :class="{ 'field-error': phoneError }"
+          aria-live="polite"
+        >
+          {{ phoneError || "新增或修改时填写11位手机号。" }}
+        </small>
       </label>
       <label>
         档案状态

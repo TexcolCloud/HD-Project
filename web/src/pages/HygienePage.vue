@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { get, post, patch } from "../api/client";
+import { ApiError, get, post, patch } from "../api/client";
 import type { Model, Hygiene, Building, FileAsset } from "../api/types";
 import {
   errorText,
@@ -22,6 +22,9 @@ const listQuery = useLatestQuery();
 const route = useRoute(),
   router = useRouter();
 const detailQuery = useLatestQuery();
+const comparisonQuery = useLatestQuery();
+const { busy: comparing, error: comparisonError } = comparisonQuery;
+const comparison = ref<{ record: Hygiene; sameRound: boolean }>();
 const { busy, error } = listQuery;
 const items = ref<Hygiene[]>([]),
   buildings = ref<Building[]>([]),
@@ -65,6 +68,9 @@ const scores = [
 ] as const;
 const score = computed(() =>
   scores.reduce((sum, [key]) => sum + Number(form[key] || 0), 0),
+);
+const retainedImages = computed(() =>
+  mode.value === "correction" ? (selected.value?.images ?? []) : [],
 );
 const grade = computed(() =>
   score.value >= 90
@@ -119,13 +125,70 @@ function edit(
     imageIds: [],
     expectedVersion: next === "correction" ? h?.version : undefined,
   });
-  images.value = next === "correction" ? [...(h?.images || [])] : [];
+  images.value = [];
   inspectedLocal.value = "";
   correctionReason.value = "";
   formError.value = "";
   dirty.value = false;
   uploadBlocked.value = false;
   modal.value = "form";
+}
+async function loadComparison() {
+  const { roomId, inspectionDate, round } = form;
+  comparison.value = undefined;
+  comparisonQuery.cancel();
+  comparisonError.value = "";
+  if (
+    modal.value !== "form" ||
+    mode.value === "correction" ||
+    !roomId ||
+    !inspectionDate ||
+    inspectionDate > localDate()
+  )
+    return;
+  await comparisonQuery.run(
+    async (signal) => {
+      const same = await get<Model<"HygienePage">>(
+        "/hygiene-inspections",
+        { roomId, inspectionDate, round, pageSize: 1 },
+        signal,
+      );
+      if (same.items[0]) return { record: same.items[0], sameRound: true };
+      if (signal.aborted) return;
+      const endDate = new Date(Date.parse(inspectionDate) - 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const previous = await get<Model<"HygienePage">>(
+        "/hygiene-inspections",
+        { roomId, endDate, pageSize: 1 },
+        signal,
+      );
+      if (previous.items[0])
+        return { record: previous.items[0], sameRound: false };
+    },
+    (result) => {
+      comparison.value = result;
+    },
+  );
+}
+watch(
+  () => [modal.value, mode.value, form.roomId, form.inspectionDate, form.round],
+  loadComparison,
+);
+function useComparison() {
+  const match = comparison.value;
+  if (!match || saving.value) return;
+  if (match.sameRound) {
+    if (
+      dirty.value &&
+      !window.confirm("更正已有评分将放弃本次未保存的录入，是否继续？")
+    )
+      return;
+    edit(match.record, "correction");
+    return;
+  }
+  for (const [key] of scores) form[key] = match.record[key];
+  dirty.value = true;
 }
 async function detail(h: Hygiene | string) {
   const id = typeof h === "string" ? h : h.id;
@@ -156,6 +219,13 @@ async function detail(h: Hygiene | string) {
     formError.value = detailQuery.error.value;
 }
 async function save() {
+  if (
+    saving.value ||
+    uploadBlocked.value ||
+    comparing.value ||
+    comparison.value?.sameRound
+  )
+    return;
   saving.value = true;
   formError.value = "";
   try {
@@ -191,6 +261,12 @@ async function save() {
     }
   } catch (e) {
     formError.value = errorText(e);
+    if (
+      e instanceof ApiError &&
+      e.status === 409 &&
+      mode.value !== "correction"
+    )
+      await loadComparison();
   } finally {
     saving.value = false;
   }
@@ -260,7 +336,6 @@ watch(
   <div class="page-heading">
     <div>
       <h1>卫生巡检</h1>
-      <p>四项评分、整改建议与复查，让宿舍环境的变化有迹可循。</p>
     </div>
     <button class="btn primary" @click="edit()">
       <Icon name="plus" />
@@ -392,13 +467,16 @@ watch(
         <span>本次总分 / {{ grade }}</span>
         <strong>{{ score }}</strong>
       </div>
+      <label v-if="selected && mode !== 'create'">
+        检查房间
+        <span>{{ selected.buildingName }} {{ selected.roomNo }}</span>
+      </label>
       <LookupSelect
+        v-else
         v-model="form.roomId"
         kind="room"
         label="检查房间 *"
-        :initial-label="
-          selected ? selected.buildingName + ' ' + selected.roomNo : undefined
-        "
+        @update:model-value="dirty = true"
       />
       <div class="form-row">
         <label>
@@ -431,6 +509,47 @@ watch(
           补录时请填写实际检查时刻；留空使用当前时间，更正则保留原检查时间。
         </small>
       </label>
+      <section v-if="comparison" class="inspection-comparison">
+        <h3>{{ comparison.sameRound ? "已有同轮评分" : "最近一次巡检" }}</h3>
+        <p class="form-note">
+          {{ comparison.record.buildingName }} {{ comparison.record.roomNo }} ·
+          {{ comparison.record.inspectionDate }} ·
+          {{ statusNames[comparison.record.round] }}
+        </p>
+        <p class="form-note">
+          检查时刻 {{ dateTime(comparison.record.inspectedAt) }}
+        </p>
+        <dl class="details comparison-scores">
+          <div v-for="[key, label] in scores" :key="key">
+            <dt>{{ label }}</dt>
+            <dd class="num">{{ comparison.record[key] }} / 25</dd>
+          </div>
+        </dl>
+        <div class="comparison-action">
+          <span>
+            总分
+            <strong class="num">{{ comparison.record.totalScore }}</strong>
+            / 100
+          </span>
+          <button
+            class="btn"
+            type="button"
+            :disabled="saving"
+            @click="useComparison"
+          >
+            {{ comparison.sameRound ? "更正评分" : "带入四项分数" }}
+          </button>
+        </div>
+      </section>
+      <p v-else-if="comparing" class="form-note" role="status">
+        正在查询该房间的历史评分…
+      </p>
+      <div v-else-if="comparisonError" class="error-banner" role="alert">
+        未能查询历史评分。{{ comparisonError }}
+        <button type="button" class="text-link" @click="loadComparison">
+          重新查询
+        </button>
+      </div>
       <div>
         <div v-for="[key, label] in scores" :key="key" class="score-row">
           <label :for="key">
@@ -469,14 +588,35 @@ watch(
           maxlength="500"
         />
       </label>
+      <section v-if="retainedImages.length" class="detail-section">
+        <h3>已留存的现场图片</h3>
+        <div class="image-grid">
+          <a
+            v-for="image in retainedImages"
+            :key="image.id"
+            :href="image.url"
+            target="_blank"
+            rel="noopener"
+          >
+            <img :src="image.thumbnailUrl" :alt="image.originalName" />
+          </a>
+        </div>
+      </section>
       <UploadField
+        v-if="retainedImages.length < 6"
         v-model="images"
         usage="INSPECTION"
+        :limit="6 - retainedImages.length"
         :disabled="saving"
         @blocked="uploadBlocked = $event"
       />
       <p v-if="formError" class="error-banner" role="alert">{{ formError }}</p>
-      <button class="btn primary" :disabled="saving || uploadBlocked">
+      <button
+        class="btn primary"
+        :disabled="
+          saving || uploadBlocked || comparing || comparison?.sameRound
+        "
+      >
         {{
           saving
             ? "正在保存…"
@@ -534,7 +674,7 @@ watch(
         <li v-for="h in history" :key="h.id">
           <strong>
             {{
-              h.action === "CORRECT"
+              h.action === "HYGIENE_CORRECT" || h.action === "CORRECT"
                 ? "更正评分"
                 : h.action === "VOID"
                   ? "作废记录"

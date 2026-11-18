@@ -47,7 +47,8 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [],
+        "security": []
       }
     },
     "/auth/login": {
@@ -106,7 +107,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/auth/me": {
@@ -269,6 +271,483 @@
             }
           }
         }
+      }
+    },
+    "/auth/phone/challenges": {
+      "post": {
+        "operationId": "post_auth_phone_challenges",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PhoneChallengeResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneChallengeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/activate": {
+      "post": {
+        "operationId": "post_auth_activate",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AccountSecurityResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/phone/bind": {
+      "post": {
+        "operationId": "post_auth_phone_bind",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AccountSecurityResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneCodeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/phone/change": {
+      "post": {
+        "operationId": "post_auth_phone_change",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AccountSecurityResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneChangeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/recovery-code/replace": {
+      "post": {
+        "operationId": "post_auth_recovery_code_replace",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AccountSecurityResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneCodeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password-recovery/challenges": {
+      "post": {
+        "operationId": "post_auth_password_recovery_challenges",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PhoneChallengeResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRecoveryChallengeRequest"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/password-recovery/verify": {
+      "post": {
+        "operationId": "post_auth_password_recovery_verify",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PasswordRecoveryVerifyResult"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRecoveryVerifyRequest"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/password-recovery/complete": {
+      "post": {
+        "operationId": "post_auth_password_recovery_complete",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "nullable": true
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRecoveryCompleteRequest"
+              }
+            }
+          }
+        },
+        "security": []
       }
     },
     "/buildings": {
@@ -7715,6 +8194,9 @@
           },
           "version": {
             "type": "integer"
+          },
+          "overdue": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7918,6 +8400,12 @@
           },
           "mustChangePassword": {
             "type": "boolean"
+          },
+          "phoneMasked": {
+            "type": "string"
+          },
+          "recoveryCodeConfigured": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7944,6 +8432,13 @@
             "enum": [
               "WEB",
               "MOBILE"
+            ]
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": [
+              "USERNAME",
+              "PHONE"
             ]
           }
         },
@@ -7980,6 +8475,190 @@
         "required": [
           "oldPassword",
           "newPassword"
+        ]
+      },
+      "PhoneChallengeRequest": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "ACTIVATE",
+              "BIND",
+              "CHANGE_PHONE_OLD",
+              "CHANGE_PHONE_NEW",
+              "REPLACE_RECOVERY_CODE"
+            ]
+          },
+          "phone": {
+            "type": "string"
+          },
+          "currentPassword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose"
+        ]
+      },
+      "PhoneChallengeResult": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challengeId"
+        ]
+      },
+      "PhoneCodeRequest": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challengeId",
+          "code"
+        ]
+      },
+      "ActivateRequest": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challengeId",
+          "code",
+          "newPassword"
+        ]
+      },
+      "PhoneChangeRequest": {
+        "type": "object",
+        "properties": {
+          "oldChallengeId": {
+            "type": "string"
+          },
+          "oldCode": {
+            "type": "string"
+          },
+          "newChallengeId": {
+            "type": "string"
+          },
+          "newCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "oldChallengeId",
+          "oldCode",
+          "newChallengeId",
+          "newCode"
+        ]
+      },
+      "AccountSecurityResult": {
+        "type": "object",
+        "properties": {
+          "recoveryCode": {
+            "type": "string"
+          }
+        },
+        "required": []
+      },
+      "PasswordRecoveryChallengeRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": [
+              "WEB",
+              "MOBILE"
+            ]
+          }
+        },
+        "required": [
+          "phone",
+          "clientType"
+        ]
+      },
+      "PasswordRecoveryVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": [
+              "WEB",
+              "MOBILE"
+            ]
+          }
+        },
+        "required": [
+          "challengeId",
+          "code",
+          "clientType"
+        ]
+      },
+      "PasswordRecoveryVerifyResult": {
+        "type": "object",
+        "properties": {
+          "resetToken": {
+            "type": "string"
+          },
+          "recoveryCodeRequired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "resetToken",
+          "recoveryCodeRequired"
+        ]
+      },
+      "PasswordRecoveryCompleteRequest": {
+        "type": "object",
+        "properties": {
+          "resetToken": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": [
+              "WEB",
+              "MOBILE"
+            ]
+          },
+          "recoveryCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resetToken",
+          "newPassword",
+          "clientType"
         ]
       },
       "LeaveRequest": {
