@@ -19,6 +19,14 @@ import DispatchTaskCard from "../components/dispatch/DispatchTaskCard.vue";
 import DispatchAvailability from "../components/dispatch/DispatchAvailability.vue";
 import DispatchTravelEditor from "../components/dispatch/DispatchTravelEditor.vue";
 
+const connectionLabels: Record<typeof managerPresence.state, string> = {
+  inactive: "尚未连接",
+  background: "后台暂停同步",
+  connecting: "正在连接…",
+  online: "在线",
+  error: "连接暂未回应，请检查网络",
+};
+
 const {
   board,
   busy,
@@ -187,11 +195,7 @@ onMounted(async () => {
 <template>
   <div class="page-heading">
     <div>
-      <p class="section-note">宿管现场服务</p>
       <h1>任务调度</h1>
-      <p>
-        新增工单与人员变化自动更新剩余路线，已经出发和正在处理的任务保持稳定。
-      </p>
     </div>
     <div class="page-actions">
       <button class="btn" :disabled="busy" @click="refresh">刷新计划</button>
@@ -247,17 +251,9 @@ onMounted(async () => {
           <i :class="{ connected: managerPresence.state === 'online' }" />
           {{ board.me.acceptingNewTasks ? "接受新任务" : "暂停新任务" }}
         </span>
-        <p>
-          同账号多端只计一人。{{
-            managerPresence.state === "background"
-              ? "页面在后台，前台心跳已暂停。"
-              : managerPresence.state === "error"
-                ? "心跳暂未回应，请检查连接。"
-                : "前台每30秒同步活跃状态。"
-          }}
-        </p>
+        <p role="status">{{ connectionLabels[managerPresence.state] }}</p>
         <small v-if="managerPresence.lastResponseAt">
-          最近心跳回应 {{ dateTime(managerPresence.lastResponseAt) }}
+          状态更新于 {{ dateTime(managerPresence.lastResponseAt) }}
         </small>
       </div>
       <div>
@@ -316,9 +312,7 @@ onMounted(async () => {
       <span v-if="board.dirty" class="dispatch-updating" role="status">
         有新变化，正在更新剩余路线…
       </span>
-      <span v-else>
-        前台每5秒检查新计划 · 最近读取 {{ dateTime(lastCheckedAt) }}
-      </span>
+      <span v-else>最近同步 {{ dateTime(lastCheckedAt) }}</span>
     </div>
     <section
       v-if="board.changes.length || routeChanges.length"
@@ -349,7 +343,6 @@ onMounted(async () => {
           <header>
             <div>
               <h2>我的当前任务</h2>
-              <p>到达现场与维修完成分别记录。</p>
             </div>
           </header>
           <DispatchTaskCard
@@ -368,7 +361,7 @@ onMounted(async () => {
           <header>
             <div>
               <h2>下一站</h2>
-              <p>先接下推荐，再记录出发；已出发的下一站不会被自动调换。</p>
+              <p>接单后出发，到场后在工单内提交处理结果。</p>
             </div>
           </header>
           <DispatchTaskCard
@@ -417,7 +410,6 @@ onMounted(async () => {
           <header class="panel-head">
             <div>
               <h2>未安排及原因</h2>
-              <p>没有可行路线的任务不会被静默忽略。</p>
             </div>
           </header>
           <div class="dispatch-unassigned">

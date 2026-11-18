@@ -23,7 +23,7 @@ try {
         if (Test-Path -LiteralPath $envFile) {
             foreach ($line in Get-Content -LiteralPath $envFile) {
                 # SSH administrator credentials never propagate to the application process.
-                if ($line -match '^((?:OG_|MYSQL_|AI_)[A-Z0-9_]+|FILE_STORAGE|COOKIE_SECURE|APP_SEED)=(.*)$') {
+                if ($line -match '^((?:OG_|MYSQL_|AI_|APP_SMS_)[A-Z0-9_]+|FILE_STORAGE|COOKIE_SECURE|APP_SEED)=(.*)$') {
                     [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
                 }
             }

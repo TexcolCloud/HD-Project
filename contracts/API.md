@@ -34,10 +34,13 @@
 ## 认证
 
 - `GET /auth/csrf` → `{token:string,headerName:"X-XSRF-TOKEN"}`，Web登录前先请求（携带credentials）。
-- `POST /auth/login` body `{username,password,clientType:"WEB"|"MOBILE"}` → `{user:User,token?:string}`。WEB服务端Set-Cookie `HD_SESSION` (HttpOnly,SameSite=Lax)，MOBILE返回token使用 `Authorization: Bearer ...`。WEB所有POST/PATCH/DELETE需 `X-XSRF-TOKEN`，登录后重新GET csrf。
+- `POST /auth/login` body `{username,password,clientType:"WEB"|"MOBILE",identifierType?:"USERNAME"|"PHONE"}` → `{user:User,token?:string}`。`username` 承载账号或已验证手机号，缺省标识类型为 `USERNAME`。WEB 向宿管签发 Cookie `HD_SESSION`（HttpOnly、SameSite=Lax），MOBILE 返回学生或宿管使用的 `Authorization: Bearer ...`。WEB 所有 POST/PATCH/DELETE 需 `X-XSRF-TOKEN`，登录后重新获取 CSRF。
 - `GET /auth/me` → `User`；`POST /auth/logout` → `{loggedOut:true}`。
 - `POST /auth/change-password` body `{oldPassword,newPassword}` → `{changed:true}` 并撤销会话。
-- `User={id,username,displayName,role:"MANAGER"|"STUDENT",buildingIds:string[],studentId?:string,currentRoom?:Room,mustChangePassword?:boolean}`。
+- `User={id,username,displayName,role:"MANAGER"|"STUDENT",buildingIds:string[],studentId?:string,currentRoom?:Room,mustChangePassword?:boolean,phoneMasked?:string,recoveryCodeConfigured?:boolean}`。号码只显示掩码，恢复码状态只用于宿管。
+- `POST /auth/phone/challenges` `{purpose,phone?,currentPassword?}` → `{challengeId}`。用途为 `ACTIVATE`、`BIND`、`CHANGE_PHONE_OLD`、`CHANGE_PHONE_NEW` 或 `REPLACE_RECOVERY_CODE`。激活需要有效的受限临时会话。其他用途需要正常会话和当前密码，旧号由服务端读取。
+- `POST /auth/activate` `{challengeId,code,newPassword}` 在原账号内完成激活、绑定、设密并撤销旧会话。`POST /auth/phone/bind` `{challengeId,code}` 完成首次绑定。`POST /auth/phone/change` `{oldChallengeId,oldCode,newChallengeId,newCode}` 验证新旧号并换绑，随后撤销旧会话。`POST /auth/recovery-code/replace` `{challengeId,code}` 为宿管轮换离线恢复码。这些接口返回 `{recoveryCode?:string}`，恢复码仅当次向本人展示。
+- `POST /auth/password-recovery/challenges` `{phone,clientType}` → `{challengeId}`。`POST /auth/password-recovery/verify` `{challengeId,code,clientType}` → `{resetToken,recoveryCodeRequired}`。`POST /auth/password-recovery/complete` `{resetToken,newPassword,recoveryCode?,clientType}` → `data:null`。宿管完成恢复需一次性恢复码。三个接口在 Web 上使用预登录 CSRF，重设成功后两端旧会话撤销。
 
 Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用MOBILE bearer，没有CSRF要求。不在客户端保存任何AI密钥。
 
@@ -51,7 +54,9 @@ Web代理 `/api` 到 http://127.0.0.1:8080，credentials:include；鸿蒙使用M
 - `Residence={id,studentId,studentName,studentNo,roomId,roomNo,buildingId,buildingName,checkedInAt,checkedOutAt?,reason,version}`。
 - `Repair={id,orderNo,reporterStudentId,reporterName,roomId,roomNo,buildingId,buildingName,title,description,category,priority,urgentReason,contactName,contactPhone,contactTimeSlot,status,handlerUserId?,handlerName?,relatedOrderId?,submittedAt,completedAt?,version,allowedActions:string[],reportImages:FileAsset[],resultImages:FileAsset[],latestResult?:string}`。
 - `RepairEvent={id,orderId,fromStatus?,toStatus,action,operatorName,note,createdAt}`。
-- `Visitor={id,visitorName,phone,visitedStudentId,studentName,roomId,roomNo,buildingId,buildingName,purpose,remark,arrivedAt,leftAt?,status:"VISITING"|"LEFT",version}`。列表phone掩码；明文另POST reveal-contact。
+- `Visitor={id,visitorName,phone,visitedStudentId,studentName,roomId,roomNo,buildingId,buildingName,purpose,remark,arrivedAt,leftAt?,status:"VISITING"|"LEFT",version,overdue?:boolean}`。`overdue` 以服务端查询时刻判断，仅在访超过 24 小时为真。列表和详情的手机号掩码，明文由 `POST /visitors/{id}/reveal-contact` 单独读取。
+
+学生档案、访客登记与报修的新建或改动联系号码须为 11 位 ASCII 数字，首尾空白会去除。现有档案或访客历史号码原样提交时可更新其他字段。业务联系电话独立于登录手机号。
 - `Hygiene={id,roomId,roomNo,buildingId,buildingName,inspectionDate,round,inspectedAt,floorScore,deskScore,bedScore,bathroomScore,totalScore,grade,issueNote,remediationNote,inspectorName,relatedInspectionId?,voidedAt?,version,images:FileAsset[]}`。
 - `FileAsset={id,originalName,mime,sizeBytes,url,thumbnailUrl,usage}`。url/thumbnailUrl为 `/api/v1/files/{id}/content` 等受保护URL。
 - 类别 `UTILITIES|FURNITURE|NETWORK|OTHER`，紧急程度 `NORMAL|URGENT`。

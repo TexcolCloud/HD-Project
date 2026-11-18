@@ -21,6 +21,7 @@ import {
 } from "../photos/PhotoDraftController";
 import { WorkspaceHost } from "../WorkspaceHost";
 import { ReadScope } from "../ReadScope";
+import { isMobileNumber } from "../../services/Labels";
 
 interface RepairDraft {
   repairTitle: string;
@@ -56,6 +57,7 @@ export class RepairState {
   repairUrgentReason: string = "";
   contactName: string = "";
   contactPhone: string = "";
+  phoneError: string = "";
   contactTime: string = "";
   visitDraft: VisitWindowDraft = new VisitWindowDraft();
   reportPhotos: UploadedPhoto[] = [];
@@ -141,6 +143,7 @@ export class RepairController {
     this.state.repairUrgentReason = fresh.repairUrgentReason;
     this.state.contactName = fresh.contactName;
     this.state.contactPhone = fresh.contactPhone;
+    this.state.phoneError = "";
     this.state.contactTime = fresh.contactTime;
     this.state.visitDraft = new VisitWindowDraft();
     this.photoDrafts.clear("REPORT");
@@ -237,11 +240,12 @@ export class RepairController {
       this.host.setError("标题和故障描述请至少填写4个字");
       return;
     }
-    if (
-      !/^[0-9+ ]{7,20}$/.test(this.state.contactPhone) ||
-      !this.state.contactName.trim()
-    ) {
-      this.host.setError("请填写联系人和有效联系电话");
+    if (this.state.phoneError || !isMobileNumber(this.state.contactPhone)) {
+      this.state.phoneError = "请输入11位手机号";
+      return;
+    }
+    if (!this.state.contactName.trim()) {
+      this.host.setError("请填写联系人");
       return;
     }
     if (

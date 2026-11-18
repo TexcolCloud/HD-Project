@@ -1,5 +1,7 @@
 # openEuler／openGauss 数据库迁移与验收
 
+阅读指引：本文保留原阶段设计或验收的时间与适用范围。2026-11-15界面及交付同步见[界面收敛与交付版本](18-界面收敛与交付版本.md)；本次界面整理未改变API1.3、数据库迁移或业务状态，也未重新执行历史后端负载。
+
 更新日期：2026年11月11日（Asia/Shanghai）。状态：本轮数据库替换、数据保留迁移、自动化／HTTP／三端联调及最终运行核对已完成。Java API当前以openGauss profile连接openEuler虚拟机中的项目PG库。统一交付汇总（本机生成：`output/acceptance/opengauss-delivery-summary.json`）记录实际结果；[07](07-开发与验收.md)和[09](09-动态调度交付与验收.md)保留此前MySQL环境的历史结果，不作为本轮openGauss证据。
 
 ## 变更范围

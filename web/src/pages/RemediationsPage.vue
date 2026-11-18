@@ -267,7 +267,6 @@ onScopeDispose(() => {
   <div class="page-heading">
     <div>
       <h1>卫生整改</h1>
-      <p>明确责任与期限，跟进反馈，再以现场复查完成验收。</p>
     </div>
     <RouterLink to="/hygiene" class="btn primary">
       从巡检记录安排整改

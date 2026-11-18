@@ -52,6 +52,10 @@ public class AccountMaintenance {
         if (!Set.of("status", "reset-password", "set-enabled", "set-buildings", "create-manager").contains(action)) {
             throw new IllegalArgumentException("Unknown maintenance action");
         }
+        boolean clearPhoneBinding = o.containsKey("clear-phone-binding");
+        if (clearPhoneBinding && (!action.equals("reset-password") || !"true".equals(o.get("clear-phone-binding")))) {
+            throw new IllegalArgumentException("Clearing a binding requires an explicit password reset");
+        }
         String username = require(o, "username");
         if (!username.matches("[A-Za-z0-9_.@-]{1,64}")) {
             throw new IllegalArgumentException("Invalid account name");
@@ -119,7 +123,10 @@ public class AccountMaintenance {
                     throw new IllegalArgumentException("Account version changed; inspect status and retry");
                 }
                 if (action.equals("reset-password")) {
-                    update(c, "UPDATE sys_user SET password_hash=?,must_change_password=TRUE,credential_expires_at=?,account_version=account_version+1 WHERE id=?", encoded, Timestamp.from(expires), id);
+                    update(c, "UPDATE sys_user SET password_hash=?,must_change_password=TRUE,credential_expires_at=?,account_version=account_version+1,recovery_code_hash=NULL WHERE id=?", encoded, Timestamp.from(expires), id);
+                    if (clearPhoneBinding) {
+                        update(c, "UPDATE sys_user SET login_phone=NULL,login_phone_verified_at=NULL WHERE id=?", id);
+                    }
                 } else {
                     if (!role.equals("MANAGER")) {
                         throw new IllegalArgumentException("Manage student status through student records");
@@ -135,12 +142,14 @@ public class AccountMaintenance {
                         update(c, "UPDATE sys_user SET account_version=account_version+1 WHERE id=?", id);
                     }
                 }
+                update(c, "DELETE FROM auth_password_reset WHERE user_id=?", id);
+                update(c, "DELETE FROM auth_phone_challenge WHERE user_id=?", id);
                 revoke(c, id);
                 version++;
             }
             update(c, "INSERT INTO audit_event(operator_id,operator_name,action,business_type,business_id,note,changes,created_at) VALUES(0,'本机受控维护',?,'ACCOUNT',?,?,?,?)",
                     "MAINTENANCE_" + action.replace('-', '_').toUpperCase(Locale.ROOT), id, reason,
-                    "{\"accountVersion\":" + version + "}", Timestamp.from(Instant.now()));
+                    "{\"accountVersion\":" + version + ",\"clearedPhoneBinding\":" + clearPhoneBinding + "}", Timestamp.from(Instant.now()));
             if (credential) {
                 createPrivate(delivery);
                 createdDelivery = true;

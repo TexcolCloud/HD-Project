@@ -7,6 +7,7 @@ export type TestNode = {
   children: TestNode[];
   parent: TestNode | null;
   showModal: () => void;
+  close: () => void;
 };
 export const node = (tag: string, text = ""): TestNode => ({
   tag,
@@ -15,6 +16,7 @@ export const node = (tag: string, text = ""): TestNode => ({
   children: [],
   parent: null,
   showModal: () => {},
+  close: () => {},
 });
 function remove(el: TestNode) {
   if (el.parent) {

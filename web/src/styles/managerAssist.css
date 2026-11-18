@@ -1,8 +1,6 @@
 .manager-assist {
   padding: 20px;
-  background: var(--soft);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border-top: 1px solid var(--border);
   min-width: 0;
 }
 .assist-feedback {
@@ -17,17 +15,17 @@
   gap: 12px;
 }
 .assist-feedback h3 {
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .assist-feedback > p {
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.8;
   margin: 10px 0;
 }
 .assist-feedback .manager-assist-form label {
   display: grid;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .assist-feedback-history {
   list-style: none;
@@ -43,13 +41,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .assist-feedback-history small {
   color: var(--muted);
 }
 .assist-feedback-history p {
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.8;
   margin: 8px 0;
   white-space: pre-wrap;
@@ -62,14 +60,14 @@
   gap: 14px;
 }
 .manager-assist .section-note {
-  font-size: 11px;
+  font-size: var(--type-caption);
   margin-bottom: 4px;
 }
 .manager-assist h2 {
-  font-size: 17px;
+  font-size: var(--type-section);
 }
 .manager-assist-intro {
-  font-size: 13px;
+  font-size: var(--type-body);
   color: var(--muted);
   line-height: 1.85;
   margin-top: 9px;
@@ -85,7 +83,7 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.8;
   color: var(--text);
 }
@@ -97,7 +95,7 @@
   accent-color: var(--accent);
 }
 .manager-assist-form > p {
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.8;
   color: var(--muted);
 }
@@ -115,22 +113,22 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--accent);
   margin-bottom: 17px;
 }
 .manager-advice-meta small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .manager-advice h3 {
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   margin: 16px 0 7px;
 }
 .manager-advice p,
 .manager-advice li {
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.9;
   color: var(--text);
 }
@@ -139,13 +137,12 @@
   margin: 7px 0;
 }
 .manager-advice-facts {
-  background: var(--surface);
-  padding: 12px 14px;
-  border-radius: 3px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 .manager-advice-facts h3 {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .manager-advice-facts dl {
   margin: 0;
@@ -156,7 +153,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 5px 0;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .manager-advice-facts dt {
   color: var(--muted);
@@ -168,10 +165,8 @@
 }
 .manager-advice p.manager-advice-uncertainty {
   color: var(--muted);
-  border-left: 2px solid var(--border-strong);
-  padding-left: 11px;
   margin-top: 16px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .manager-advice-evidence {
   display: grid;
@@ -189,12 +184,12 @@
   border-bottom: 0;
 }
 .manager-advice-evidence strong {
-  font-size: 13px;
+  font-size: var(--type-body);
   font-weight: 500;
   display: block;
 }
 .manager-advice-evidence small {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
   display: block;
   margin-top: 3px;
@@ -204,10 +199,10 @@
 }
 .manager-assist:not(.compact) .manager-advice p,
 .manager-assist:not(.compact) .manager-advice li {
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .manager-assist:not(.compact) .manager-advice h3 {
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 @media (max-width: 700px) {
   .manager-assist {
@@ -216,26 +211,26 @@
   .manager-assist-consent,
   .manager-assist-intro,
   .manager-assist-form > p {
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .manager-assist-form .btn {
     min-height: 44px;
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .manager-advice p,
   .manager-advice li {
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .manager-advice h3 {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .manager-advice-facts dl > div {
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .manager-advice-evidence strong {
-    font-size: 14px;
+    font-size: var(--type-body);
   }
   .manager-advice-evidence small {
-    font-size: 12px;
+    font-size: var(--type-caption);
   }
 }

@@ -8,11 +8,15 @@ import {
   Hygiene,
   HygienePage,
   HygieneRequest,
+  FileAsset,
+  CorrectionEvent,
 } from "../../models/ApiModels";
 import {
   today,
   beijingClock,
+  beijingParts,
   inspectionTimestamp,
+  dateText,
 } from "../../services/Labels";
 import {
   PhotoDraftController,
@@ -33,6 +37,11 @@ interface HygieneDraft {
   bathroomScore: string;
   issueNote: string;
   remediationNote: string;
+  correctionId?: string;
+  correctionVersion?: number;
+  originalAt?: string;
+  correctionReason?: string;
+  attachedImages?: FileAsset[];
 }
 
 @Observed
@@ -60,6 +69,17 @@ export class HygieneState {
   bathroomScore: string = "23";
   issueNote: string = "";
   remediationNote: string = "";
+  correctionId: string = "";
+  correctionVersion: number = 0;
+  originalAt: string = "";
+  correctionReason: string = "";
+  attachedImages: FileAsset[] = [];
+  comparison: Hygiene | null = null;
+  alreadyRecorded: boolean = false;
+  checking: boolean = false;
+  targetChecked: boolean = false;
+  correctionConflict: boolean = false;
+  currentCorrection: Hygiene | null = null;
 }
 
 export class HygieneController {
@@ -71,6 +91,10 @@ export class HygieneController {
   private inspectionDraftStarted: boolean = false;
   private listRead: ReadScope = new ReadScope();
   private roomRead: ReadScope = new ReadScope();
+  private comparisonRead: ReadScope = new ReadScope();
+  private targetRevision: number = 0;
+  private draftEdited: boolean = false;
+  private awaitingSwitch: boolean = false;
   private submissionKeys: SubmissionKeys = new SubmissionKeys((): string =>
     util.generateRandomUUID(),
   );
@@ -98,6 +122,11 @@ export class HygieneController {
         if (typeof data.bathroomScore === "string") this.state.bathroomScore = data.bathroomScore;
         if (typeof data.issueNote === "string") this.state.issueNote = data.issueNote;
         if (typeof data.remediationNote === "string") this.state.remediationNote = data.remediationNote;
+        if (typeof data.correctionId === "string") this.state.correctionId = data.correctionId;
+        if (typeof data.correctionVersion === "number") this.state.correctionVersion = data.correctionVersion;
+        if (typeof data.originalAt === "string") this.state.originalAt = data.originalAt;
+        if (typeof data.correctionReason === "string") this.state.correctionReason = data.correctionReason;
+        if (Array.isArray(data.attachedImages)) this.state.attachedImages = data.attachedImages;
         this.inspectionDraftStarted = true;
         this.state.draftRestored = true;
       }
@@ -116,10 +145,19 @@ export class HygieneController {
       bedScore: this.state.bedScore,
       bathroomScore: this.state.bathroomScore,
       issueNote: this.state.issueNote,
-      remediationNote: this.state.remediationNote
+      remediationNote: this.state.remediationNote,
+      correctionId: this.state.correctionId,
+      correctionVersion: this.state.correctionVersion,
+      originalAt: this.state.originalAt,
+      correctionReason: this.state.correctionReason,
+      attachedImages: this.state.attachedImages
     };
     try { this.drafts.save("hygiene", JSON.stringify(draft)); }
     catch (error) { this.host.setError("本机草稿保存失败：" + (error as Error).message); }
+  }
+  editDraft(): void {
+    this.draftEdited = true;
+    this.saveDraft();
   }
   discardDraft(): void {
     this.drafts?.clear("hygiene");
@@ -136,20 +174,31 @@ export class HygieneController {
     this.state.bathroomScore = fresh.bathroomScore;
     this.state.issueNote = fresh.issueNote;
     this.state.remediationNote = fresh.remediationNote;
+    this.state.correctionId = "";
+    this.state.correctionVersion = 0;
+    this.state.originalAt = "";
+    this.state.correctionReason = "";
+    this.state.attachedImages = [];
+    this.state.correctionConflict = false;
+    this.state.currentCorrection = null;
+    this.clearComparison();
     this.photoDrafts.clear("HYGIENE");
     this.inspectionDraftStarted = false;
+    this.draftEdited = false;
     this.state.draftRestored = false;
     this.state.draftBlocked = false;
   }
   suspendReads(): void {
     this.listRead.invalidate();
     this.roomRead.invalidate();
+    this.targetRevision++;
+    this.clearComparison();
     this.state.loading = false;
   }
   reset(): void {
-    this.listRead.invalidate();
-    this.roomRead.invalidate();
+    this.suspendReads();
     this.inspectionDraftStarted = false;
+    this.draftEdited = false;
     this.submissionKeys.clear();
     this.state = new HygieneState();
   }
@@ -183,14 +232,9 @@ export class HygieneController {
       );
       if (!this.roomRead.current(ticket)) return;
       this.state.rooms = data.items;
-      if (
-        !this.state.rooms.some(
-          (room: Room): boolean => room.id === this.state.inspectionRoomId,
-        )
-      )
-        this.state.inspectionRoomId = !this.state.draftRestored && this.state.rooms.length
-          ? this.state.rooms[0].id
-          : "";
+      if (!this.state.inspectionRoomId && !this.state.draftRestored && this.state.rooms.length)
+        this.state.inspectionRoomId = this.state.rooms[0].id;
+      if (!this.state.correctionId) await this.loadComparison();
     } catch (error) {
       if (this.roomRead.shouldReport(ticket, error as Error))
         this.host.fail(error as Error);
@@ -222,7 +266,160 @@ export class HygieneController {
     );
     return selected
       ? selected.buildingName + " " + selected.roomNo
-      : "请选择检查宿舍";
+      : this.state.inspectionRoomId ? "已选宿舍（不在当前搜索结果中）" : "请选择检查宿舍";
+  }
+
+  private clearComparison(): void {
+    this.comparisonRead.invalidate();
+    this.state.comparison = null;
+    this.state.alreadyRecorded = false;
+    this.state.targetChecked = false;
+    this.state.checking = false;
+  }
+  async loadComparison(): Promise<void> {
+    this.clearComparison();
+    const state = this.state;
+    if (!state.inspectionRoomId || !state.inspectionDate || state.correctionId) return;
+    const ticket = this.comparisonRead.begin();
+    const query = "/hygiene-inspections?pageSize=1&roomId=" + encodeURIComponent(state.inspectionRoomId);
+    state.checking = true;
+    try {
+      const same = await Api.request<HygienePage>(query + "&inspectionDate=" + state.inspectionDate + "&round=" + encodeURIComponent(state.inspectionRound));
+      if (!this.comparisonRead.current(ticket)) return;
+      if (same.items.length) {
+        state.comparison = same.items[0];
+        state.alreadyRecorded = true;
+      } else {
+        const previousDay = new Date(Date.parse(state.inspectionDate + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
+        const previous = await Api.request<HygienePage>(query + "&endDate=" + previousDay);
+        if (!this.comparisonRead.current(ticket)) return;
+        state.comparison = previous.items.length ? previous.items[0] : null;
+      }
+      state.targetChecked = true;
+    } catch (error) {
+      if (this.comparisonRead.shouldReport(ticket, error as Error)) this.host.fail(error as Error);
+    } finally {
+      if (this.comparisonRead.current(ticket)) state.checking = false;
+    }
+  }
+  private draftInUse(): boolean {
+    return this.draftEdited || this.state.draftRestored || this.state.inspectionPhotos.length > 0 || this.state.failedInspectionPhotos.length > 0;
+  }
+  private async confirmDiscard(): Promise<boolean> {
+    if (this.awaitingSwitch) return false;
+    const revision = this.targetRevision, epoch = Api.epoch;
+    this.awaitingSwitch = true;
+    try {
+      const accepted = await this.host.confirm("切换巡检记录？", "当前填写内容将清除。", "继续编辑", "切换记录");
+      return accepted && revision === this.targetRevision && epoch === Api.epoch && !this.state.busy && !this.state.uploading;
+    } finally { this.awaitingSwitch = false; }
+  }
+  async chooseRoom(id: string): Promise<void> {
+    const state = this.state;
+    if (state.correctionId || state.inspectionRelated || state.draftBlocked || state.busy || state.uploading || state.inspectionRoomId === id) return;
+    if (this.draftInUse() && !await this.confirmDiscard()) return;
+    const date = state.inspectionDate, time = state.inspectionTime;
+    this.discardDraft();
+    this.inspectionDraftStarted = true;
+    state.inspectionRoomId = id;
+    state.inspectionDate = date;
+    state.inspectionTime = time;
+    this.saveDraft();
+    await this.loadComparison();
+  }
+  async chooseDate(date: string): Promise<void> {
+    const state = this.state;
+    if (state.draftBlocked || state.busy || state.uploading || state.inspectionDate === date || date > today()) return;
+    if (!state.correctionId && this.draftInUse() && !await this.confirmDiscard()) return;
+    if (!state.correctionId && this.draftInUse()) {
+      const roomId = state.inspectionRoomId, related = state.inspectionRelated, round = state.inspectionRound;
+      this.discardDraft();
+      state.inspectionRoomId = roomId;
+      state.inspectionRelated = related;
+      state.inspectionRound = round;
+    }
+    this.inspectionDraftStarted = true;
+    state.inspectionDate = date;
+    state.inspectionTime = date === today() ? beijingClock() : "";
+    this.saveDraft();
+    if (!state.correctionId) await this.loadComparison();
+  }
+  usePreviousScores(): void {
+    const record = this.state.comparison;
+    if (record && !this.state.alreadyRecorded && !this.state.draftBlocked && !this.state.busy) {
+      this.setScores(record);
+      this.editDraft();
+    }
+  }
+  private setScores(record: Hygiene): void {
+    this.state.floorScore = String(record.floorScore);
+    this.state.deskScore = String(record.deskScore);
+    this.state.bedScore = String(record.bedScore);
+    this.state.bathroomScore = String(record.bathroomScore);
+  }
+  async correct(item: Hygiene): Promise<void> {
+    if (this.state.busy || this.state.uploading || this.state.draftBlocked) return;
+    if (this.draftInUse() && !await this.confirmDiscard()) return;
+    this.discardDraft();
+    const state = this.state;
+    state.inspectionRoomId = item.roomId;
+    state.inspectionDate = item.inspectionDate;
+    state.inspectionTime = beijingParts(item.inspectedAt).clock;
+    state.inspectionRound = item.round;
+    state.inspectionRelated = item.relatedInspectionId || "";
+    state.issueNote = item.issueNote;
+    state.remediationNote = item.remediationNote;
+    state.correctionId = item.id;
+    state.correctionVersion = item.version;
+    state.originalAt = item.inspectedAt;
+    state.attachedImages = item.images;
+    this.setScores(item);
+    this.inspectionDraftStarted = true;
+    this.saveDraft();
+    this.host.navigate("hygiene-create");
+  }
+  async loadCorrectionConflict(): Promise<void> {
+    const state = this.state, id = state.correctionId, epoch = Api.epoch, revision = this.targetRevision;
+    if (!id) return;
+    try {
+      const latest = await Api.request<Hygiene>("/hygiene-inspections/" + id);
+      if (epoch === Api.epoch && revision === this.targetRevision && state.correctionId === id) state.currentCorrection = latest;
+    } catch (error) { this.host.fail(error as Error); }
+  }
+  async adoptCorrectionVersion(): Promise<void> {
+    const state = this.state, latest = state.currentCorrection, epoch = Api.epoch, revision = this.targetRevision;
+    if (!latest || latest.voidedAt || state.busy || state.uploading) return;
+    const accepted = await this.host.confirm("使用最新记录版本？", "保留你填写的评分与说明。请对照最新记录再确认提交。", "返回核对", "保留填写并继续");
+    if (!accepted || epoch !== Api.epoch || revision !== this.targetRevision || latest !== state.currentCorrection) return;
+    const original = beijingParts(state.originalAt);
+    const keepLatestTime = original.day === state.inspectionDate && original.clock === state.inspectionTime.trim();
+    if (keepLatestTime) {
+      state.inspectionDate = latest.inspectionDate;
+      state.inspectionTime = beijingParts(latest.inspectedAt).clock;
+    }
+    state.originalAt = latest.inspectedAt;
+    state.inspectionRelated = latest.relatedInspectionId || "";
+    state.inspectionRound = latest.round;
+    state.correctionVersion = latest.version;
+    state.attachedImages = latest.images;
+    state.correctionConflict = false;
+    state.currentCorrection = null;
+    this.saveDraft();
+  }
+  async history(item: Hygiene): Promise<void> {
+    const epoch = Api.epoch, revision = this.targetRevision;
+    try {
+      const history = await Api.request<CorrectionEvent[]>("/hygiene-inspections/" + item.id + "/history");
+      if (epoch !== Api.epoch || revision !== this.targetRevision) return;
+      const events = history.filter((event: CorrectionEvent): boolean => event.action === "HYGIENE_CORRECT");
+      await this.host.inform("评分更正记录", events.length ? events.map((event: CorrectionEvent): string =>
+        dateText(event.createdAt) + " · " + event.operatorName + "\n" + event.note).join("\n\n") : "这条记录暂无更正。");
+    } catch (error) { this.host.fail(error as Error); }
+  }
+  async abandon(): Promise<void> {
+    if (this.state.busy || this.state.uploading || !await this.confirmDiscard()) return;
+    this.discardDraft();
+    this.host.navigate("hygiene");
   }
 
   totalScore(): number {
@@ -245,8 +442,10 @@ export class HygieneController {
           : "待整改";
   }
 
-  recheck(item: Hygiene): void {
-    if (this.state.busy) return;
+  async recheck(item: Hygiene): Promise<void> {
+    if (this.state.busy || this.state.uploading || this.state.draftBlocked) return;
+    if (this.draftInUse() && !await this.confirmDiscard()) return;
+    if (this.draftInUse() || this.state.correctionId) this.discardDraft();
     // A recheck is a new inspection draft; it never inherits another room's photo work.
     this.photoDrafts.clear("HYGIENE");
     this.state.inspectionPhotos = [];
@@ -264,6 +463,7 @@ export class HygieneController {
       : "RECHECK";
     this.state.issueNote = "";
     this.state.remediationNote = "";
+    this.saveDraft();
     this.host.navigate("hygiene-create");
   }
 
@@ -273,6 +473,18 @@ export class HygieneController {
       state = this.state;
     if (this.state.busy || this.state.uploading) return;
     this.host.setError("");
+    if (!state.correctionId && (!state.targetChecked || state.alreadyRecorded)) {
+      this.host.setError(state.alreadyRecorded ? "同轮已有评分，请选择更正评分" : "请先核对所选的巡检记录");
+      return;
+    }
+    if (state.correctionId && !state.correctionReason.trim()) {
+      this.host.setError("请填写更正原因");
+      return;
+    }
+    if (state.correctionConflict) {
+      this.host.setError("评分记录已更新，请核对最新版本后再保存");
+      return;
+    }
     if (this.state.failedInspectionPhotos.length) {
       this.host.setError("请重试或移除上传失败的图片");
       return;
@@ -311,6 +523,14 @@ export class HygieneController {
       this.host.fail(error as Error);
       return;
     }
+    if (state.originalAt) {
+      const original = beijingParts(state.originalAt);
+      if (original.day === state.inspectionDate && original.clock === state.inspectionTime.trim()) inspectedAt = state.originalAt;
+    }
+    if (state.attachedImages.length + state.inspectionPhotos.length > 6) {
+      this.host.setError("已有图片和新增图片合计最多6张");
+      return;
+    }
     const request: HygieneRequest = {
       roomId: this.state.inspectionRoomId,
       inspectionDate: this.state.inspectionDate.trim(),
@@ -328,13 +548,16 @@ export class HygieneController {
     };
     if (this.state.inspectionRelated)
       request.relatedInspectionId = this.state.inspectionRelated;
+    if (state.correctionId) {
+      request.expectedVersion = state.correctionVersion;
+      request.correctionReason = state.correctionReason.trim();
+    }
     this.state.busy = true;
     try {
-      const saved = await Api.post<Hygiene>(
-        "/hygiene-inspections",
-        request,
-        this.requestKey(request, "hygiene"),
-      );
+      const key = this.requestKey(request, "hygiene");
+      const saved = state.correctionId
+        ? await Api.patch<Hygiene>("/hygiene-inspections/" + state.correctionId, request, key)
+        : await Api.post<Hygiene>("/hygiene-inspections", request, key);
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
       this.submissionKeys.complete("hygiene");
@@ -351,8 +574,17 @@ export class HygieneController {
       this.state.hygienePage = 1;
       this.host.navigate("hygiene");
     } catch (error) {
-      if (state === this.state && [400, 403, 404, 422, 429].includes((error as ApiError).status)) this.drafts?.completeKey("hygiene");
-      if (state === this.state) this.host.fail(error as Error);
+      if (state === this.state) {
+        const apiError = error as ApiError;
+        if ([400, 403, 404, 409, 422, 429].includes(apiError.status)) this.drafts?.completeKey("hygiene");
+        this.host.fail(error as Error);
+        if (apiError.status === 409) {
+          if (state.correctionId) {
+            state.correctionConflict = true;
+            await this.loadCorrectionConflict();
+          } else await this.loadComparison();
+        }
+      }
     } finally {
       if (state === this.state && epoch === Api.epoch) this.state.busy = false;
     }

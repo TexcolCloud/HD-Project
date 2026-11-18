@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { ref, reactive, onMounted, onUnmounted, watch } from "vue";
+import { onBeforeRouteLeave, useRoute } from "vue-router";
 import { get, post, patch, ApiError } from "../api/client";
 import type { Model, Visitor, Building } from "../api/types";
 import { errorText, notify, dateTime, isoTime } from "../ui";
@@ -10,6 +10,8 @@ import StatusBadge from "../components/StatusBadge.vue";
 import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
+import { isMobilePhone, mobilePhoneError } from "../phone";
+import { session } from "../session";
 const listQuery = useLatestQuery();
 const route = useRoute();
 const detailQuery = useLatestQuery();
@@ -30,11 +32,14 @@ const selected = ref<Visitor>(),
   modal = ref<"create" | "detail" | "correction" | null>(null),
   saving = ref(false),
   formError = ref(""),
+  phoneError = ref(""),
   dirty = ref(false),
   arrivedLocal = ref(""),
   leftLocal = ref(""),
   correctionReason = ref(""),
   clearPhone = ref("");
+const leaveCandidate = ref<Visitor>();
+const leaveDialog = ref<HTMLDialogElement>();
 const form = reactive<Model<"VisitorRequest">>({
   visitorName: "",
   phone: "",
@@ -75,6 +80,7 @@ function create() {
   leftLocal.value = "";
   dirty.value = false;
   formError.value = "";
+  phoneError.value = "";
   modal.value = "create";
 }
 async function detail(v: Visitor | string) {
@@ -108,21 +114,29 @@ function correction() {
   correctionReason.value = "";
   dirty.value = false;
   formError.value = "";
+  phoneError.value = "";
   modal.value = "correction";
 }
 async function save() {
-  saving.value = true;
+  if (saving.value) return;
   formError.value = "";
+  const phone = form.phone.trim();
+  if ((phone || modal.value === "create") && !isMobilePhone(phone)) {
+    phoneError.value = mobilePhoneError;
+    return;
+  }
+  saving.value = true;
   try {
     if (modal.value === "create") {
       await post("/visitors", {
         ...form,
+        phone,
         arrivedAt: isoTime(arrivedLocal.value),
       });
     } else if (selected.value) {
       await patch(`/visitors/${selected.value.id}`, {
         visitorName: form.visitorName,
-        phone: form.phone || undefined,
+        phone: phone || undefined,
         purpose: form.purpose,
         remark: form.remark,
         arrivedAt: isoTime(arrivedLocal.value),
@@ -151,13 +165,48 @@ async function save() {
     saving.value = false;
   }
 }
-async function leave(v: Visitor) {
+function requestLeave(visitor: Visitor) {
+  if (!saving.value && visitor.status === "VISITING" && !leaveCandidate.value)
+    leaveCandidate.value = visitor;
+}
+function cancelLeave() {
+  if (!leaveCandidate.value) return;
+  leaveCandidate.value = undefined;
+  leaveDialog.value?.close();
+}
+function currentLeaveCandidate() {
+  const candidate = leaveCandidate.value;
+  if (!candidate) return;
+  const current =
+    modal.value === "detail"
+      ? selected.value
+      : items.value.find((visitor) => visitor.id === candidate.id);
   if (
-    !window.confirm(
-      `确认 ${v.visitorName} 已离开 ${v.buildingName} ${v.roomNo}？将以当前时间记录离访。`,
-    )
+    current?.id === candidate.id &&
+    current.version === candidate.version &&
+    current.status === "VISITING"
   )
-    return;
+    return candidate;
+}
+watch(leaveDialog, (dialog) => dialog?.showModal(), { flush: "post" });
+watch(
+  currentLeaveCandidate,
+  (candidate) => {
+    if (!candidate) cancelLeave();
+  },
+  { flush: "sync" },
+);
+watch(
+  [modal, () => session.user?.id, () => route.query.visitorId],
+  cancelLeave,
+  { flush: "sync" },
+);
+onBeforeRouteLeave(cancelLeave);
+
+async function confirmLeave() {
+  const v = currentLeaveCandidate();
+  cancelLeave();
+  if (!v || saving.value) return;
   if (selected.value?.id === v.id) detailQuery.cancel();
   saving.value = true;
   try {
@@ -169,9 +218,27 @@ async function leave(v: Visitor) {
     await load();
   } catch (e) {
     notify(errorText(e), "error");
+    if (e instanceof ApiError && e.status === 409) {
+      await load();
+      if (modal.value === "detail" && selected.value?.id === v.id)
+        await detail(v.id);
+    }
   } finally {
     saving.value = false;
   }
+}
+function visitorStatus(v: Visitor) {
+  return v.status === "VISITING" && v.overdue ? "VISITOR_OVERDUE" : v.status;
+}
+function refreshRecords() {
+  if (saving.value) return;
+  void load();
+  const record = selected.value ?? route.query.visitorId;
+  if (modal.value === "detail" && record && !Array.isArray(record))
+    void detail(record);
+}
+function returnedToPage() {
+  if (document.visibilityState === "visible") refreshRecords();
 }
 async function reveal() {
   if (!selected.value) return;
@@ -215,6 +282,8 @@ watch(
   { flush: "sync" },
 );
 onMounted(async () => {
+  if (typeof document !== "undefined")
+    document.addEventListener("visibilitychange", returnedToPage);
   try {
     buildings.value = (
       await get<Model<"BuildingPage">>("/buildings", { pageSize: 100 })
@@ -223,6 +292,11 @@ onMounted(async () => {
     error.value = errorText(e);
   }
   await load();
+});
+onUnmounted(() => {
+  cancelLeave();
+  if (typeof document !== "undefined")
+    document.removeEventListener("visibilitychange", returnedToPage);
 });
 watch(
   () => route.query.visitorId,
@@ -236,12 +310,16 @@ watch(
   <div class="page-heading">
     <div>
       <h1>访客登记</h1>
-      <p>记录到访与离开，联系方式按需查看，宿舍归属保留登记时快照。</p>
     </div>
-    <button class="btn primary" @click="create">
-      <Icon name="plus" />
-      登记来访
-    </button>
+    <div class="page-actions">
+      <button class="btn" :disabled="busy || saving" @click="refreshRecords">
+        刷新
+      </button>
+      <button class="btn primary" @click="create">
+        <Icon name="plus" />
+        登记来访
+      </button>
+    </div>
   </div>
   <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
   <p
@@ -328,7 +406,7 @@ watch(
               {{ dateTime(v.arrivedAt) }}
               <small>{{ v.leftAt ? dateTime(v.leftAt) : "尚未离访" }}</small>
             </td>
-            <td><StatusBadge :status="v.status" /></td>
+            <td><StatusBadge :status="visitorStatus(v)" /></td>
             <td>
               <div class="cell-actions">
                 <button class="text-link" @click="detail(v)">查看</button>
@@ -336,7 +414,7 @@ watch(
                   v-if="v.status === 'VISITING'"
                   class="text-link"
                   :disabled="saving"
-                  @click="leave(v)"
+                  @click="requestLeave(v)"
                 >
                   登记离访
                 </button>
@@ -374,10 +452,20 @@ watch(
         <input
           v-model.trim="form.phone"
           type="tel"
-          :required="modal === 'create'"
-          pattern="[0-9+ ]{7,20}"
-          maxlength="20"
+          inputmode="numeric"
+          :aria-required="modal === 'create'"
+          :aria-invalid="!!phoneError"
+          :aria-describedby="phoneError ? 'visitor-phone-error' : undefined"
+          @input="phoneError = ''"
         />
+        <small
+          v-if="phoneError"
+          id="visitor-phone-error"
+          class="field-error"
+          role="alert"
+        >
+          {{ phoneError }}
+        </small>
       </label>
       <LookupSelect
         v-if="modal === 'create'"
@@ -444,7 +532,7 @@ watch(
     @close="modal = null"
   >
     <p v-if="formError" class="error-banner">{{ formError }}</p>
-    <StatusBadge :status="selected.status" />
+    <StatusBadge :status="visitorStatus(selected)" />
     <dl class="details">
       <div>
         <dt>访客姓名</dt>
@@ -486,11 +574,60 @@ watch(
         v-if="selected.status === 'VISITING'"
         class="btn primary"
         :disabled="saving"
-        @click="leave(selected)"
+        @click="requestLeave(selected)"
       >
         登记离访
       </button>
       <button class="btn" @click="correction">更正记录</button>
     </template>
   </Drawer>
+  <dialog
+    v-if="leaveCandidate"
+    ref="leaveDialog"
+    class="leave-dialog"
+    aria-labelledby="visitor-leave-title"
+    aria-describedby="visitor-leave-description"
+    @click.self="cancelLeave"
+    @cancel.prevent="cancelLeave"
+  >
+    <div class="leave-dialog-panel">
+      <h2 id="visitor-leave-title">确认离访</h2>
+      <p id="visitor-leave-description">
+        确认 {{ leaveCandidate.visitorName }} 已离开
+        {{ leaveCandidate.buildingName }}
+        {{ leaveCandidate.roomNo }}？确认后将以当前时间登记离访。
+      </p>
+      <div class="button-row">
+        <button class="btn" type="button" autofocus @click="cancelLeave">
+          返回
+        </button>
+        <button class="btn primary" type="button" @click="confirmLeave">
+          确认离访
+        </button>
+      </div>
+    </div>
+  </dialog>
 </template>
+
+<style scoped>
+.leave-dialog {
+  width: min(430px, calc(100vw - 32px));
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.leave-dialog-panel {
+  padding: 22px;
+}
+.leave-dialog h2 {
+  font-size: var(--type-section);
+}
+.leave-dialog p {
+  margin: 10px 0 20px;
+  overflow-wrap: anywhere;
+}
+.leave-dialog .button-row {
+  justify-content: flex-end;
+}
+</style>

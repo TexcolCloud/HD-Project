@@ -3,11 +3,15 @@ import { ref, onBeforeUnmount } from "vue";
 import { post, request } from "../api/client";
 import type { FileAsset } from "../api/types";
 import { errorText, notify } from "../ui";
-const props = defineProps<{
-  modelValue: FileAsset[];
-  usage: "RESULT" | "INSPECTION";
-  disabled?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: FileAsset[];
+    usage: "RESULT" | "INSPECTION";
+    disabled?: boolean;
+    limit?: number;
+  }>(),
+  { limit: 6 },
+);
 const emit = defineEmits<{
   "update:modelValue": [files: FileAsset[]];
   blocked: [value: boolean];
@@ -77,8 +81,11 @@ async function choose(event: Event) {
   const input = event.target as HTMLInputElement;
   const files = Array.from(input.files || []);
   input.value = "";
-  if (files.length + props.modelValue.length + pending.value.length > 6) {
-    notify("每组最多上传6张图片，请减少选择数量", "error");
+  if (
+    files.length + props.modelValue.length + pending.value.length >
+    props.limit
+  ) {
+    notify(`最多还可补充${props.limit}张图片，请减少选择数量`, "error");
     return;
   }
   if (
@@ -134,11 +141,13 @@ onBeforeUnmount(() => pending.value.forEach((p) => URL.revokeObjectURL(p.url)));
         aria-label="选择图片"
         accept="image/jpeg,image/png,image/webp"
         multiple
-        :disabled="disabled || modelValue.length + pending.length >= 6"
+        :disabled="disabled || modelValue.length + pending.length >= limit"
         @change="choose"
       />
       <p class="form-note" style="margin-bottom: 0">
-        JPG / PNG / WebP · 最多6张，每张≤10MB。上传前缩放并去除元数据。
+        JPG / PNG / WebP · 最多{{
+          limit
+        }}张，每张≤10MB。上传前缩放并去除元数据。
       </p>
     </div>
     <div class="upload-items">

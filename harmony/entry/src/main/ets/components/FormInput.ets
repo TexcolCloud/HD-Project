@@ -12,7 +12,7 @@ export struct FormInput {
   onChange: (value: string) => void = () => {};
   build() {
     Column({space: 8}) {
-      Text(this.label).fontSize(15).fontColor(palette(this.night).ink).width('100%')
+      Text(this.label).fontSize(16).fontColor(palette(this.night).ink).width('100%')
       if (this.multiline) {
         TextArea({text: this.value, placeholder: this.placeholder}).id(this.inputId).onChange(this.onChange)
           .fontSize(16).fontColor(palette(this.night).ink).placeholderColor(palette(this.night).muted)

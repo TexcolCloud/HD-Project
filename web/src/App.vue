@@ -1,17 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { session, logout } from "./session";
-import { clearCsrf, post } from "./api/client";
+import { session, clearLocalSession, logout } from "./session";
+import { get, post } from "./api/client";
+import type { Model } from "./api/types";
 import { errorText, notices, notify } from "./ui";
 import Icon from "./components/Icon.vue";
 import Drawer from "./components/Drawer.vue";
 import { useManagerPresence } from "./composables/useManagerPresence";
 import { useInboxBadge } from "./composables/useInboxBadge";
+import { useLatestQuery } from "./composables/useLatestQuery";
 useManagerPresence(() => session.user);
 const unreadMessages = useInboxBadge(() => session.user);
 const route = useRoute(),
   router = useRouter();
+const scopeQuery = useLatestQuery();
+const buildingNames = ref<string[]>([]);
+watch(
+  () =>
+    session.user && !session.user.mustChangePassword
+      ? session.user.id
+      : undefined,
+  (accountId) => {
+    buildingNames.value = [];
+    scopeQuery.cancel();
+    if (!accountId) return;
+    void scopeQuery.run(
+      (signal) =>
+        get<Model<"BuildingPage">>("/buildings", { pageSize: 100 }, signal),
+      (result) => {
+        buildingNames.value = result.items.map((building) => building.name);
+      },
+    );
+  },
+  { immediate: true },
+);
 const theme = ref(
   localStorage.getItem("dormlink-theme") === "night" ? "night" : "day",
 );
@@ -21,11 +44,11 @@ const links = [
   ["/housing/students", "people", "学生入住"],
   ["/repairs", "tool", "报修工单"],
   ["/dispatch", "route", "任务调度"],
-  ["/mobility", "building", "现场位置"],
+  ["/mobility", "location", "现场位置"],
   ["/hygiene", "shield", "卫生巡检"],
   ["/remediations", "clipboard", "卫生整改"],
   ["/visitors", "clipboard", "访客登记"],
-  ["/messages", "clipboard", "服务消息"],
+  ["/messages", "message", "服务消息"],
   ["/statistics", "chart", "数据统计"],
 ];
 function applyTheme(value: string) {
@@ -43,9 +66,8 @@ async function signOut() {
   }
 }
 function expired() {
-  session.user = null;
-  session.checked = true;
-  clearCsrf();
+  if (!session.user) return;
+  clearLocalSession();
   notify("登录已过期，请重新登录后继续办理", "error");
   void router.replace({ path: "/login", query: { redirect: route.fullPath } });
 }
@@ -63,8 +85,8 @@ async function changePassword() {
       newPassword: newPassword.value,
     });
     passwordOpen.value = false;
-    session.user = null;
-    clearCsrf();
+    oldPassword.value = newPassword.value = "";
+    clearLocalSession();
     await router.replace("/login");
     notify("密码已修改，请使用新密码登录");
   } catch (e) {
@@ -78,16 +100,13 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
 </script>
 <template>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <template v-if="route.path === '/login' || route.path === '/change-password'">
+  <template v-if="route.meta.standalone">
     <RouterView />
   </template>
   <div v-else class="app-shell">
     <aside class="sidebar">
-      <RouterLink class="brand" to="/dashboard">
-        寓见
-        <span>DormLink</span>
-      </RouterLink>
-      <p class="sidebar-note">学生公寓综合服务平台</p>
+      <RouterLink class="brand" to="/dashboard">寓见</RouterLink>
+      <p class="sidebar-note">学生公寓管理</p>
       <nav aria-label="管理功能">
         <RouterLink
           v-for="[path, icon, label] in links"
@@ -100,30 +119,27 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
         </RouterLink>
       </nav>
       <div class="sidebar-foot">
-        <Icon name="shield" />
-        <span>按负责楼栋管理数据</span>
-        <small>入住有档案，服务有回应。</small>
+        <span v-if="buildingNames.length" :title="buildingNames.join('、')">
+          负责楼栋 · {{ buildingNames.join("、") }}
+        </span>
+        <span v-else>按负责楼栋管理数据</span>
       </div>
     </aside>
     <div class="workspace">
       <header class="topbar">
-        <div class="breadcrumb">
-          公寓服务中心
-          <span>/</span>
-          <strong>{{ route.meta.title }}</strong>
-        </div>
+        <div class="breadcrumb">学生公寓综合服务平台</div>
         <div class="top-actions">
           <div class="theme-switch" aria-label="界面主题">
             <button :aria-pressed="theme === 'day'" @click="applyTheme('day')">
               <Icon name="sun" />
-              暖白日间
+              日间
             </button>
             <button
               :aria-pressed="theme === 'night'"
               @click="applyTheme('night')"
             >
               <Icon name="moon" />
-              暖黑夜间
+              夜间
             </button>
           </div>
           <RouterLink
@@ -143,6 +159,7 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
               <small>宿管</small>
             </div>
           </div>
+          <RouterLink class="btn" to="/account-security">账号安全</RouterLink>
           <button
             class="icon-button"
             title="修改密码"
@@ -164,10 +181,6 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
       <main id="main-content" class="content" tabindex="-1">
         <RouterView />
       </main>
-      <footer class="app-footer">
-        <span>寓见 · 学生公寓综合服务管理平台</span>
-        <span>记录与统计均限负责楼栋</span>
-      </footer>
     </div>
   </div>
   <div class="notice-stack" aria-live="polite">

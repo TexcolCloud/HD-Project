@@ -48,6 +48,7 @@ export const statusNames: Record<string, string> = {
   CANCELLED: "已取消",
   REJECTED: "已驳回",
   VISITING: "在访",
+  VISITOR_OVERDUE: "超24小时未离访",
   LEFT: "已离访",
   EXCELLENT: "优秀",
   GOOD: "良好",

@@ -10,7 +10,10 @@ import {
   VisitorRequest,
   LeaveRequest,
   ContactResult,
+  Building,
+  BuildingPage,
 } from "../../models/ApiModels";
+import { isMobileNumber } from "../../services/Labels";
 import { WorkspaceHost } from "../WorkspaceHost";
 import { ReadScope } from "../ReadScope";
 interface EmptyRequest {}
@@ -36,8 +39,13 @@ export class VisitorState {
   visitorPage: number = 1;
   visitorSearch: string = "";
   visitorFilter: string = "";
+  buildings: Building[] = [];
+  buildingId: string = "";
+  selected: Visitor | null = null;
+  detailId: string = "";
   visitorName: string = "";
   visitorPhone: string = "";
+  phoneError: string = "";
   visitedStudentId: string = "";
   visitorPurpose: string = "";
   visitorRemark: string = "";
@@ -49,6 +57,9 @@ export class VisitorController {
   private host: WorkspaceHost;
   private listRead: ReadScope = new ReadScope();
   private studentRead: ReadScope = new ReadScope();
+  private buildingRead: ReadScope = new ReadScope();
+  private detailRead: ReadScope = new ReadScope();
+  private listRevision: number = 0;
   private submissionKeys: SubmissionKeys = new SubmissionKeys((): string =>
     util.generateRandomUUID(),
   );
@@ -91,6 +102,7 @@ export class VisitorController {
     const fresh = new VisitorState();
     this.state.visitorName = fresh.visitorName;
     this.state.visitorPhone = fresh.visitorPhone;
+    this.state.phoneError = "";
     this.state.visitedStudentId = fresh.visitedStudentId;
     this.state.visitorPurpose = fresh.visitorPurpose;
     this.state.visitorRemark = fresh.visitorRemark;
@@ -98,13 +110,15 @@ export class VisitorController {
     this.state.draftBlocked = false;
   }
   suspendReads(): void {
+    this.listRevision++;
     this.listRead.invalidate();
     this.studentRead.invalidate();
+    this.buildingRead.invalidate();
+    this.detailRead.invalidate();
     this.state.loading = false;
   }
   reset(): void {
-    this.listRead.invalidate();
-    this.studentRead.invalidate();
+    this.suspendReads();
     this.submissionKeys.clear();
     this.state = new VisitorState();
   }
@@ -117,6 +131,9 @@ export class VisitorController {
     return this.submissionKeys.reserve(scope, signature);
   }
   async loadVisitors(): Promise<void> {
+    this.listRevision++;
+    this.state.detailId = "";
+    this.state.selected = null;
     const ticket = this.listRead.begin();
     this.state.loading = true;
     try {
@@ -126,7 +143,7 @@ export class VisitorController {
           "&pageSize=10&q=" +
           encodeURIComponent(this.state.visitorSearch) +
           "&status=" +
-          this.state.visitorFilter,
+          this.state.visitorFilter + "&buildingId=" + encodeURIComponent(this.state.buildingId),
       );
       if (!this.listRead.current(ticket)) return;
       this.state.visitors = data.items;
@@ -137,6 +154,56 @@ export class VisitorController {
     } finally {
       if (this.listRead.current(ticket)) this.state.loading = false;
     }
+  }
+  async loadBuildings(): Promise<void> {
+    const ticket = this.buildingRead.begin();
+    const buildings: Building[] = [];
+    try {
+      for (let page = 1; ; page++) {
+        const data = await Api.request<BuildingPage>("/buildings?pageSize=100&page=" + page);
+        if (!this.buildingRead.current(ticket)) return;
+        buildings.push(...data.items);
+        if (!data.items.length || buildings.length >= data.total) break;
+      }
+      this.state.buildings = buildings;
+      if (this.state.buildingId && !buildings.some((building: Building): boolean => building.id === this.state.buildingId)) {
+        this.selectBuilding("");
+      }
+    } catch (error) {
+      if (this.buildingRead.shouldReport(ticket, error as Error)) this.host.fail(error as Error);
+    }
+  }
+  open(visitor: Visitor): void {
+    this.state.detailId = visitor.id;
+    this.state.selected = visitor;
+    this.host.navigate("visitor-detail");
+  }
+  async loadDetail(): Promise<void> {
+    const id = this.state.detailId;
+    if (!id) return;
+    const ticket = this.detailRead.begin();
+    const state = this.state;
+    this.listRevision++;
+    state.loading = true;
+    try {
+      const visitor = await Api.request<Visitor>("/visitors/" + id);
+      if (this.detailRead.current(ticket)) state.selected = visitor;
+    } catch (error) {
+      if (this.detailRead.shouldReport(ticket, error as Error)) {
+        if (this.detailRead.current(ticket) && [403, 404].includes((error as ApiError).status)) state.selected = null;
+        this.host.fail(error as Error);
+      }
+    } finally {
+      if (this.detailRead.current(ticket)) state.loading = false;
+    }
+  }
+  selectBuilding(id: string): void {
+    this.state.buildingId = id;
+    this.state.visitorPage = 1;
+    this.loadVisitors();
+  }
+  buildingChoice(): string {
+    return this.state.buildings.find((building: Building): boolean => building.id === this.state.buildingId)?.name || "全部负责楼栋";
   }
   async loadStudents(): Promise<void> {
     const ticket = this.studentRead.begin();
@@ -169,9 +236,12 @@ export class VisitorController {
       state = this.state;
     if (this.state.busy) return;
     this.host.setError("");
+    if (this.state.phoneError || !isMobileNumber(this.state.visitorPhone)) {
+      this.state.phoneError = "请输入11位手机号";
+      return;
+    }
     if (
       !this.state.visitorName.trim() ||
-      !/^[0-9+ ]{7,20}$/.test(this.state.visitorPhone) ||
       !this.state.visitedStudentId ||
       !this.state.visitorPurpose.trim()
     ) {
@@ -232,12 +302,23 @@ export class VisitorController {
   async leave(visitor: Visitor): Promise<void> {
     const epoch = Api.epoch,
       state = this.state;
-    if (this.state.busy) return;
+    const listRevision = this.listRevision;
+    if (state.busy || state.loading || visitor.status !== "VISITING") return;
     this.state.busy = true;
     this.host.setError("");
     try {
+      const accepted = await this.host.confirm(
+        "确认 " + visitor.visitorName + " 已离开 " + visitor.buildingName + " " + visitor.roomNo + "？",
+        "确认后将按当前时间记录离访。",
+        "返回",
+        "确认离访",
+      );
+      const detail = state.detailId === visitor.id && state.selected?.id === visitor.id;
+      const current = detail ? state.selected : state.visitors.find((item: Visitor): boolean => item.id === visitor.id);
+      if (!accepted || state !== this.state || epoch !== Api.epoch || listRevision !== this.listRevision ||
+          current?.version !== visitor.version || current.status !== "VISITING") return;
       const request: LeaveRequest = { expectedVersion: visitor.version };
-      await Api.post<Visitor>(
+      const saved = await Api.post<Visitor>(
         "/visitors/" + visitor.id + "/leave",
         request,
         this.requestKey(request, "leave-" + visitor.id),
@@ -246,9 +327,21 @@ export class VisitorController {
       if (state !== this.state) return;
       this.submissionKeys.complete("leave-" + visitor.id);
       this.host.flash("已记录离开时间");
-      await this.loadVisitors();
+      if (listRevision === this.listRevision) {
+        state.visitors = state.visitors.map((item: Visitor): Visitor => item.id === visitor.id ? saved : item);
+        if (detail) {
+          state.selected = saved;
+          await this.loadDetail();
+        } else await this.loadVisitors();
+      }
     } catch (error) {
-      if (state === this.state) this.host.fail(error as Error);
+      if (state === this.state) {
+        this.host.fail(error as Error);
+        if ((error as ApiError).status === 409 && listRevision === this.listRevision) {
+          if (state.detailId === visitor.id && state.selected?.id === visitor.id) await this.loadDetail();
+          else await this.loadVisitors();
+        }
+      }
     } finally {
       if (state === this.state && epoch === Api.epoch) this.state.busy = false;
     }

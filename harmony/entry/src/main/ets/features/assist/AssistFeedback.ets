@@ -60,12 +60,12 @@ export struct AssistFeedback {
         FormInput({label: '实际办理结果（可后续补充）', value: this.outcome, multiline: true, night: this.night, onChange: (value: string) => this.outcome = value})
         Button('记录建议反馈').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy && !!this.reason.trim()).onClick(() => this.save())
       }
-      if (this.notice) { Text(this.notice).fontSize(13).fontColor(palette(this.night).accent).width('100%') }
+      if (this.notice) { Text(this.notice).fontSize(14).fontColor(palette(this.night).accent).width('100%') }
       Button('查看历史反馈').height(44).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.load())
       ForEach(this.items, (item: FeedbackRecord) => {
         if (item.canFollowUp) { Button('补充此建议的实际结果').height(44).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => { this.followUpId = item.suggestionId; this.decision = item.decision; this.reason = ''; this.outcome = ''; this.notice = '正在补充历史建议的实际结果'; }) }
         Text(this.label(item.decision) + ' · ' + item.reason + (item.outcome ? '\n实际结果：' + item.outcome : '') + '\n' + item.operatorName + ' · ' + dateText(item.createdAt))
-          .fontSize(13).lineHeight(23).fontColor(palette(this.night).muted).width('100%').padding(10).border({width: {bottom: 1}, color: palette(this.night).line})
+          .fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%').padding(10).border({width: {bottom: 1}, color: palette(this.night).line})
       }, (item: FeedbackRecord) => item.id)
     }.width('100%').alignItems(HorizontalAlign.Start).padding({top: 16, bottom: 8})
   }

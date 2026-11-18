@@ -2,6 +2,7 @@ import { ServiceCenterController, ServiceCenterState } from "../features/service
 import { ServiceCenterWorkspace } from "../features/service/ServiceCenterWorkspace";
 import { InboxPoller } from "../features/service/InboxPoller";
 import { DeviceActions } from "../features/mobility/DeviceActions";
+import { AccountWorkspace, RecoveryCodeView } from "../features/account/AccountWorkspace";
 import { LocalDrafts, DraftStorage } from "../services/LocalDrafts";
 import {
   serviceLabel,
@@ -15,9 +16,10 @@ import { preferences } from "@kit.ArkData";
 import { util } from "@kit.ArkTS";
 import { Api, ApiError } from "../services/Api";
 import { SubmissionKeys } from "../services/SubmissionKeys";
-import { actionLabel } from "../services/Labels";
+import { actionLabel, isMobileNumber } from "../services/Labels";
 import { palette } from "../components/Palette";
 import { DispatchController } from "../features/dispatch/DispatchController";
+import { AppVisibility } from "../features/dispatch/AppVisibility";
 import { RoutePage } from "../features/dispatch/RoutePage";
 import { MobilityController } from "../features/mobility/MobilityController";
 import { MobilityPage } from "../features/mobility/MobilityPage";
@@ -26,6 +28,7 @@ import {
   PhotoSnapshot,
 } from "../features/photos/PhotoDraftController";
 import {
+  AccountSecurityResult,
   User,
   Repair,
   Hygiene,
@@ -64,6 +67,11 @@ struct Index {
   @State error: string = "";
   @State username: string = "";
   @State password: string = "";
+  @State loginIdentifier: string = "USERNAME";
+  @State activationSignIn: boolean = false;
+  @State recoverEntry: boolean = false;
+  @State displayedRecoveryCode: string = "";
+  @State accountMessage: string = "";
   @State server: string = Api.base;
   @State showServer: boolean = false;
   @State oldPassword: string = "";
@@ -79,6 +87,7 @@ struct Index {
     (error: Error) => this.fail(error),
   );
   private unsubscribePhotos: () => void = () => {};
+  private unsubscribeVisibility: () => void = () => {};
   private host: WorkspaceHost = {
     setError: (message: string): void => {
       this.error = message;
@@ -170,9 +179,14 @@ struct Index {
     this.submissionKeys.clear();
     Api.token = "";
     this.user = null;
+    this.username = "";
     this.password = "";
     this.oldPassword = "";
     this.newPassword = "";
+    this.activationSignIn = false;
+    this.recoverEntry = false;
+    this.displayedRecoveryCode = "";
+    this.accountMessage = "";
     this.busy = false;
     this.page = "home";
   }
@@ -194,12 +208,13 @@ struct Index {
     if (this.page === "repairs") return this.repairState.listLoading;
     if (this.page === "detail" || this.page === "action")
       return this.repairState.detailLoading;
-    if (this.page === "visitors") return this.visitorState.loading;
+    if (this.page === "visitors" || this.page === "visitor-detail") return this.visitorState.loading;
     if (this.page === "hygiene") return this.hygieneState.loading;
     return false;
   }
   private go(page: string): void {
-    if (this.user?.mustChangePassword && page !== "password") { this.page = "password"; return; }
+    if (this.busy && (this.page === "activate" || this.page === "account") && this.page !== page) return;
+    if (this.user?.mustChangePassword && page !== "password" && page !== "activate") { this.page = "password"; return; }
     this.saveDrafts();
     this.home.suspendReads();
     this.repairs.suspendReads();
@@ -214,13 +229,30 @@ struct Index {
     else if (["remediation-create", "remediation-assignment"].includes(page)) this.serviceCenter.findResidents();
     else if (page === "home") this.home.loadHome();
     else if (page === "repairs") this.repairs.loadRepairs();
-    else if (page === "visitors") this.visitors.loadVisitors();
+    else if (page === "visitors") {
+      this.visitors.loadVisitors();
+      this.visitors.loadBuildings();
+    }
+    else if (page === "visitor-detail") this.visitors.loadDetail();
     else if (page === "visitor-create") this.visitors.loadStudents();
     else if (page === "hygiene") this.hygiene.loadHygiene();
     else if (page === "hygiene-create") {
       this.hygiene.beginDraft();
       this.hygiene.loadRooms();
     } else if (page === "room") this.home.loadResidences();
+  }
+  private canRefreshWorkspace(): boolean {
+    return ['visitors', 'visitor-detail', 'repairs', 'detail', 'hygiene', 'hygiene-create'].includes(this.page);
+  }
+  private refreshWorkspace(): void {
+    if (!this.user || this.currentLoading() || this.visitorState.busy || this.hygieneState.busy || this.repairState.busy) return;
+    this.error = "";
+    if (this.page === 'visitors') { this.visitors.loadVisitors(); this.visitors.loadBuildings(); }
+    else if (this.page === 'visitor-detail') this.visitors.loadDetail();
+    else if (this.page === 'repairs') this.repairs.loadRepairs();
+    else if (this.page === 'detail' && this.repairState.selected) this.repairs.loadDetail(this.repairState.selected);
+    else if (this.page === 'hygiene') this.hygiene.loadHygiene();
+    else if (this.page === 'hygiene-create') this.hygiene.loadRooms();
   }
   private async openRepair(order: Repair): Promise<void> {
     if (!["route", "detail", "action"].includes(this.page))
@@ -235,6 +267,14 @@ struct Index {
         this.hygiene.photoChanged(snapshot);
       },
     );
+    this.unsubscribeVisibility = AppVisibility.subscribe((foreground: boolean): void => {
+      if (!this.user) return;
+      if (foreground && this.canRefreshWorkspace()) this.refreshWorkspace();
+      if (!foreground) {
+        this.visitors.suspendReads();
+        this.hygiene.suspendReads();
+      }
+    });
     this.getUIContext()
       .getFont()
       .registerFont({
@@ -248,6 +288,7 @@ struct Index {
     this.saveDrafts();
     this.inbox.stop();
     this.unsubscribePhotos();
+    this.unsubscribeVisibility();
     this.photoDrafts.reset();
     this.resetWorkspaces();
     this.dispatch.stopSession();
@@ -255,17 +296,29 @@ struct Index {
   }
 
   onBackPress(): boolean {
+    if (this.displayedRecoveryCode) return true;
+    if (this.recoverEntry) {
+      if (!this.busy) this.exitAccount("recover");
+      return true;
+    }
+    if (!this.user && this.activationSignIn) {
+      this.setLoginMode("USERNAME", false);
+      return true;
+    }
     if (this.user && this.page !== "home") {
-      this.go(
-        this.page === "action"
-          ? "detail"
-          : this.page === "detail"
-            ? this.repairReturnPage
-            : "home",
-      );
+      this.go(this.workspaceBackPage());
       return true;
     }
     return false;
+  }
+  private workspaceBackPage(): string {
+    if (this.page === 'activate') return 'password';
+    if (this.page === 'account') return 'profile';
+    if (this.page === 'action') return 'detail';
+    if (this.page === 'detail') return this.repairReturnPage;
+    if (this.page === 'visitor-detail' || this.page === 'visitor-create') return 'visitors';
+    if (this.page === 'hygiene-create') return 'hygiene';
+    return 'home';
   }
 
   private bg(): string {
@@ -346,7 +399,8 @@ struct Index {
     if (apiError.traceId) this.error += "\n查询编号：" + apiError.traceId;
     if (apiError.code === "PASSWORD_CHANGE_REQUIRED") this.page = "password";
     if (apiError.status === 401) {
-      this.clearSession();
+      if (this.user) this.clearSession();
+      else this.password = "";
     }
   }
 
@@ -354,21 +408,77 @@ struct Index {
     return this.submissionKeys.reserve(scope, JSON.stringify(body));
   }
 
+  private setLoginMode(identifier: string, activate: boolean): void {
+    if (this.busy) return;
+    if (identifier !== this.loginIdentifier) this.username = "";
+    this.loginIdentifier = identifier;
+    this.activationSignIn = activate;
+    this.password = "";
+    this.error = "";
+  }
+
+  private openRecovery(): void {
+    if (this.busy) return;
+    this.error = "";
+    this.password = "";
+    try {
+      Api.base = Api.normalizeBase(this.server);
+      this.recoverEntry = true;
+      this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
+    } catch (error) {
+      this.fail(error as Error);
+    }
+  }
+
+  private exitAccount(mode: string): void {
+    if (mode === "recover") {
+      this.recoverEntry = false;
+      this.error = "";
+    } else {
+      this.go(mode === "activate" ? "password" : "profile");
+    }
+  }
+
+  private async completeAccount(result: AccountSecurityResult, revoked: boolean, message: string): Promise<void> {
+    this.error = "";
+    if (revoked) {
+      this.clearSession();
+    } else {
+      this.page = "profile";
+    }
+    this.displayedRecoveryCode = result.recoveryCode || "";
+    this.accountMessage = this.displayedRecoveryCode ? message : "";
+    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
+    if (!this.displayedRecoveryCode) this.flash(message);
+    if (!revoked) {
+      const epoch = Api.epoch;
+      try {
+        const profile = await Api.request<User>("/auth/me");
+        Api.assertCurrent(epoch);
+        this.user = profile;
+      } catch (error) {
+        this.fail(error as Error);
+      }
+    }
+  }
+
   private async login(): Promise<void> {
     let epoch = Api.epoch;
     if (this.busy) return;
     this.error = "";
-    if (!this.username.trim() || !this.password) {
-      this.error = "请填写账号和密码";
+    const identifier = this.username.trim();
+    if (!identifier || !this.password || (this.loginIdentifier === "PHONE" && !isMobileNumber(identifier))) {
+      this.error = this.loginIdentifier === "PHONE" ? "请填写11位手机号和密码" : "请填写账号和密码";
       return;
     }
     this.busy = true;
     try {
       Api.base = Api.normalizeBase(this.server);
       const request: LoginRequest = {
-        username: this.username.trim(),
+        username: identifier,
         password: this.password,
         clientType: "MOBILE",
+        identifierType: this.loginIdentifier,
       };
       const result = await Api.post<LoginResult>("/auth/login", request);
       Api.assertCurrent(epoch);
@@ -379,10 +489,12 @@ struct Index {
       epoch = Api.epoch;
       this.user = result.user;
       if (result.user.mustChangePassword) {
-        this.page = "password";
+        this.page = this.activationSignIn && !result.user.phoneMasked ? "activate" : "password";
         await this.saveSettings();
         return;
       }
+      if (this.activationSignIn) this.flash("账号已激活，可在账号安全中绑定或更换手机号");
+      this.activationSignIn = false;
 
       this.dispatch.startSession(result.user, result.token, (error: Error) =>
         this.fail(error),
@@ -482,6 +594,8 @@ struct Index {
         return "登记访客";
       case "visitors":
         return "访客记录";
+      case "visitor-detail":
+        return "来访详情";
       case "hygiene-create":
         return "卫生评分";
       case "hygiene":
@@ -496,6 +610,10 @@ struct Index {
         return "入住信息";
       case "password":
         return "修改密码";
+      case "activate":
+        return "激活账号";
+      case "account":
+        return "账号安全";
       case "credits":
         return "图片来源";
       default:
@@ -505,33 +623,54 @@ struct Index {
   @Builder
   private Login() {
     Column({space: 0}) {
-      Text('寓见').fontFamily('DormSerif').fontWeight(FontWeight.Medium).fontSize(24).fontColor(this.ink()).width('100%')
-      Text('公寓里的日常，\n清楚，也从容。').fontFamily('DormSerif').fontWeight(FontWeight.Medium).fontSize(32)
-        .fontColor(this.ink()).lineHeight(48).width('100%').margin({top: 40, bottom: 16})
-      Text('报修、来访与巡检，从这里开始。').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 38})
-      serviceLabel({text: '账号', night: this.night})
-      TextInput({text: this.username, placeholder: '请输入学校提供的账号'}).id('login-username')
+      Text('寓见').fontFamily('DormSerif').fontWeight(FontWeight.Medium).fontSize(28).fontColor(this.ink()).width('100%')
+      Text(this.activationSignIn ? '注册 / 激活' : '登录').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink())
+        .width('100%').margin({top: 32, bottom: 24})
+      if (!this.activationSignIn) {
+        Row({space: 8}) {
+          Button('账号').id('login-account-mode').layoutWeight(1).height(48).fontSize(15).borderRadius(4)
+            .backgroundColor(this.loginIdentifier === 'USERNAME' ? this.ink() : this.surface())
+            .fontColor(this.loginIdentifier === 'USERNAME' ? this.onPrimary() : this.ink())
+            .enabled(!this.busy).onClick(() => this.setLoginMode('USERNAME', false))
+          Button('手机号').id('login-phone-mode').layoutWeight(1).height(48).fontSize(15).borderRadius(4)
+            .backgroundColor(this.loginIdentifier === 'PHONE' ? this.ink() : this.surface())
+            .fontColor(this.loginIdentifier === 'PHONE' ? this.onPrimary() : this.ink())
+            .enabled(!this.busy).onClick(() => this.setLoginMode('PHONE', false))
+        }.width('100%').margin({bottom: 22})
+      }
+      serviceLabel({text: this.loginIdentifier === 'PHONE' ? '手机号' : '账号', night: this.night})
+      TextInput({text: this.username, placeholder: this.loginIdentifier === 'PHONE' ? '请输入11位手机号' : '请输入学校提供的账号'})
+        .id('login-username').type(this.loginIdentifier === 'PHONE' ? InputType.PhoneNumber : InputType.Normal)
         .onChange((value: string) => this.username = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
-        .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(64)
-      serviceLabel({text: '密码', night: this.night})
+        .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(this.loginIdentifier === 'PHONE' ? 20 : 64)
+      serviceLabel({text: this.activationSignIn ? '学校发放的临时密码' : '密码', night: this.night})
       TextInput({text: this.password, placeholder: '请输入密码'}).id('login-password').type(InputType.Password)
         .onChange((value: string) => this.password = value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
         .borderRadius(4).margin({top: 8, bottom: 28}).maxLength(100)
-      Button(this.busy ? '正在登录…' : '登录').id('login-submit').width('100%').height(52).fontSize(16)
+      Button(this.busy ? '正在验证…' : this.activationSignIn ? '验证初始账号' : '登录').id('login-submit').width('100%').height(52).fontSize(16)
         .backgroundColor(this.ink()).fontColor(this.onPrimary()).borderRadius(4).enabled(!this.busy).onClick(() => this.login())
       Row() {
-        Text('由账号决定学生或宿管身份').fontSize(12).fontColor(this.muted()).layoutWeight(1)
-        Button(this.night ? '日间' : '夜间').height(48).fontSize(13).fontColor(this.ink())
+        Button(this.activationSignIn ? '返回登录' : '注册 / 激活').id('login-activate').height(48).fontSize(14).fontColor(this.ink())
+          .backgroundColor(Color.Transparent).enabled(!this.busy).onClick(() => this.setLoginMode('USERNAME', !this.activationSignIn))
+        if (!this.activationSignIn) {
+          Button('忘记密码').id('login-recover').height(48).fontSize(14).fontColor(this.ink())
+            .backgroundColor(Color.Transparent).enabled(!this.busy).onClick(() => this.openRecovery())
+        }
+        Blank().layoutWeight(1)
+        Button(this.night ? '日间' : '夜间').height(48).fontSize(14).fontColor(this.ink())
           .backgroundColor(Color.Transparent).onClick(() => { this.night = !this.night; this.saveSettings(); })
       }.margin({top: 12})
-      Text('忘记密码或未收到初始凭据，请联系学校账号维护人员。').fontSize(12).fontColor(this.muted()).lineHeight(21).margin({top: 12})
-      Button(this.showServer ? '收起服务连接设置' : '服务连接设置').fontSize(12).fontColor(this.muted())
+      if (this.activationSignIn) {
+        Text('使用学校发放的临时账号和密码。未收到凭据，请联系学校账号维护人员。')
+          .fontSize(14).fontColor(this.muted()).lineHeight(21).margin({top: 12})
+      }
+      Button(this.showServer ? '收起服务连接设置' : '服务连接设置').fontSize(14).fontColor(this.muted())
         .backgroundColor(Color.Transparent).height(48).onClick(() => this.showServer = !this.showServer)
       if (this.showServer) {
         serviceField({label: '服务地址', value: this.server, change: (value: string) => this.server = value, placeholder: 'http://电脑地址:8080/api/v1', night: this.night, page: this.page})
-        Text('模拟器默认通过本机端口转发连接；真机请填写可访问的服务地址。').fontSize(12).fontColor(this.muted()).lineHeight(21)
+        Text('模拟器默认通过本机端口转发连接；真机请填写可访问的服务地址。').fontSize(14).fontColor(this.muted()).lineHeight(21)
       }
     }.width('100%').alignItems(HorizontalAlign.Start).padding({left: 24, right: 24, top: 32, bottom: 36})
   }
@@ -539,25 +678,30 @@ struct Index {
   @Builder
   private Profile() {
     Column({space: 0}) {
-      serviceSecondary({label: '服务消息（' + this.unreadCount + ' 条未读）', click: () => this.go('messages'), night: this.night, busy: this.busy})
+      Text(this.user?.displayName || '').fontSize(28).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 18})
+      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生', night: this.night})
+      serviceDetail({label: '登录账号', value: this.user?.username || '', night: this.night})
+      Blank().height(16)
       serviceSecondary({label: '卫生整改任务', click: () => this.go('remediations'), night: this.night, busy: this.busy})
+      Blank().height(8)
       serviceSecondary({label: this.messageNotifications ? '关闭前台新消息系统提醒' : '开启前台新消息系统提醒', click: async () => {
         if (this.messageNotifications) { this.messageNotifications = false; return; }
         try { await DeviceActions.notify(this.getUIContext().getHostContext() as common.UIAbilityContext); this.messageNotifications = true; }
         catch (error) { this.fail(error as Error); }
       }, night: this.night, busy: this.busy})
-      Text(this.user?.displayName || '').fontFamily('DormSerif').fontSize(30).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%').margin({bottom: 18})
-      serviceDetail({label: '当前身份', value: this.manager() ? '宿管' : '学生', night: this.night})
-      serviceDetail({label: '登录账号', value: this.user?.username || '', night: this.night})
+      Blank().height(16)
       if (!this.manager()) { serviceDetail({label: '当前宿舍', value: this.homeState.room ? this.homeState.room.buildingName + ' ' + this.homeState.room.roomNo : '尚未入住', night: this.night}) }
       Blank().height(24)
       if (!this.manager()) { servicePrimary({label: '查看入住信息', click: () => this.go('room'), night: this.night, page: this.page, busy: this.busy, uploading: false}); Blank().height(12) }
       serviceSecondary({label: '修改密码', click: () => this.go('password'), night: this.night, busy: this.busy})
+      Blank().height(8)
+      Button('账号安全').id('profile-account-security').height(48).fontSize(14).fontColor(this.ink()).backgroundColor(this.surface())
+        .border({width: 1, color: this.line()}).borderRadius(4).enabled(!this.busy).onClick(() => this.go('account'))
       Row() {
-        Text('暖黑夜间').fontSize(16).fontColor(this.ink()).layoutWeight(1)
+        Text('夜间模式').fontSize(16).fontColor(this.ink()).layoutWeight(1)
         Toggle({type: ToggleType.Switch, isOn: this.night}).selectedColor(this.accent()).onChange((v: boolean) => { this.night = v; this.saveSettings(); })
       }.width('100%').height(72).margin({top: 14}).border({width: {top: 1, bottom: 1}, color: this.line()})
-      Text('数据仅限本人或负责楼栋范围。').fontSize(13).fontColor(this.muted()).width('100%').margin({top: 20, bottom: 24})
+      Text('数据范围：本人或负责楼栋').fontSize(14).fontColor(this.muted()).width('100%').margin({top: 20, bottom: 24})
       Button('退出登录').id('profile-logout').width('100%').height(50).fontSize(16).fontColor(this.accent()).backgroundColor(this.surface())
         .border({width: 1, color: this.line()}).borderRadius(4).enabled(!this.busy).onClick(() => this.logout())
     }.width('100%').alignItems(HorizontalAlign.Start)
@@ -570,8 +714,13 @@ struct Index {
       TextInput({text: this.oldPassword, placeholder: '请输入原密码'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.oldPassword = v)
       serviceLabel({text: '新密码 *', night: this.night})
       TextInput({text: this.newPassword, placeholder: '至少10位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.newPassword = v)
-      Text(this.user?.mustChangePassword ? '首次使用或密码重置后，请先设置个人密码。修改成功后重新登录。' : '修改成功后需要重新登录。').fontSize(13).fontColor(this.muted())
+      Text(this.user?.mustChangePassword ? '首次使用或密码重置后，请先设置个人密码。修改成功后重新登录。' : '修改成功后需要重新登录。').fontSize(14).fontColor(this.muted())
       servicePrimary({label: '确认修改密码', click: () => this.changePassword(), night: this.night, page: this.page, busy: this.busy, uploading: false})
+      if (this.user?.mustChangePassword && !this.user?.phoneMasked) {
+        Button('验证手机号并激活').id('password-phone-activate').height(48).fontSize(14).fontColor(this.ink())
+          .backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
+          .enabled(!this.busy).onClick(() => this.go('activate'))
+      }
       serviceSecondary({label: '退出当前账号', click: () => this.logout(), night: this.night, busy: this.busy})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
@@ -580,10 +729,10 @@ struct Index {
   private Credits() {
     Column({space: 18}) {
       Image($rawfile('campus-courtyard.jpg')).width('100%').height(200).objectFit(ImageFit.Cover)
-      Text('校园氛围示意').fontFamily('DormSerif').fontSize(24).fontWeight(FontWeight.Medium).fontColor(this.ink())
-      Text('摄影：Nick Allen（Wikimedia Commons 用户 Nickknack00）\n作品：Lanman Wright courtyard elevated.JPG\n许可：CC BY-SA 3.0\n本地处理：缩放为1200×801并压缩；未调色或合成。').fontSize(15).fontColor(this.ink()).lineHeight(26)
-      Text('原始来源：https://commons.wikimedia.org/wiki/File:Lanman_Wright_courtyard_elevated.JPG\n\n许可：https://creativecommons.org/licenses/by-sa/3.0/').fontSize(13).fontColor(this.muted()).lineHeight(24).copyOption(CopyOptions.LocalDevice)
-      Text('图片仅表达校园生活氛围，不代表本平台服务学校的真实宿舍。').fontSize(13).fontColor(this.muted()).lineHeight(24)
+      Text('校园氛围示意').fontSize(28).fontWeight(FontWeight.Medium).fontColor(this.ink())
+      Text('摄影：Nick Allen（Wikimedia Commons 用户 Nickknack00）\n作品：Lanman Wright courtyard elevated.JPG\n许可：CC BY-SA 3.0\n本地处理：缩放为1200×801并压缩；未调色或合成。').fontSize(16).fontColor(this.ink()).lineHeight(26)
+      Text('原始来源：https://commons.wikimedia.org/wiki/File:Lanman_Wright_courtyard_elevated.JPG\n\n许可：https://creativecommons.org/licenses/by-sa/3.0/').fontSize(14).fontColor(this.muted()).lineHeight(24).copyOption(CopyOptions.LocalDevice)
+      Text('图片仅表达校园生活氛围，不代表本平台服务学校的真实宿舍。').fontSize(14).fontColor(this.muted()).lineHeight(24)
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
@@ -592,11 +741,15 @@ struct Index {
     Row({space: 12}) {
       if (this.page !== 'home') {
         Button('‹').id('page-back').fontSize(28).fontColor(this.ink()).backgroundColor(Color.Transparent).width(40).height(48)
-          .onClick(() => this.go(this.page === 'action' ? 'detail' : this.page === 'detail' ? this.repairReturnPage : 'home'))
+          .onClick(() => this.go(this.workspaceBackPage()))
       }
-      Text(this.pageTitle()).fontFamily('DormSerif').fontSize(24).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
-      if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').height(48).fontSize(13).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
-      Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(13).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
+      Text(this.pageTitle()).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
+      if (this.canRefreshWorkspace()) {
+        Button('刷新').id('workspace-refresh').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent())
+          .onClick(() => this.refreshWorkspace())
+      }
+      if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
+      Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(14).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
         .onClick(() => { this.night = !this.night; this.saveSettings(); })
     }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
   }
@@ -604,13 +757,13 @@ struct Index {
   @Builder
   private BottomTabs() {
     Row() {
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.house')).fontSize(23).fontColor([this.page === 'home' ? this.accent() : this.muted()]); Text('首页').fontSize(12).fontColor(this.page === 'home' ? this.accent() : this.muted()) } }
+      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.house')).fontSize(18).fontColor([this.page === 'home' ? this.accent() : this.muted()]); Text('首页').fontSize(14).fontColor(this.page === 'home' ? this.accent() : this.muted()) } }
         .id('tab-home').layoutWeight(1).height(58).fontColor(this.page === 'home' ? this.accent() : this.muted())
         .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.go('home'))
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.doc_text')).fontSize(21).fontColor([['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()]); Text(this.manager() ? '工单' : '我的报修').fontSize(12).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()) } }
+      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.doc_text')).fontSize(18).fontColor([['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()]); Text(this.manager() ? '工单' : '我的报修').fontSize(14).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()) } }
         .id('tab-repairs').layoutWeight(1).height(58).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted())
         .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; this.go('repairs'); })
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.person')).fontSize(21).fontColor([this.page === 'profile' ? this.accent() : this.muted()]); Text('我的').fontSize(12).fontColor(this.page === 'profile' ? this.accent() : this.muted()) } }
+      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.person')).fontSize(18).fontColor([this.page === 'profile' ? this.accent() : this.muted()]); Text('我的').fontSize(14).fontColor(this.page === 'profile' ? this.accent() : this.muted()) } }
         .id('tab-profile').layoutWeight(1).height(58).fontColor(this.page === 'profile' ? this.accent() : this.muted())
         .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.go('profile'))
     }.width('100%').backgroundColor(this.surface()).border({width: {top: 1}, color: this.line()})
@@ -618,24 +771,36 @@ struct Index {
 
   build() {
     Column() {
-      if (this.user) { this.Header() }
+      if (this.user && !this.displayedRecoveryCode) { this.Header() }
       if (this.error) {
         Row({space: 8}) {
-          Text(this.error).id('error-message').fontSize(13).lineHeight(22).fontColor(this.night ? '#F1A99C' : '#A13E37').layoutWeight(1)
+          Text(this.error).id('error-message').fontSize(14).lineHeight(22).fontColor(this.night ? '#F1A99C' : '#A13E37').layoutWeight(1)
           Button('×').width(40).height(48).fontColor(this.ink()).backgroundColor(Color.Transparent).onClick(() => this.error = '')
         }.width('100%').padding({left: 16, right: 8, top: 8, bottom: 8}).backgroundColor(this.night ? '#442E2B' : '#F7EAE6')
       }
       if (this.currentLoading()) {
-        Row({space: 8}) { LoadingProgress().width(20).height(20).color(this.accent()); Text('正在更新…').fontSize(12).fontColor(this.muted()) }
+        Row({space: 8}) { LoadingProgress().width(20).height(20).color(this.accent()); Text('正在更新…').fontSize(14).fontColor(this.muted()) }
           .width('100%').padding(8).justifyContent(FlexAlign.Center)
       }
       Scroll(this.scroller) {
         Column() {
-          if (this.user) { this.Content() } else { this.Login() }
+          if (this.displayedRecoveryCode) {
+            RecoveryCodeView({night: this.night, code: this.displayedRecoveryCode, message: this.accountMessage,
+              done: () => { this.displayedRecoveryCode = ''; this.accountMessage = ''; }})
+          } else if (this.user) { this.Content() }
+          else if (this.recoverEntry) { this.AccountArea('recover') }
+          else { this.Login() }
         }.width('100%').constraintSize({maxWidth: 720}).padding({left: this.user ? 16 : 0, right: this.user ? 16 : 0, top: this.user ? 16 : 0, bottom: 28}).alignItems(HorizontalAlign.Start)
       }.id('page-scroll').layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
-      if (this.user && !this.user.mustChangePassword) { this.BottomTabs() }
+      if (this.user && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
     }.width('100%').height('100%').backgroundColor(this.bg())
+  }
+  @Builder
+  private AccountArea(mode: string) {
+    AccountWorkspace({screen: mode, night: this.night, user: this.user, busy: $busy,
+      onExit: () => this.exitAccount(mode), onError: (message: string) => this.error = message,
+      onFail: (error: Error) => this.fail(error),
+      onComplete: (result: AccountSecurityResult, revoked: boolean, message: string) => this.completeAccount(result, revoked, message)})
   }
   @Builder
   private Content() {
@@ -646,8 +811,8 @@ struct Index {
         onRepairListReset: () => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; }, onHygieneListReset: () => { this.hygieneState.hygienePage = 1; }})
     } else if (['repairs', 'repair-create', 'detail', 'action'].includes(this.page)) {
       RepairWorkspace({state: this.repairState, page: this.page, night: this.night, user: this.user, room: this.homeState.room, host: this.host, controller: this.repairs, photoDrafts: this.photoDrafts, dispatch: this.dispatch})
-    } else if (['visitors', 'visitor-create'].includes(this.page) && this.manager()) {
-      VisitorWorkspace({state: this.visitorState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.visitors})
+    } else if (['visitors', 'visitor-detail', 'visitor-create'].includes(this.page) && this.manager()) {
+      VisitorWorkspace({state: this.visitorState, page: this.page, night: this.night, host: this.host, controller: this.visitors})
     } else if (['hygiene', 'hygiene-create'].includes(this.page)) {
       HygieneWorkspace({state: this.hygieneState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.hygiene, photoDrafts: this.photoDrafts, onRemediate: (item: Hygiene): void => { this.serviceCenter.prepare(item); }})
     } else if (this.page === 'route' && this.manager()) {
@@ -655,6 +820,8 @@ struct Index {
     } else if (this.page === 'mobility' && this.manager()) {
       MobilityPage({controller: this.mobility, dispatch: this.dispatch, night: this.night, onOpenRoute: () => this.go('route')})
     } else if (this.page === 'password') { this.Password() }
+    else if (this.page === 'activate') { this.AccountArea('activate') }
+    else if (this.page === 'account') { this.AccountArea('account') }
     else if (this.page === 'credits') { this.Credits() }
     else { this.Profile() }
   }

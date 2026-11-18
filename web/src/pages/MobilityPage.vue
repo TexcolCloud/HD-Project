@@ -167,9 +167,7 @@ onBeforeUnmount(() => clearInterval(clock));
 <template>
   <div class="page-heading">
     <div>
-      <p class="section-note">宿管现场服务</p>
       <h1>现场位置</h1>
-      <p>在鸿蒙端开启本次工作，确认位置后为剩余路线提供依据。</p>
     </div>
     <div class="page-actions">
       <button class="btn" :disabled="busy" @click="refresh">刷新状态</button>
@@ -191,7 +189,6 @@ onBeforeUnmount(() => clearInterval(clock));
   <template v-if="view">
     <section class="mobility-overview panel">
       <div class="mobility-place">
-        <p class="section-note">本次出行位置</p>
         <h2>{{ summary.place }}</h2>
         <p :class="summary.fresh ? 'mobility-valid' : 'muted'">
           {{ summary.fresh ? "在有效期内" : "当前位置待确认" }} ·
@@ -269,7 +266,7 @@ onBeforeUnmount(() => clearInterval(clock));
       <header class="panel-head">
         <div>
           <h2>现场地点</h2>
-          <p>登记楼栋入口或楼层，供移动端选择和扫码确认。仅显示负责楼栋。</p>
+          <p>移动端可选的楼栋入口与楼层地点</p>
         </div>
         <span class="muted">{{ view.anchors.length }} 处</span>
       </header>
@@ -490,9 +487,8 @@ onBeforeUnmount(() => clearInterval(clock));
   margin-bottom: 26px;
 }
 .mobility-place h2 {
-  font:
-    600 28px/1.6 "Dorm Serif",
-    serif;
+  font-size: var(--type-display);
+  font-weight: 600;
   margin: 8px 0 12px;
 }
 .mobility-place p {
@@ -501,7 +497,7 @@ onBeforeUnmount(() => clearInterval(clock));
 .mobility-place small,
 .mobility-control small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .mobility-valid {
   color: var(--success);
@@ -520,11 +516,11 @@ onBeforeUnmount(() => clearInterval(clock));
 }
 .mobility-facts dt {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .mobility-facts dd {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .mobility-control {
   grid-column: 1/-1;
@@ -535,10 +531,10 @@ onBeforeUnmount(() => clearInterval(clock));
 }
 .mobility-control p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .mobility-code {
-  font-size: 12px;
+  font-size: var(--type-caption);
   margin-top: 7px;
   color: var(--muted);
 }
@@ -551,7 +547,7 @@ onBeforeUnmount(() => clearInterval(clock));
 }
 .mobility-code small {
   display: block;
-  font-size: 11px;
+  font-size: var(--type-caption);
   max-width: 340px;
 }
 .mobility-note {
@@ -570,7 +566,7 @@ onBeforeUnmount(() => clearInterval(clock));
   display: block;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 @media (max-width: 800px) {
   .mobility-overview {
@@ -579,7 +575,7 @@ onBeforeUnmount(() => clearInterval(clock));
     gap: 24px;
   }
   .mobility-place h2 {
-    font-size: 24px;
+    font-size: var(--type-display);
   }
 }
 </style>

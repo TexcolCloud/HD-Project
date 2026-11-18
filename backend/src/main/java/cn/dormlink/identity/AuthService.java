@@ -25,6 +25,7 @@ import java.util.*;
 
 @Service
 public class AuthService {
+    private static final SecureRandom RANDOM = new SecureRandom();
     final Db db;
     final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder(10);
     final boolean secure;
@@ -45,47 +46,86 @@ public class AuthService {
 
     void changePassword(Map<String, Object> body, HttpServletResponse response) {
         Actor actor = current();
-        String original =
-                db.one("SELECT password_hash FROM sys_user WHERE id=?", actor.id())
-                        .get("passwordHash")
-                        .toString();
+        var snapshot = db.one("SELECT * FROM sys_user WHERE id=?", actor.id());
+        String original = snapshot.get("passwordHash").toString();
         if (!matches(Inputs.text(body, "oldPassword", 128, true), original)) {
             throw ApiException.bad("旧密码不正确");
         }
+        String encoded = encodeNewPassword(body, original);
+        writes.executeWithoutResult(
+                status -> {
+                    db.one("SELECT id FROM sys_user WHERE id=? FOR UPDATE", actor.id());
+                    requireActiveSession(actor);
+                    int changed =
+                            db.update(
+                                    "UPDATE sys_user SET"
+                                        + " password_hash=?,must_change_password=FALSE,"
+                                        + " credential_expires_at=NULL,account_version=account_version+1"
+                                        + " WHERE id=? AND enabled=TRUE AND password_hash=? AND"
+                                        + " account_version=?",
+                                    encoded,
+                                    actor.id(),
+                                    original,
+                                    snapshot.get("accountVersion"));
+                    if (changed != 1) {
+                        throw new ApiException(409, "VERSION_CONFLICT", "密码已变更，请重新登录");
+                    }
+                    revokeSessions(actor.id());
+                    auditAccount(actor.id(), actor.name(), "ACCOUNT_PASSWORD_CHANGED");
+                });
+        clearCookies(response);
+    }
+
+    String encodeNewPassword(Map<String, Object> body, String original) {
         String next = Inputs.text(body, "newPassword", 128, true);
         if (next.length() < 10 || next.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw ApiException.bad("新密码至少10位且UTF-8长度不超过72字节");
         }
         if (matches(next, original)) {
             throw ApiException.bad("新密码不能与原密码相同");
-        } // BCrypt is deliberately outside the transaction; the comparison below prevents lost
-        // updates.
-        String encoded = encode(next);
-        writes.executeWithoutResult(
-                status -> {
-                    int changed =
-                            db.update(
-                                    "UPDATE sys_user SET"
-                                        + " password_hash=?,must_change_password=FALSE,"
-                                        + " credential_expires_at=NULL,account_version=account_version+1"
-                                        + " WHERE id=? AND password_hash=?",
-                                    encoded,
-                                    actor.id(),
-                                    original);
-                    if (changed != 1) {
-                        throw new ApiException(409, "VERSION_CONFLICT", "密码已变更，请重新登录");
-                    }
-                    db.update(
-                            "UPDATE auth_session SET revoked_at=? WHERE user_id=? AND revoked_at IS"
-                                    + " NULL",
-                            Timestamp.from(Instant.now()),
-                            actor.id());
-                    events.publishEvent(new SessionsRevoked(actor.id(), null));
-                });
-        clearCookies(response);
+        }
+        return encode(next);
     }
 
-    private void clearCookies(HttpServletResponse response) {
+    void requireActiveSession(Actor actor) {
+        if (db.find(
+                        "SELECT id FROM auth_session WHERE id=? AND user_id=?"
+                                + " AND revoked_at IS NULL AND expires_at>? FOR UPDATE",
+                        actor.sessionId(),
+                        actor.id(),
+                        Timestamp.from(Instant.now()))
+                == null) {
+            throw new ApiException(401, "UNAUTHORIZED", "请重新登录");
+        }
+    }
+
+    void revokeSessions(String userId) {
+        db.update(
+                "UPDATE auth_session SET revoked_at=?,last_seen_at=NULL"
+                        + " WHERE user_id=? AND revoked_at IS NULL",
+                Timestamp.from(Instant.now()),
+                userId);
+        db.update(
+                "UPDATE dispatch_manager SET position_building_id=NULL,position_floor_no=NULL,"
+                        + " position_updated_at=NULL,version=version+1 WHERE user_id=?"
+                        + " AND position_updated_at IS NOT NULL",
+                userId);
+        events.publishEvent(new SessionsRevoked(userId, null));
+    }
+
+    void auditAccount(String userId, String name, String action) {
+        db.update(
+                "INSERT INTO"
+                    + " audit_event(operator_id,operator_name,action,business_type,business_id,note,changes,created_at)"
+                    + " VALUES(?,?,?,'ACCOUNT',?,'','{}',?)",
+                userId,
+                name,
+                action,
+                userId,
+                Timestamp.from(Instant.now()));
+    }
+
+    void clearCookies(HttpServletResponse response) {
         setCookie(response, "HD_SESSION", "", true, 0);
         setCookie(response, "HD_CSRF", "", false, 0);
     }
@@ -114,7 +154,7 @@ public class AuthService {
     }
 
     boolean matches(String raw, String encoded) {
-        return passwords.matches(raw, encoded);
+        return raw.getBytes(StandardCharsets.UTF_8).length <= 72 && passwords.matches(raw, encoded);
     }
 
     public Actor current() {
@@ -152,7 +192,7 @@ public class AuthService {
 
     String random() {
         byte[] b = new byte[32];
-        new SecureRandom().nextBytes(b);
+        RANDOM.nextBytes(b);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(b);
     }
 
@@ -186,7 +226,61 @@ public class AuthService {
 
     Map<String, Object> login(
             Map<String, Object> b, HttpServletRequest request, HttpServletResponse response) {
-        String type = Inputs.choice(b, "clientType", "WEB", "MOBILE");
+        String type = clientType(b, request);
+        boolean byPhone =
+                b.containsKey("identifierType")
+                        && Inputs.choice(b, "identifierType", "USERNAME", "PHONE").equals("PHONE");
+        String identifier = Inputs.text(b, "username", 64, true);
+        String password = Inputs.text(b, "password", 128, true);
+        var u =
+                byPhone
+                        ? db.find(
+                                "SELECT * FROM sys_user WHERE login_phone=? AND enabled=TRUE"
+                                        + " AND login_phone_verified_at IS NOT NULL",
+                                Inputs.phone(b, "username"))
+                        : db.find(
+                                "SELECT * FROM sys_user WHERE username=? AND enabled=TRUE",
+                                identifier);
+        String attemptKey =
+                Digests.sha256(
+                        u == null
+                                ? request.getRemoteAddr() + "\n" + identifier
+                                : "account:" + u.get("id"));
+        attempts.begin(attemptKey, Instant.now());
+        if (u == null
+                || !availableForClient(u, type)
+                || !matches(password, u.get("passwordHash").toString())) {
+            throw new ApiException(401, "LOGIN_FAILED", "账号或密码不正确");
+        }
+        // Password work is outside the transaction. Serialize session creation with password,
+        // account and permission maintenance, then recheck the exact credential snapshot.
+        return writes.execute(
+                status -> {
+                    var current =
+                            db.one("SELECT * FROM sys_user WHERE id=? FOR UPDATE", u.get("id"));
+                    if (!availableForClient(current, type)
+                            || !Objects.equals(current.get("passwordHash"), u.get("passwordHash"))
+                            || !Objects.equals(
+                                    current.get("accountVersion"), u.get("accountVersion"))
+                            || (byPhone
+                                    && (!identifier.equals(current.get("loginPhone"))
+                                            || current.get("loginPhoneVerifiedAt") == null))) {
+                        throw new ApiException(401, "LOGIN_FAILED", "账号或密码已变更，请重新登录");
+                    }
+                    attempts.succeeded(attemptKey);
+                    return createSession(current, type, response);
+                });
+    }
+
+    boolean availableForClient(Map<String, Object> account, String clientType) {
+        Object expiry = account.get("credentialExpiresAt");
+        return Boolean.TRUE.equals(account.get("enabled"))
+                && (!clientType.equals("WEB") || "MANAGER".equals(account.get("role")))
+                && (expiry == null || Instant.parse(expiry.toString()).isAfter(Instant.now()));
+    }
+
+    String clientType(Map<String, Object> body, HttpServletRequest request) {
+        String type = Inputs.choice(body, "clientType", "WEB", "MOBILE");
         if (type.equals("WEB")) {
             String c = cookie(request, "HD_CSRF"), h = request.getHeader("X-XSRF-TOKEN");
             if (c == null
@@ -197,41 +291,7 @@ public class AuthService {
                 throw new ApiException(403, "CSRF_INVALID", "安全凭证已失效，请刷新登录页");
             }
         }
-        String username = Inputs.text(b, "username", 64, true),
-                password = Inputs.text(b, "password", 128, true);
-        String attemptKey = Digests.sha256(request.getRemoteAddr() + "\n" + username);
-        attempts.begin(attemptKey, Instant.now());
-        var u = db.find("SELECT * FROM sys_user WHERE username=? AND enabled=TRUE", username);
-        boolean expired =
-                u != null
-                        && u.get("credentialExpiresAt") != null
-                        && !Instant.parse(u.get("credentialExpiresAt").toString())
-                                .isAfter(Instant.now());
-        if (u == null
-                || expired
-                || !passwords.matches(password, u.get("passwordHash").toString())) {
-            throw new ApiException(401, "LOGIN_FAILED", "账号或密码不正确");
-        }
-        // Password work is outside the transaction. Serialize session creation with password,
-        // account and permission maintenance, then recheck the exact credential snapshot.
-        return writes.execute(
-                status -> {
-                    var current =
-                            db.one("SELECT * FROM sys_user WHERE id=? FOR UPDATE", u.get("id"));
-                    boolean credentialExpired =
-                            current.get("credentialExpiresAt") != null
-                                    && !Instant.parse(current.get("credentialExpiresAt").toString())
-                                            .isAfter(Instant.now());
-                    if (!Boolean.TRUE.equals(current.get("enabled"))
-                            || credentialExpired
-                            || !Objects.equals(current.get("passwordHash"), u.get("passwordHash"))
-                            || !Objects.equals(
-                                    current.get("accountVersion"), u.get("accountVersion"))) {
-                        throw new ApiException(401, "LOGIN_FAILED", "账号或密码已变更，请重新登录");
-                    }
-                    attempts.succeeded(attemptKey);
-                    return createSession(current, type, response);
-                });
+        return type;
     }
 
     private Map<String, Object> createSession(
@@ -270,9 +330,19 @@ public class AuthService {
     Map<String, Object> profile(Actor a) {
         var u =
                 db.one(
-                        "SELECT id,username,display_name,role,must_change_password FROM sys_user"
-                                + " WHERE id=?",
+                        "SELECT"
+                            + " id,username,display_name,role,must_change_password,login_phone,login_phone_verified_at,recovery_code_hash"
+                            + " FROM sys_user WHERE id=?",
                         a.id());
+        String phone = (String) u.remove("loginPhone");
+        Object verified = u.remove("loginPhoneVerifiedAt");
+        Object recovery = u.remove("recoveryCodeHash");
+        if (phone != null && verified != null) {
+            u.put("phoneMasked", Inputs.mask(phone));
+        }
+        if (a.manager()) {
+            u.put("recoveryCodeConfigured", recovery != null);
+        }
         u.put(
                 "buildingIds",
                 db

@@ -175,7 +175,6 @@ watch(
   <div class="page-heading">
     <div>
       <h1>报修工单</h1>
-      <p>从受理到确认，跟进负责楼栋内的每一次报修。</p>
     </div>
     <button class="btn" :disabled="busy" @click="load">刷新列表</button>
   </div>

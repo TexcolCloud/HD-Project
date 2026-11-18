@@ -48,7 +48,7 @@ export struct VisitWindowFields {
           .onChange((value: boolean) => { const next = this.draft.copy(); next.enabled = value; this.onChange(next); })
       }.width('100%').height(48)
       Text('可选。填写你方便上门的时间范围；宿管确认后才成为已确认预约。时间均为北京时间。')
-        .fontSize(12).fontColor(palette(this.night).muted).lineHeight(21).width('100%')
+        .fontSize(14).fontColor(palette(this.night).muted).lineHeight(21).width('100%')
       if (this.draft.enabled) {
         Row({space: 12}) {
           FormInput({label: '开始日期', value: this.draft.startDay, placeholder: 'YYYY-MM-DD', inputId: 'visit-start-date', night: this.night,

@@ -5,11 +5,31 @@ import DashboardPage from "./pages/DashboardPage.vue";
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/login", component: LoginPage, meta: { title: "登录" } },
+    {
+      path: "/login",
+      component: LoginPage,
+      meta: { title: "登录", standalone: true },
+    },
     {
       path: "/change-password",
       component: () => import("./pages/ChangePasswordPage.vue"),
-      meta: { title: "设置登录密码" },
+      meta: { title: "设置登录密码", standalone: true },
+    },
+    {
+      path: "/activate-phone",
+      component: () => import("./pages/AccountSecurityPage.vue"),
+      props: { activation: true },
+      meta: { title: "激活账号", standalone: true },
+    },
+    {
+      path: "/password-recovery",
+      component: () => import("./pages/PasswordRecoveryPage.vue"),
+      meta: { title: "找回密码", standalone: true },
+    },
+    {
+      path: "/account-security",
+      component: () => import("./pages/AccountSecurityPage.vue"),
+      meta: { title: "账号安全" },
     },
     {
       path: "/messages",
@@ -69,7 +89,7 @@ export const router = createRouter({
 });
 router.beforeEach(async (to) => {
   await restoreSession();
-  if (to.path === "/login")
+  if (to.path === "/login" || to.path === "/password-recovery")
     return session.user?.role === "MANAGER"
       ? accountDestination(session.user, "/dashboard") || "/dashboard"
       : true;

@@ -3,6 +3,7 @@ import { Repair } from '../../models/ApiModels';
 import { Api, ApiError } from '../../services/Api';
 import { palette } from '../../components/Palette';
 import { DeviceActions } from './DeviceActions';
+import { appointment } from '../../services/Labels';
 
 @Component
 export struct RepairReminders {
@@ -15,7 +16,7 @@ export struct RepairReminders {
   aboutToDisappear(): void { this.live = false; }
   private async trigger(calendar: boolean): Promise<void> {
     const epoch = Api.epoch;
-    if (!this.repair) return;
+    if (!this.repair || (calendar && !appointment(this.repair).calendar)) return;
     this.busy = true; this.message = '';
     try {
       const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -27,14 +28,14 @@ export struct RepairReminders {
   }
   build() {
     Column({space: 8}) {
-      if (this.repair?.windowStart && this.repair?.windowEnd && this.repair?.windowConfirmed) {
+      if (this.repair && appointment(this.repair).calendar) {
         Button('添加预约至系统日历').id('repair-calendar').width('100%').height(48).fontSize(14).fontColor(palette(this.night).accent)
           .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.trigger(true))
       }
       Button('开启并测试系统通知').id('repair-notifications').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
         .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.trigger(false))
-      if (this.message) { Text(this.message).fontSize(12).lineHeight(21).fontColor(palette(this.night).muted).width('100%') }
-      Text('本地提醒仅处理已知预约，不代表应用关闭后能接收新的服务端工单。').fontSize(12).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
+      if (this.message) { Text(this.message).fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%') }
+      Text('本地提醒仅处理已知预约，不代表应用关闭后能接收新的服务端工单。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
     }.width('100%').margin({top: 12, bottom: 16})
   }
 }

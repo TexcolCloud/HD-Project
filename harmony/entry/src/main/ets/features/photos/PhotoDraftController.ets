@@ -141,6 +141,7 @@ export class PhotoDraftController {
     usage: string,
     context: common.UIAbilityContext,
     camera: boolean = false,
+    alreadyAttached: number = 0,
   ): Promise<void> {
     if (this.busy) return;
     const epoch = Api.epoch,
@@ -150,7 +151,7 @@ export class PhotoDraftController {
     this.busy = true;
     this.emit();
     try {
-      const remaining = 6 - draft.uploaded.length - draft.failed.length;
+      const remaining = 6 - alreadyAttached - draft.uploaded.length - draft.failed.length;
       if (remaining <= 0) throw new ApiError("最多上传6张图片");
       const captured = camera ? await DeviceActions.takePhoto(context) : "";
       const uris = camera

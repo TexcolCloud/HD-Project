@@ -6,10 +6,9 @@ export const session = reactive<{ user: User | null; checked: boolean }>({
   checked: false,
 });
 export function accountDestination(user: User, path: string) {
-  if (user.mustChangePassword && path !== "/change-password")
-    return "/change-password";
-  if (!user.mustChangePassword && path === "/change-password")
-    return "/dashboard";
+  const restricted = path === "/change-password" || path === "/activate-phone";
+  if (user.mustChangePassword && !restricted) return "/change-password";
+  if (!user.mustChangePassword && restricted) return "/dashboard";
   return undefined;
 }
 export async function restoreSession() {
@@ -22,13 +21,18 @@ export async function restoreSession() {
     session.checked = true;
   }
 }
-export async function login(username: string, password: string) {
+export async function login(
+  username: string,
+  password: string,
+  identifierType?: Model<"LoginRequest">["identifierType"],
+) {
   clearCsrf();
   await refreshCsrf();
   const result = await post<Model<"LoginResult">>("/auth/login", {
     username,
     password,
     clientType: "WEB",
+    identifierType,
   } satisfies Model<"LoginRequest">);
   await refreshCsrf();
   if (result.user.role !== "MANAGER") {
@@ -41,6 +45,9 @@ export async function login(username: string, password: string) {
 }
 export async function logout() {
   await post("/auth/logout");
+  clearLocalSession();
+}
+export function clearLocalSession() {
   clearCsrf();
   session.user = null;
   session.checked = true;

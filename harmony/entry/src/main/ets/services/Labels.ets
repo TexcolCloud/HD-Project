@@ -1,3 +1,5 @@
+import { Repair } from '../models/ApiModels';
+
 export function statusLabel(value: string): string {
   switch (value) {
     case 'SUBMITTED': return '待受理';
@@ -9,6 +11,9 @@ export function statusLabel(value: string): string {
     case 'REJECTED': return '已驳回';
     default: return value;
   }
+}
+export function isMobileNumber(value: string): boolean {
+  return /^[0-9]{11}$/.test(value.trim());
 }
 export function categoryLabel(value: string): string {
   switch (value) {
@@ -84,6 +89,30 @@ export function beijingParts(instant: string): LocalClock {
   const value = new Date(Date.parse(instant) + 8 * 60 * 60 * 1000);
   return {day: value.getUTCFullYear() + '-' + String(value.getUTCMonth() + 1).padStart(2, '0') + '-' + String(value.getUTCDate()).padStart(2, '0'),
     clock: String(value.getUTCHours()).padStart(2, '0') + ':' + String(value.getUTCMinutes()).padStart(2, '0')};
+}
+export function canEditVisit(status: string): boolean {
+  return ['SUBMITTED', 'ACCEPTED', 'PROCESSING'].includes(status);
+}
+
+export interface Appointment { label: string; window: string; calendar: boolean; }
+
+function monthDay(day: string): string {
+  return Number(day.slice(5, 7)) + '月' + Number(day.slice(8, 10)) + '日';
+}
+
+export function appointment(repair: Repair, now: number = Date.now()): Appointment {
+  const start = Date.parse(repair.windowStart || ''), end = Date.parse(repair.windowEnd || '');
+  let window = '';
+  if (end > start) {
+    const first = beijingParts(repair.windowStart!), last = beijingParts(repair.windowEnd!);
+    window = monthDay(first.day) + ' ' + first.clock + '–' + (first.day === last.day ? '' : monthDay(last.day) + ' ') + last.clock;
+  }
+  if (!canEditVisit(repair.status)) return {label: '历史上门安排', window: window, calendar: false};
+  if (!repair.visitRequired) return {label: '暂不安排上门', window: '', calendar: false};
+  if (!window) return {label: '暂未安排上门', window: '', calendar: false};
+  if (!repair.windowConfirmed) return {label: '可上门时段 · 待宿管确认', window: window, calendar: false};
+  if (end <= now) return {label: '预约时段已过 · 可查看最新安排', window: window, calendar: false};
+  return {label: '已确认上门', window: window, calendar: true};
 }
 export function visitWindowRange(enabled: boolean, startDay: string, startClock: string,
   endDay: string, endClock: string, now: number = Date.now()): LocalWindow | null {

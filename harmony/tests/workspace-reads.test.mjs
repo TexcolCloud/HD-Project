@@ -28,6 +28,7 @@ async function controller(Api, effects = {}, photos = {}) {
     {
       Api,
       ReadScope,
+      isMobileNumber: (await load('services/Labels.ets')).isMobileNumber,
       util: { generateRandomUUID: () => "key" },
       SubmissionKeys: class {
         clear() {}
@@ -68,7 +69,7 @@ test('a confirmed duplicate visitor challenge can advance with a new request sig
   const { ReadScope } = await load('features/ReadScope.ets', { Api });
   const { SubmissionKeys } = await load('services/SubmissionKeys.ets');
   const { LocalDrafts } = await load('services/LocalDrafts.ets');
-  const { VisitorController } = await load('features/visitors/VisitorController.ets', { Api, ReadScope, SubmissionKeys, util: {generateRandomUUID: () => 'key'} });
+  const { VisitorController } = await load('features/visitors/VisitorController.ets', { Api, ReadScope, SubmissionKeys, isMobileNumber: (await load('services/Labels.ets')).isMobileNumber, util: {generateRandomUUID: () => 'key'} });
   const data = new Map();
   const drafts = new LocalDrafts({get: key => data.get(key) || '', put: (key, value) => data.set(key, value), remove: key => data.delete(key)}, 'server', 'user');
   const host = {setError() {}, flash() {}, navigate() {}, confirm: async () => true, fail: e => { throw e; }};
@@ -91,6 +92,52 @@ test('restored visitor target missing from current authorized choices is never s
   visitors.state.visitedStudentId = 'original';
   await visitors.loadStudents();
   assert.equal(visitors.state.visitedStudentId, '');
+});
+
+test('leave is written only after explicit confirmation of the current visitor record', async () => {
+  const requests = [];
+  const visitor = {id: '42', visitorName: '测试访客', buildingName: 'B 栋', roomNo: '302', status: 'VISITING', version: 3};
+  const Api = {epoch: 1, assertCurrent() {}, request: async () => ({items: [visitor], total: 1}), post: async (path, request, key) => {requests.push({path, request, key}); return {...visitor, status: 'LEFT', version: 4};}};
+  const {ReadScope} = await load('features/ReadScope.ets', {Api});
+  const {SubmissionKeys} = await load('services/SubmissionKeys.ets');
+  const {VisitorController} = await load('features/visitors/VisitorController.ets', {Api, ReadScope, SubmissionKeys, util: {generateRandomUUID: () => 'key'}});
+  let resolve;
+  const visitors = new VisitorController({setError() {}, flash() {}, confirm: (title, message) => {
+    assert.match(title + message, /测试访客.*B 栋 302/);
+    return new Promise(result => {resolve = result;});
+  }, fail: error => {throw error;}});
+  await visitors.loadVisitors();
+  const cancelled = visitors.leave(visitor);
+  assert.equal(requests.length, 0);
+  await visitors.leave(visitor);
+  resolve(false);
+  await cancelled;
+  assert.equal(requests.length, 0);
+  const stale = visitors.leave(visitor);
+  visitors.suspendReads();
+  resolve(true);
+  await stale;
+  assert.equal(requests.length, 0);
+  const accepted = visitors.leave(visitor);
+  resolve(true);
+  await accepted;
+  assert.deepEqual(requests, [{path: '/visitors/42/leave', request: {expectedVersion: 3}, key: 'key'}]);
+});
+
+test('correcting an inspection preserves its original timestamp, association and attachments', async () => {
+  const requests = [];
+  const inspection = {id: '9', version: 4, roomId: '8', inspectionDate: '2026-11-17', inspectedAt: '2026-11-17T08:10:42Z', round: 'RECHECK', relatedInspectionId: '7', floorScore: 21, deskScore: 23, bedScore: 19, bathroomScore: 22, issueNote: '说明', remediationNote: '', images: [{id: '6'}]};
+  const Api = {epoch: 1, assertCurrent() {}, patch: async (path, request) => {requests.push({path, request}); return {totalScore: 84};}};
+  const { ReadScope } = await load('features/ReadScope.ets', {Api});
+  const { SubmissionKeys } = await load('services/SubmissionKeys.ets');
+  const { HygieneController } = await load('features/hygiene/HygieneController.ets', {Api, ReadScope, SubmissionKeys, ...await load('services/Labels.ets'), util: {generateRandomUUID: () => 'key'}});
+  const hygiene = new HygieneController({setError() {}, flash() {}, navigate() {}, fail: e => {throw e;}}, {clear() {}});
+  await hygiene.correct(inspection);
+  assert.equal(hygiene.state.floorScore, '21');
+  hygiene.state.floorScore = '20';
+  hygiene.state.correctionReason = '核对后修正地面评分';
+  await hygiene.submitHygiene();
+  assert.deepEqual(requests, [{path: '/hygiene-inspections/9', request: {roomId: '8', expectedVersion: 4, correctionReason: '核对后修正地面评分', inspectionDate: '2026-11-17', inspectedAt: '2026-11-17T08:10:42Z', round: 'RECHECK', floorScore: 20, deskScore: 23, bedScore: 19, bathroomScore: 22, issueNote: '说明', remediationNote: '', relatedInspectionId: '7', imageIds: []}}]);
 });
 
 test("latest repair filter wins even when an earlier request completes last in the same login", async () => {
@@ -406,13 +453,13 @@ test("starting another inspection recheck retires the prior room photo draft", a
   const photos = new PhotoDraftController((error) => {
     throw error;
   });
-  const hygiene = new HygieneController({ navigate() {} }, photos);
+  const hygiene = new HygieneController({navigate() {}, confirm: async () => true}, photos);
   const unsubscribe = photos.subscribe((snapshot) =>
     hygiene.photoChanged(snapshot),
   );
   await photos.choose("INSPECTION", {});
   assert.equal(hygiene.state.inspectionPhotos.length, 1);
-  hygiene.recheck({ id: "inspection-B", roomId: "B", round: "ROUTINE" });
+  await hygiene.recheck({ id: "inspection-B", roomId: "B", round: "ROUTINE" });
   assert.equal(hygiene.state.inspectionRoomId, "B");
   assert.deepEqual(hygiene.state.inspectionPhotos, []);
   unsubscribe();

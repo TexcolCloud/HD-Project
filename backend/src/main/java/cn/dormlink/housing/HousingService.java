@@ -255,12 +255,12 @@ public class HousingService {
                 major = Inputs.text(b, "major", 100, false),
                 grade = Inputs.text(b, "grade", 20, false),
                 clazz = Inputs.text(b, "className", 100, false),
-                phone = Inputs.phone(b, "phone"),
                 status =
                         b.containsKey("status")
                                 ? Inputs.choice(b, "status", "ACTIVE", "INACTIVE")
                                 : "ACTIVE";
         if (id == null) {
+            String phone = Inputs.phone(b, "phone");
             String uid =
                     db.insert(
                             "INSERT INTO"
@@ -293,6 +293,7 @@ public class HousingService {
                 throw new ApiException(403, "FORBIDDEN", "未入住学生资料仅创建宿管可修改");
             }
             ops.version(raw, b);
+            String phone = Inputs.phone(b, "phone", raw.get("phone").toString());
             int changed =
                     db.update(
                             "UPDATE student SET"
@@ -311,12 +312,15 @@ public class HousingService {
             if (changed != 1) {
                 throw ApiException.conflict("学生档案已更新，请刷新后重试");
             }
+            boolean enabled = status.equals("ACTIVE");
             db.update(
-                    "UPDATE sys_user SET display_name=?,enabled=? WHERE id=?",
+                    "UPDATE sys_user SET display_name=?,account_version=account_version+"
+                            + "CASE WHEN enabled=? THEN 0 ELSE 1 END,enabled=? WHERE id=?",
                     name,
-                    status.equals("ACTIVE"),
+                    enabled,
+                    enabled,
                     raw.get("userId"));
-            if (status.equals("INACTIVE")) {
+            if (!enabled) {
                 db.update(
                         "UPDATE auth_session SET revoked_at=? WHERE user_id=?",
                         Timestamp.from(Instant.now()),

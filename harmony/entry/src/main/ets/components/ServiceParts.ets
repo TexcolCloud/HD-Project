@@ -1,7 +1,19 @@
 import { palette } from './Palette';
 
 export interface LabelArgs { text: string; night: boolean; }
-export interface FieldArgs { label: string; value: string; change: (value: string) => void; night: boolean; page: string; placeholder?: string; multiline?: boolean; }
+export interface FieldArgs {
+  label: string;
+  value: string;
+  change: (value: string) => void;
+  night: boolean;
+  page: string;
+  placeholder?: string;
+  multiline?: boolean;
+  inputType?: InputType;
+  id?: string;
+  invalidPhonePaste?: () => void;
+  error?: string;
+}
 export interface DetailArgs { label: string; value: string; night: boolean; }
 export interface PrimaryArgs { label: string; click: () => void; night: boolean; page: string; busy?: boolean; uploading?: boolean; enabled?: boolean; }
 export interface SecondaryArgs { label: string; click: () => void; night: boolean; busy?: boolean; }
@@ -39,7 +51,7 @@ export function repairStatusColor(status: string, night: boolean): string {
 // ArkUI tracks Builder state only through one directly supplied object literal.
 // Keep dynamic content, theme and button state in the same reference parameter.
 @Builder
-export function serviceLabel($$: LabelArgs) { Text($$.text).fontSize(15).fontColor(palette($$.night).ink).fontWeight(FontWeight.Medium).width('100%') }
+export function serviceLabel($$: LabelArgs) { Text($$.text).fontSize(16).fontColor(palette($$.night).ink).fontWeight(FontWeight.Medium).width('100%') }
 
 @Builder
 export function serviceField($$: FieldArgs) {
@@ -50,10 +62,18 @@ export function serviceField($$: FieldArgs) {
         .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
         .borderRadius(4).padding(12).height(112).maxLength(1000)
     } else {
-      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, $$.page)).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
+      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id($$.id || fieldInputId($$.label, $$.page)).type($$.inputType ?? InputType.Normal).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
         .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
         .borderRadius(4).padding({left: 12, right: 12}).height(50).maxLength(150)
+        .onPaste((content: string, event: PasteEvent): void => {
+          const reject = $$.invalidPhonePaste;
+          if (reject && !/^[0-9]{1,11}$/.test(content.trim())) {
+            event.preventDefault?.();
+            reject();
+          }
+        })
     }
+    if ($$.error) { Text($$.error).fontSize(14).fontColor(palette($$.night).danger).width('100%') }
   }.alignItems(HorizontalAlign.Start).width('100%').margin({bottom: 18})
 }
 
@@ -74,20 +94,20 @@ export function serviceSecondary($$: SecondaryArgs) {
 export function serviceSection($$: SectionArgs) {
   Row() {
     Text($$.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(palette($$.night).ink).layoutWeight(1)
-    if ($$.action) { Button($$.action + ' →').fontSize(13).fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).height(48).onClick(() => { if ($$.click) $$.click(); }) }
+    if ($$.action) { Button($$.action).fontSize(14).fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).height(48).onClick(() => { if ($$.click) $$.click(); }) }
   }.width('100%').margin({top: 18, bottom: 8})
 }
 
 @Builder
 export function serviceEmpty($$: EmptyArgs) {
   Text($$.message).fontSize(14).fontColor(palette($$.night).muted).lineHeight(24).width('100%').padding(24)
-    .backgroundColor(palette($$.night).soft).borderRadius(4).textAlign(TextAlign.Center)
+    .textAlign(TextAlign.Center)
 }
 
 @Builder
 export function serviceDetail($$: DetailArgs) {
   Row({space: 16}) {
-    Text($$.label).fontSize(13).fontColor(palette($$.night).muted).width(88)
+    Text($$.label).fontSize(14).fontColor(palette($$.night).muted).width(88)
     Text($$.value || '未填写').fontSize(14).fontColor(palette($$.night).ink).layoutWeight(1).textAlign(TextAlign.End)
   }.width('100%').padding({top: 10, bottom: 10}).border({width: {bottom: 0.5}, color: palette($$.night).line})
 }

@@ -25,7 +25,7 @@ Spring Boot **4.1.2**，Java 编译基线21，已使用本机JDK25编译运行�
 
 旧MySQL8.4 Docker环境及数据保留，可显式运行 `start-database.ps1 -Database mysql`、`run-backend.ps1 -Database mysql`。`run-backend.ps1 -Database local`使用独立H2；不同数据库不是同一份业务，切换profile不等同数据迁移。`-BuildOnly`无需环境文件，`-SkipBuild`仅运行已成功构建的产物。
 
-openGauss初始结构为 `src/main/resources/db/opengauss/schema.sql`，采用PG兼容模式的BIGSERIAL、BOOLEAN与TIMESTAMP(3)，V2位于同目录。MySQL／H2继续使用原 `schema.sql` 与 `db/migration/V2__dynamic_dispatch.sql`，不改写其历史校验和。`SchemaMigrations`按profile选择脚本并保存版本与SHA-256；部分DDL失败后重启按元数据跳过已存在列，完成后才记录版本。已应用校验和改变会中止启动，旧数据迁移须使用独立迁移工具，不能靠建表或种子重建。
+openGauss初始结构为 `src/main/resources/db/opengauss/schema.sql`，采用PG兼容模式的BIGSERIAL、BOOLEAN与TIMESTAMP(3)，V2至V8有序迁移位于同目录，覆盖调度、查询索引、设备感知、服务跟进和手机号账号安全。MySQL／H2使用各自初始结构与 `db/migration/` 中的对应版本，保留历史校验和。`SchemaMigrations` 按profile选择脚本并保存版本与SHA-256。部分DDL失败后重启按元数据跳过已存在列，完成后才记录版本。已应用校验和改变会中止启动，旧数据迁移使用独立迁移工具。
 
 ## 本地账号和会话
 
@@ -45,10 +45,12 @@ Web先GET `/auth/csrf`，携带Cookie和 `X-XSRF-TOKEN` 登录 `clientType=WEB`�
 
 对公网HTTPS部署设 `COOKIE_SECURE=true`，Web和API同源；开发Cookie非Secure是为了本机HTTP和模拟器联调。默认CORS只允许本机5173/4173。
 
+学生和宿管可激活预置账号、绑定已验证手机号和找回密码。宿管自助找回同时验证短信与一次性恢复码。访客、报修和档案的业务联系电话单独维护。短信连接和人工恢复见 [账号与恢复运行手册](../docs/17-账号与恢复运行手册.md)。
+
 ## 已实现的业务
 
 - 楼栋和房间档案、容量与状态；学生档案与查询；入住、原子调宿、退宿和历史。
-- 访客登记、重复在访提示、离访、更正、脱敏查询与明文查看审计。
+- 访客登记、重复在访提示、超24小时在访标记、离访、更正、脱敏查询与明文查看审计。
 - 地面/桌面/床铺/卫生间四项卫生评分、总分等级、同房同日同轮次有效唯一、更正/作废/复查关联和历史审计。
 - 学生本人报修、故障联系与房间快照、工单合法动作、办理人约束、追加进度、返修确认及完整事件轨迹。
 - 真实JPEG/PNG/WebP上传、像素/大小检查、JPEG重编码去除EXIF、私有文件存储、绑定前后继承权限；每组6张、单图10MB。WebP由锁定的TwelveMonkeys `imageio-webp:3.12.0` ImageIO SPI读取，不依赖JDK自带WebP解码，也不依赖客户端先转码；插件说明见[官方项目](https://github.com/haraldk/TwelveMonkeys)。

@@ -17,6 +17,7 @@ import java.util.*;
 
 @Service
 public class OperationsService {
+    private static final Duration VISITOR_OVERDUE_AFTER = Duration.ofHours(24);
     final Db db;
     final AuthService auth;
     final BusinessSupport ops;
@@ -317,12 +318,18 @@ public class OperationsService {
     }
 
     Map<String, Object> visitor(String id) {
-        return visitorView(visitorRaw(id));
+        return visitorView(visitorRaw(id), Instant.now());
     }
 
-    Map<String, Object> visitorView(Map<String, Object> v) {
+    static Map<String, Object> visitorView(Map<String, Object> v, Instant observedAt) {
         v.put("phone", Inputs.mask(v.get("phone").toString()));
-        v.put("status", v.get("leftAt") == null ? "VISITING" : "LEFT");
+        boolean visiting = v.get("leftAt") == null;
+        v.put("status", visiting ? "VISITING" : "LEFT");
+        v.put(
+                "overdue",
+                visiting
+                        && Instant.parse(v.get("arrivedAt").toString())
+                                .isBefore(observedAt.minus(VISITOR_OVERDUE_AFTER)));
         return v;
     }
 
@@ -343,8 +350,9 @@ public class OperationsService {
             sql += " AND v.left_at IS NOT NULL";
         }
         var page = ops.page(sql + " ORDER BY v.id DESC", args, q);
+        Instant observedAt = Instant.now();
         for (var v : BusinessSupport.items(page)) {
-            visitorView(v);
+            visitorView(v, observedAt);
         }
         ops.audit("VISITOR_SEARCH", "VISITOR", null, "查询访客记录", Map.of("page", page.get("page")));
         return page;
@@ -443,7 +451,7 @@ public class OperationsService {
                                 : v.get("visitorName").toString(),
                 phone =
                         b.containsKey("phone")
-                                ? Inputs.phone(b, "phone")
+                                ? Inputs.phone(b, "phone", v.get("phone").toString())
                                 : v.get("phone").toString(),
                 purpose =
                         b.containsKey("purpose")

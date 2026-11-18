@@ -131,6 +131,7 @@ export interface Visitor {
   leftAt: string | null;
   status: string;
   version: number;
+  overdue?: boolean;
 }
 export interface Hygiene {
   id: string;
@@ -177,11 +178,14 @@ export interface User {
   studentId: string | null;
   currentRoom: Room | null;
   mustChangePassword?: boolean;
+  phoneMasked?: string;
+  recoveryCodeConfigured?: boolean;
 }
 export interface LoginRequest {
   username: string;
   password: string;
   clientType: string;
+  identifierType?: string;
 }
 export interface LoginResult {
   user: User;
@@ -190,6 +194,51 @@ export interface LoginResult {
 export interface PasswordRequest {
   oldPassword: string;
   newPassword: string;
+}
+export interface PhoneChallengeRequest {
+  purpose: string;
+  phone?: string;
+  currentPassword?: string;
+}
+export interface PhoneChallengeResult {
+  challengeId: string;
+}
+export interface PhoneCodeRequest {
+  challengeId: string;
+  code: string;
+}
+export interface ActivateRequest {
+  challengeId: string;
+  code: string;
+  newPassword: string;
+}
+export interface PhoneChangeRequest {
+  oldChallengeId: string;
+  oldCode: string;
+  newChallengeId: string;
+  newCode: string;
+}
+export interface AccountSecurityResult {
+  recoveryCode?: string;
+}
+export interface PasswordRecoveryChallengeRequest {
+  phone: string;
+  clientType: string;
+}
+export interface PasswordRecoveryVerifyRequest {
+  challengeId: string;
+  code: string;
+  clientType: string;
+}
+export interface PasswordRecoveryVerifyResult {
+  resetToken: string;
+  recoveryCodeRequired: boolean;
+}
+export interface PasswordRecoveryCompleteRequest {
+  resetToken: string;
+  newPassword: string;
+  clientType: string;
+  recoveryCode?: string;
 }
 export interface LeaveRequest {
   expectedVersion: number;
