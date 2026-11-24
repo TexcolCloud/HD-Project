@@ -77,6 +77,14 @@ function beijingInstant(day: string, clock: string): string {
   return value;
 }
 
+export function statusPrefix(status: string): string {
+  if (['SUBMITTED', 'PENDING_CONFIRMATION'].includes(status)) return '○ ';
+  if (['ACCEPTED', 'PROCESSING', 'VISITING'].includes(status)) return '◐ ';
+  if (status === 'COMPLETED') return '✓ ';
+  if (['REJECTED', 'VISITOR_OVERDUE'].includes(status)) return '! ';
+  return ['CANCELLED', 'LEFT'].includes(status) ? '– ' : '';
+}
+
 export function inspectionTimestamp(day: string, clock: string, now: number = Date.now()): string {
   const value = beijingInstant(day, clock);
   if (Date.parse(value) > now) throw new Error('实际检查时刻不能是未来');

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useConfirm } from "../../composables/useConfirm";
 import { ref, reactive, computed, watch, onBeforeUnmount } from "vue";
 import type { Repair, Model } from "../../api/types";
 import {
@@ -10,6 +11,8 @@ import {
 import { session } from "../../session";
 import { datetimeInput } from "../../composables/dispatchPlan";
 import { dateTime, errorText, isoTime, notify } from "../../ui";
+
+const askConfirm = useConfirm();
 
 const props = defineProps<{ repair: Repair; disabled?: boolean }>();
 const emit = defineEmits<{
@@ -122,8 +125,17 @@ async function beginHandoff() {
     busy.value = false;
   }
 }
-function cancel() {
-  if (dirty.value && !window.confirm("访问安排尚未保存，确定放弃本次修改？"))
+async function cancel() {
+  if (
+    dirty.value &&
+    !(await askConfirm({
+      title: "放弃访问安排修改？",
+      message: "本次访问安排尚未保存。",
+      confirmText: "放弃修改",
+      cancelText: "继续设置",
+      danger: true,
+    }))
+  )
     return;
   mode.value = "";
   dirty.value = false;

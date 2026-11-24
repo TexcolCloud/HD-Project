@@ -1,3 +1,4 @@
+import { statusPrefix } from '../../services/Labels';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { call } from '@kit.TelephonyKit';
 import { DraftNotice } from "../DraftNotice";
@@ -57,17 +58,17 @@ export struct VisitorWorkspace {
       serviceLabel({text: '被访学生 / 宿舍 *', night: this.night})
       Row({space: 8}) {
         TextInput({text: this.state.targetSearch, placeholder: '按房号、姓名或学号查找'}).id('visitor-target-search').height(48).layoutWeight(1)
-          .fontSize(14).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
+          .fontSize(14).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
           .onChange((v: string) => this.controller.searchStudents(v)).onSubmit(() => this.controller.loadStudents())
         serviceSecondary({label: '查找', click: () => this.controller.loadStudents(), night: this.night, busy: this.state.busy})
       }.width('100%').margin({top: 8, bottom: 4})
       if (this.state.students.length) {
         Column({space: 4}) {
           ForEach(this.state.students,(s: Student) => {
-            Button((s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name + ' · ' + s.studentNo)
-              .width('100%').height(48).fontColor(this.ink()).borderRadius(4)
+            Button() { Text((s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name + ' · ' + s.studentNo).fontSize(16).fontColor(this.ink()) }
+              .width('100%').constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontColor(this.ink()).borderRadius(4)
               .backgroundColor(this.state.visitedStudentId === s.id ? this.soft() : this.surface())
-              .border({width: 1, color: this.state.visitedStudentId === s.id ? this.accent() : this.line()})
+              .border({width: 1, color: this.state.visitedStudentId === s.id ? this.accent() : palette(this.night).outline})
               .onClick(() => this.controller.chooseStudent(s))
           },(s: Student) => s.id)
         }.id('visitor-target').width('100%')
@@ -92,7 +93,7 @@ export struct VisitorWorkspace {
       servicePrimary({label: '登记访客', click: () => this.host.navigate('visitor-create'), night: this.night, page: this.page, busy: this.state.busy, uploading: false})
       Row({space: 8}) {
         TextInput({text: this.state.visitorSearch, placeholder: '访客姓名、电话或房间'}).id('visitor-search').height(48).layoutWeight(1)
-          .fontSize(16).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
+          .fontSize(16).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
           .onChange((v: string) => this.state.visitorSearch = v).onSubmit(() => { this.state.visitorPage = 1; this.controller.loadVisitors(); })
         serviceSecondary({label: '查询', click: () => { this.state.visitorPage = 1; this.controller.loadVisitors(); }, night: this.night, busy: this.state.busy})
       }.width('100%').margin({top: 18, bottom: 12})
@@ -100,13 +101,13 @@ export struct VisitorWorkspace {
         Select([{value: '全部负责楼栋'}, ...this.state.buildings.map((building: Building): SelectOption => { return {value: building.name}; })])
           .id('visitor-building').selected(this.state.buildings.findIndex((building: Building): boolean => building.id === this.state.buildingId) + 1)
           .value(this.controller.buildingChoice()).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.controller.selectBuilding(index ? this.state.buildings[index - 1].id : ''))
-          .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).margin({bottom: 8})
+          .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).margin({bottom: 8})
       } else if (this.state.buildings.length === 1) {
         Text('负责楼栋 · ' + this.state.buildings[0].name).fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 8})
       }
       Select([{value: '全部来访'}, {value: '当前在访'}, {value: '已离访'}]).selected(['', 'VISITING', 'LEFT'].indexOf(this.state.visitorFilter)).value(this.state.visitorFilter === 'VISITING' ? '当前在访' : this.state.visitorFilter === 'LEFT' ? '已离访' : '全部来访')
         .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.visitorFilter = ['', 'VISITING', 'LEFT'][index]; this.state.visitorPage = 1; this.controller.loadVisitors(); })
-        .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).margin({bottom: 18})
+        .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).margin({bottom: 18})
       Text('共 ' + this.state.visitorTotal + ' 条记录').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 12})
       if (!this.state.visitors.length && !this.state.loading) { serviceEmpty({message: '暂无符合条件的访客记录。', night: this.night}) }
       ForEach(this.state.visitors, (visitor: Visitor) => {
@@ -135,7 +136,7 @@ export struct VisitorWorkspace {
   }
   @Builder
   private Status($$: VisitorArgs) {
-    Text($$.visitor.status === 'VISITING' ? ($$.visitor.overdue ? '超24小时未离访' : '在访') : '已离访').fontSize(14)
+    Text(statusPrefix($$.visitor.status === 'VISITING' && $$.visitor.overdue ? 'VISITOR_OVERDUE' : $$.visitor.status) + ($$.visitor.status === 'VISITING' ? ($$.visitor.overdue ? '超24小时未离访' : '在访') : '已离访')).fontSize(14)
       .fontColor($$.visitor.status === 'VISITING' ? ($$.visitor.overdue ? palette(this.night).danger : this.accent()) : this.muted())
   }
 

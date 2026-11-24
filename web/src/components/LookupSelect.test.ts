@@ -119,3 +119,30 @@ it("方向键移动高亮，回车选中，Escape 收起候选", async () => {
     app.unmount();
   }
 });
+
+it.each(["Backspace", "Delete"])(
+  "已选记录可用 %s 清除并重新查找",
+  async (key) => {
+    api.get.mockResolvedValue({ items: [] });
+    const update = vi.fn(),
+      root = node("root");
+    const app = renderer.createApp(LookupSelect, {
+      kind: "student",
+      label: "学生",
+      modelValue: "12",
+      initialLabel: "王同学",
+      "onUpdate:modelValue": update,
+    });
+    app.mount(root);
+    try {
+      const input = find(root, (n) => n.props.role === "combobox")!,
+        preventDefault = vi.fn();
+      (input.props.onKeydown as (e: unknown) => void)({ key, preventDefault });
+      await nextTick();
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(update).toHaveBeenCalledWith("");
+    } finally {
+      app.unmount();
+    }
+  },
+);

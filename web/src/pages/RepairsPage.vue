@@ -112,7 +112,11 @@ function begin(name: string) {
   uploadBlocked.value = false;
   void nextTick(() => {
     actionSection.value?.scrollIntoView?.({
-      behavior: "smooth",
+      behavior: globalThis.window?.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      )?.matches
+        ? "auto"
+        : "smooth",
       block: "nearest",
     });
     actionSection.value
@@ -282,8 +286,7 @@ watch(
         重置
       </button>
     </form>
-    <p v-if="busy" class="panel-body loading">正在读取工单…</p>
-    <div class="table-wrap">
+    <div class="table-wrap" :aria-busy="busy" :class="{ 'is-loading': busy }">
       <table>
         <thead>
           <tr>
@@ -337,9 +340,9 @@ watch(
               </div>
             </td>
           </tr>
-          <tr v-if="!busy && !items.length">
+          <tr v-if="!items.length">
             <td colspan="7" class="empty-state">
-              没有匹配的工单，请调整筛选条件。
+              {{ busy ? "正在读取工单…" : "没有匹配的工单，请调整筛选条件。" }}
             </td>
           </tr>
         </tbody>
@@ -441,7 +444,12 @@ watch(
           :href="file.url"
           target="_blank"
         >
-          <img :src="file.thumbnailUrl" :alt="file.originalName" />
+          <img
+            loading="lazy"
+            decoding="async"
+            :src="file.thumbnailUrl"
+            :alt="file.originalName"
+          />
         </a>
       </div>
     </section>
@@ -455,7 +463,12 @@ watch(
           :href="file.url"
           target="_blank"
         >
-          <img :src="file.thumbnailUrl" :alt="file.originalName" />
+          <img
+            loading="lazy"
+            decoding="async"
+            :src="file.thumbnailUrl"
+            :alt="file.originalName"
+          />
         </a>
       </div>
     </section>

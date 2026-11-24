@@ -118,9 +118,7 @@ it("快速切换工单后，旧详情即使迟到也不能覆盖当前工单", a
 });
 
 it("工单有未保存说明时，关闭只确认一次；取消保留输入，确认后关闭", async () => {
-  const confirm = vi.fn().mockReturnValue(true);
   vi.stubGlobal("window", {
-    confirm,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -163,16 +161,63 @@ it("工单有未保存说明时，关闭只确认一次；取消保留输入，�
     )!;
     (button.props.onClick as () => void)();
   };
-  confirm.mockReturnValueOnce(false);
+  async function choose(label: string) {
+    await nextTick();
+    const choice = find(
+      root,
+      (n) => n.tag === "button" && text(n).trim() === label,
+    );
+    expect(choice).toBeDefined();
+    (choice!.props.onClick as () => void)();
+    await nextTick();
+  }
   close();
-  await nextTick();
-  expect(confirm).toHaveBeenCalledTimes(1);
+  await choose("继续编辑");
   expect(find(root, (n) => n.tag === "textarea")).toBeDefined();
   expect(mocks.replace).not.toHaveBeenCalled();
-  confirm.mockClear();
   close();
+  await choose("放弃修改");
   await nextTick();
-  expect(confirm).toHaveBeenCalledTimes(1);
   expect(mocks.replace).toHaveBeenCalledWith("/repairs");
   expect(find(root, (n) => n.tag === "dialog")).toBeUndefined();
+});
+
+it("重查期间保留原行并在表格上提供忙碌状态", async () => {
+  route.params = {};
+  let finish: ((result: unknown) => void) | undefined;
+  let listReads = 0;
+  const list = { items: [repair], total: 1 };
+  mocks.get.mockImplementation(async (path: string) => {
+    if (path !== "/repairs") return { items: [], total: 0 };
+    if (++listReads === 1) return list;
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  const root = node("root"),
+    app = renderer.createApp(RepairsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  await vi.waitFor(() => expect(text(root)).toContain(repair.title));
+  const row = find(
+    root,
+    (n) => n.tag === "tr" && text(n).includes(repair.title),
+  );
+  const filter = find(
+    root,
+    (n) => n.tag === "form" && n.props.class === "filters",
+  )!;
+  (filter.props.onSubmit as (e: unknown) => void)({ preventDefault() {} });
+  await nextTick();
+  expect(find(root, (n) => n.props["aria-busy"] === true)).toBeDefined();
+  expect(
+    find(root, (n) => n.tag === "tr" && text(n).includes(repair.title)),
+  ).toBe(row);
+  expect(
+    find(root, (n) => n.tag === "p" && text(n).includes("正在读取工单")),
+  ).toBeUndefined();
+  finish!(list);
+  await vi.waitFor(() =>
+    expect(find(root, (n) => n.props["aria-busy"] === true)).toBeUndefined(),
+  );
 });

@@ -16,13 +16,13 @@ export struct FormInput {
       if (this.multiline) {
         TextArea({text: this.value, placeholder: this.placeholder}).id(this.inputId).onChange(this.onChange)
           .fontSize(16).fontColor(palette(this.night).ink).placeholderColor(palette(this.night).muted)
-          .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line})
+          .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).outline})
           .borderRadius(4).padding(12).height(100).maxLength(1000)
       } else {
         TextInput({text: this.value, placeholder: this.placeholder}).id(this.inputId).onChange(this.onChange)
           .type(this.numeric ? InputType.Number : InputType.Normal).fontSize(16).fontColor(palette(this.night).ink)
           .placeholderColor(palette(this.night).muted).backgroundColor(palette(this.night).surface)
-          .border({width: 1, color: palette(this.night).line}).borderRadius(4).height(50).maxLength(150)
+          .border({width: 1, color: palette(this.night).outline}).borderRadius(4).height(50).maxLength(150)
       }
     }.width('100%').alignItems(HorizontalAlign.Start).margin({bottom: 16})
   }

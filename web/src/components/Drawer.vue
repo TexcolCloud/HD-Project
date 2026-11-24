@@ -1,8 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useConfirm, confirmHost } from "../composables/useConfirm";
+import ConfirmDialog from "./ConfirmDialog.vue";
+import {
+  inject,
+  provide,
+  useId,
+  ref,
+  onMounted,
+  onUnmounted,
+  onBeforeUnmount,
+} from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import { openModal } from "./modal";
 import Icon from "./Icon.vue";
+
+const askConfirm = useConfirm();
 const props = defineProps<{
   title: string;
   subtitle?: string;
@@ -11,9 +23,23 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ close: [] }>();
 const el = ref<HTMLDialogElement>();
-function close() {
+const parentHost = inject(confirmHost, false);
+provide(confirmHost, true);
+const titleId = useId();
+let unregisterModal = () => {};
+let previousFocus: HTMLElement | null;
+async function close() {
   if (props.busy) return;
-  if (props.dirty && !window.confirm("当前内容尚未保存，确定放弃本次修改？"))
+  if (
+    props.dirty &&
+    !(await askConfirm({
+      title: "放弃未保存内容？",
+      message: "关闭后，本次修改将丢失。",
+      confirmText: "放弃修改",
+      cancelText: "继续编辑",
+      danger: true,
+    }))
+  )
     return;
   emit("close");
 }
@@ -24,15 +50,29 @@ function unload(event: BeforeUnloadEvent) {
   }
 }
 onMounted(() => {
-  openModal(el.value);
+  previousFocus = globalThis.document?.activeElement as HTMLElement | null;
+  unregisterModal = openModal(el.value);
   window.addEventListener("beforeunload", unload);
 });
-onBeforeUnmount(() => window.removeEventListener("beforeunload", unload));
+onBeforeUnmount(() => {
+  unregisterModal();
+  window.removeEventListener("beforeunload", unload);
+});
+onUnmounted(() => {
+  if (globalThis.document?.activeElement === globalThis.document?.body)
+    previousFocus?.focus?.();
+});
 onBeforeRouteLeave(() =>
   props.busy
     ? false
     : props.dirty
-      ? window.confirm("当前内容尚未保存，确定离开并放弃本次修改？")
+      ? askConfirm({
+          title: "离开并放弃修改？",
+          message: "离开此页后，本次修改将丢失。",
+          confirmText: "离开并放弃",
+          cancelText: "留在此页",
+          danger: true,
+        })
       : true,
 );
 </script>
@@ -40,6 +80,7 @@ onBeforeRouteLeave(() =>
   <dialog
     ref="el"
     class="drawer"
+    :aria-labelledby="titleId"
     @cancel.prevent="close"
     @click="
       (e) => {
@@ -49,7 +90,7 @@ onBeforeRouteLeave(() =>
   >
     <header class="drawer-head">
       <div>
-        <h2>{{ title }}</h2>
+        <h2 :id="titleId">{{ title }}</h2>
         <p v-if="subtitle">{{ subtitle }}</p>
       </div>
       <button
@@ -67,4 +108,5 @@ onBeforeRouteLeave(() =>
       <slot name="footer" />
     </footer>
   </dialog>
+  <ConfirmDialog v-if="!parentHost" />
 </template>

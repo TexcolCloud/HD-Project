@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { provide, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { session, clearLocalSession, logout } from "./session";
 import { get } from "./api/client";
@@ -9,6 +9,11 @@ import Icon from "./components/Icon.vue";
 import { useManagerPresence } from "./composables/useManagerPresence";
 import { useInboxBadge } from "./composables/useInboxBadge";
 import { useLatestQuery } from "./composables/useLatestQuery";
+import ConfirmDialog from "./components/ConfirmDialog.vue";
+import { activeModal } from "./components/modal";
+import NoticeToast from "./components/NoticeToast.vue";
+import { confirmHost } from "./composables/useConfirm";
+provide(confirmHost, true);
 useManagerPresence(() => session.user);
 const unreadMessages = useInboxBadge(() => session.user);
 const route = useRoute(),
@@ -30,7 +35,7 @@ watch(
 );
 const noticeStack = ref<HTMLElement>();
 watch(
-  () => [noticeStack.value, notices.length],
+  () => [noticeStack.value, notices.length, activeModal.value],
   () => {
     if (notices.length) noticeStack.value?.showPopover?.();
     else noticeStack.value?.hidePopover?.();
@@ -58,7 +63,7 @@ watch(
   { immediate: true },
 );
 const theme = ref(
-  localStorage.getItem("dormlink-theme") === "night" ? "night" : "day",
+  document.documentElement.dataset.theme === "night" ? "night" : "day",
 );
 const groups = [
   {
@@ -101,7 +106,13 @@ function active(path: string) {
 function applyTheme(value: string) {
   theme.value = value;
   document.documentElement.dataset.theme = value;
-  localStorage.setItem("dormlink-theme", value);
+  document.documentElement.style.colorScheme =
+    value === "night" ? "dark" : "light";
+  try {
+    localStorage.setItem("dormlink-theme", value);
+  } catch {
+    /* The current tab can still switch themes when storage is unavailable. */
+  }
 }
 applyTheme(theme.value);
 async function signOut() {
@@ -204,20 +215,14 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
       </main>
     </div>
   </div>
-  <div
-    ref="noticeStack"
-    popover="manual"
-    class="notice-stack"
-    aria-live="polite"
-  >
-    <div
-      v-for="(notice, i) in notices"
-      :key="i"
-      class="toast"
-      :class="notice.kind"
-      role="status"
-    >
-      {{ notice.message }}
+  <Teleport :to="activeModal || 'body'" :disabled="!activeModal">
+    <div ref="noticeStack" popover="manual" class="notice-stack">
+      <NoticeToast
+        v-for="notice in notices"
+        :key="notice.id"
+        :notice="notice"
+      />
     </div>
-  </div>
+  </Teleport>
+  <ConfirmDialog />
 </template>

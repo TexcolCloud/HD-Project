@@ -722,12 +722,12 @@ struct Index {
       TextInput({text: this.username, placeholder: this.loginIdentifier === 'PHONE' ? '请输入11位手机号' : '请输入学校提供的账号'})
         .id('login-username').type(this.loginIdentifier === 'PHONE' ? InputType.PhoneNumber : InputType.Normal)
         .onChange((value: string) => this.username = value).height(52).fontSize(16).fontColor(this.ink())
-        .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
+        .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline})
         .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(this.loginIdentifier === 'PHONE' ? 20 : 64)
       serviceLabel({text: this.activationSignIn ? '学校发放的临时密码' : '密码', night: this.night})
       TextInput({text: this.password, placeholder: '请输入密码'}).id('login-password').type(InputType.Password)
         .onChange((value: string) => this.password = value).height(52).fontSize(16).fontColor(this.ink())
-        .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: this.line()})
+        .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline})
         .borderRadius(4).margin({top: 8, bottom: 28}).maxLength(100)
       Button(this.busy ? '正在验证…' : this.activationSignIn ? '验证初始账号' : '登录').id('login-submit').width('100%').height(52).fontSize(16)
         .backgroundColor(this.ink()).fontColor(this.onPrimary()).borderRadius(4).enabled(!this.busy).onClick(() => this.login())
@@ -776,14 +776,14 @@ struct Index {
       serviceSecondary({label: '修改密码', click: () => this.go('password'), night: this.night, busy: this.busy})
       Blank().height(8)
       Button('账号安全').id('profile-account-security').height(48).fontSize(14).fontColor(this.ink()).backgroundColor(this.surface())
-        .border({width: 1, color: this.line()}).borderRadius(4).enabled(!this.busy).onClick(() => this.go('account'))
+        .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.busy).onClick(() => this.go('account'))
       Row() {
         Text('夜间模式').fontSize(16).fontColor(this.ink()).layoutWeight(1)
         Toggle({type: ToggleType.Switch, isOn: this.night}).selectedColor(this.accent()).onChange((v: boolean) => { this.night = v; this.saveSettings(); })
       }.width('100%').height(72).margin({top: 14}).border({width: {top: 1, bottom: 1}, color: this.line()})
       Text('数据范围：本人或负责楼栋').fontSize(14).fontColor(this.muted()).width('100%').margin({top: 20, bottom: 24})
       Button('退出登录').id('profile-logout').width('100%').height(50).fontSize(16).fontColor(this.accent()).backgroundColor(this.surface())
-        .border({width: 1, color: this.line()}).borderRadius(4).enabled(!this.busy).onClick(() => this.logout())
+        .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.busy).onClick(() => this.logout())
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
@@ -791,14 +791,14 @@ struct Index {
   private Password() {
     Column({space: 18}) {
       serviceLabel({text: '原密码 *', night: this.night})
-      TextInput({text: this.oldPassword, placeholder: '请输入原密码'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.oldPassword = v)
+      TextInput({text: this.oldPassword, placeholder: '请输入原密码'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).onChange((v: string) => this.oldPassword = v)
       serviceLabel({text: '新密码 *', night: this.night})
-      TextInput({text: this.newPassword, placeholder: '至少10位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).onChange((v: string) => this.newPassword = v)
+      TextInput({text: this.newPassword, placeholder: '至少10位'}).type(InputType.Password).height(50).backgroundColor(this.surface()).fontColor(this.ink()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).onChange((v: string) => this.newPassword = v)
       Text(this.user?.mustChangePassword ? '首次使用或密码重置后，请先设置个人密码。修改成功后重新登录。' : '修改成功后需要重新登录。').fontSize(14).fontColor(this.muted())
       servicePrimary({label: '确认修改密码', click: () => this.changePassword(), night: this.night, page: this.page, busy: this.busy, uploading: false})
       if (this.user?.mustChangePassword && !this.user?.phoneMasked) {
         Button('验证手机号并激活').id('password-phone-activate').height(48).fontSize(14).fontColor(this.ink())
-          .backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
+          .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
           .enabled(!this.busy).onClick(() => this.go('activate'))
       }
       serviceSecondary({label: '退出当前账号', click: () => this.logout(), night: this.night, busy: this.busy})
@@ -832,7 +832,7 @@ struct Index {
       if (this.manager() && !this.user?.mustChangePassword && !this.displayedRecoveryCode) {
         Button('我的').id('open-profile').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.page === 'profile' ? this.accent() : this.ink()).onClick(() => this.switchTab('profile'))
       }
-    }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
+    }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP]).border({width: {bottom: 1}, color: this.line()})
   }
 
   private tabSymbol(page: string): Resource {
@@ -857,7 +857,7 @@ struct Index {
         }.id(tab.id).layoutWeight(1).height(58).backgroundColor(Color.Transparent).borderRadius(0)
           .onClick(() => this.switchTab(tab.page))
       }, (tab: TabLink) => tab.id + tab.label)
-    }.width('100%').backgroundColor(this.surface()).border({width: {top: 1}, color: this.line()})
+    }.width('100%').backgroundColor(this.surface()).expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]).border({width: {top: 1}, color: this.line()})
   }
 
   build() {
@@ -882,7 +882,7 @@ struct Index {
         Column(){ this.WorkspaceScroll() }.layoutWeight(1).width('100%')
       }
       if (this.user && rootTab(this.page, this.manager()) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
-    }.width('100%').height('100%').backgroundColor(this.bg())
+    }.width('100%').height('100%').backgroundColor(this.bg()).expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
   @Builder
   private WorkspaceScroll() {

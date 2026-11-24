@@ -59,11 +59,11 @@ export function serviceField($$: FieldArgs) {
     serviceLabel({text: $$.label, night: $$.night})
     if ($$.multiline) {
       TextArea({text: $$.value, placeholder: $$.placeholder || ''}).id(fieldInputId($$.label, $$.page)).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
-        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
+        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).outline})
         .borderRadius(4).padding(12).height(112).maxLength(1000)
     } else {
       TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id($$.id || fieldInputId($$.label, $$.page)).type($$.inputType ?? InputType.Normal).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
-        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).line})
+        .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).outline})
         .borderRadius(4).padding({left: 12, right: 12}).height(50).maxLength(150)
         .onPaste((content: string, event: PasteEvent): void => {
           const reject = $$.invalidPhonePaste;
@@ -79,22 +79,24 @@ export function serviceField($$: FieldArgs) {
 
 @Builder
 export function servicePrimary($$: PrimaryArgs) {
-  Button($$.busy ? '正在保存…' : $$.label).id(primaryInputId($$.page)).width('100%').height(50).fontSize(16).fontWeight(FontWeight.Medium)
+  Button() {
+    Text($$.busy ? '正在保存…' : $$.label).fontSize(16).fontWeight(FontWeight.Medium).fontColor(palette($$.night).onPrimary)
+  }.id(primaryInputId($$.page)).width('100%').constraintSize({minHeight: 50}).padding({top: 8, bottom: 8, left: 12, right: 12})
     .backgroundColor(palette($$.night).ink).fontColor(palette($$.night).onPrimary).borderRadius(4)
     .enabled($$.enabled !== false && !$$.busy && !$$.uploading).onClick($$.click)
 }
 
 @Builder
 export function serviceSecondary($$: SecondaryArgs) {
-  Button($$.label).height(48).fontSize(14).fontColor(palette($$.night).ink).backgroundColor(palette($$.night).surface)
-    .border({width: 1, color: palette($$.night).line}).borderRadius(4).enabled(!$$.busy).onClick($$.click)
+  Button() { Text($$.label).fontSize(14).fontColor(palette($$.night).ink) }.constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontColor(palette($$.night).ink).backgroundColor(palette($$.night).surface)
+    .border({width: 1, color: palette($$.night).outline}).borderRadius(4).enabled(!$$.busy).onClick($$.click)
 }
 
 @Builder
 export function serviceSection($$: SectionArgs) {
   Row() {
     Text($$.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(palette($$.night).ink).layoutWeight(1)
-    if ($$.action) { Button($$.action).fontSize(14).fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).height(48).onClick(() => { if ($$.click) $$.click(); }) }
+    if ($$.action) { Button() { Text($$.action).fontSize(14).fontColor(palette($$.night).ink) }.fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).onClick(() => { if ($$.click) $$.click(); }) }
   }.width('100%').margin({top: 18, bottom: 8})
 }
 

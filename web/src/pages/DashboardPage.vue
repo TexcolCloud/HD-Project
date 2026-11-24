@@ -155,9 +155,11 @@ watch(buildingId, load);
     {{ error }}
     <button @click="load">重新加载</button>
   </div>
-  <p v-if="busy" class="loading" role="status">正在读取本栋数据…</p>
+  <p v-if="!overview && busy" class="loading" role="status">
+    正在读取本栋数据…
+  </p>
   <template v-if="overview">
-    <div class="summary-strip">
+    <div class="summary-strip" :aria-busy="busy">
       <div>
         <span>当前入住 / 总容量</span>
         <strong class="num">

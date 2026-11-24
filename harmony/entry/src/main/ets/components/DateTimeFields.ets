@@ -45,7 +45,7 @@ export struct DateTimeField {
       Button(this.value || '请选择').id(this.inputId).width('100%').height(48).fontSize(16)
         .accessibilityText(this.label + ' ' + (this.value || '请选择'))
         .fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
-        .border({width: 1, color: palette(this.night).line}).borderRadius(4).enabled(!this.disabled).onClick(() => this.pick())
+        .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.disabled).onClick(() => this.pick())
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 }

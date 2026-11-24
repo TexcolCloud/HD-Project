@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useConfirm } from "../../composables/useConfirm";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { Model, Repair } from "../../api/types";
 import { getDispatchBoard, takeoverDispatchTask } from "../../api/dispatch";
 import { session } from "../../session";
 import { useLatestQuery } from "../../composables/useLatestQuery";
 import { errorText, notify } from "../../ui";
+
+const askConfirm = useConfirm();
 
 const props = defineProps<{ repair: Repair; disabled?: boolean }>();
 const emit = defineEmits<{
@@ -94,8 +97,17 @@ function begin() {
   error.value = "";
   void readTask();
 }
-function cancel() {
-  if (reason.value.trim() && !window.confirm("接续原因尚未提交，确定放弃？"))
+async function cancel() {
+  if (
+    reason.value.trim() &&
+    !(await askConfirm({
+      title: "放弃接续填写？",
+      message: "接续原因尚未提交。",
+      confirmText: "放弃填写",
+      cancelText: "继续填写",
+      danger: true,
+    }))
+  )
     return;
   reset();
 }

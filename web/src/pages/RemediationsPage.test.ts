@@ -51,7 +51,6 @@ it("整改提交反馈后开放复核；关闭详情会丢弃晚到的旧任务�
   vi.stubGlobal("window", {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
-    confirm: () => true,
   });
 
   let reads = 0,
@@ -101,11 +100,9 @@ it("整改提交反馈后开放复核；关闭详情会丢弃晚到的旧任务�
 });
 
 it("提交整改处置时阻止同页面深链接切换，未保存原因需确认后才能切换任务", async () => {
-  const confirm = vi.fn().mockReturnValue(false);
   vi.stubGlobal("window", {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
-    confirm,
   });
   api.get.mockImplementation(async (path: string) =>
     path === "/hygiene-remediations/8"
@@ -136,9 +133,18 @@ it("提交整改处置时阻止同页面深链接切换，未保存原因需确�
   (button("取消整改")!.props.onClick as () => void)();
   await nextTick();
   expect(navigation.update).toHaveBeenCalled();
-  const guard = navigation.update.mock.calls.at(-1)![0] as () => boolean;
-  expect(guard()).toBe(false);
-  confirm.mockReturnValue(true);
+  const guard = navigation.update.mock.calls.at(-1)![0] as () =>
+    | boolean
+    | Promise<boolean>;
+  for (const [choice, accept] of [
+    ["继续编辑", false],
+    ["放弃并切换", true],
+  ] as const) {
+    const answer = guard();
+    await nextTick();
+    (button(choice)!.props.onClick as () => void)();
+    expect(await answer).toBe(accept);
+  }
   const form = find(
     root,
     (candidate) =>
@@ -157,9 +163,7 @@ it("提交整改处置时阻止同页面深链接切换，未保存原因需确�
 });
 
 it("空白复核可直接关闭；内联合格复查保存后，验收重试复用其 ID", async () => {
-  const confirm = vi.fn(() => false);
   vi.stubGlobal("window", {
-    confirm,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -196,7 +200,7 @@ it("空白复核可直接关闭；内联合格复查保存后，验收重试复�
       .onClick as () => void
   )();
   await nextTick();
-  expect(confirm).not.toHaveBeenCalled();
+  expect(find(root, (n) => n.tag === "dialog")).toBeUndefined();
   await click("查看整改");
   await click("复核学生反馈");
   await click("当场录入合格复查");

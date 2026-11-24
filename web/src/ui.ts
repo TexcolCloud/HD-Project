@@ -1,15 +1,49 @@
 import { reactive } from "vue";
 import { ApiError } from "./api/client";
-export const notices = reactive<
-  { message: string; kind: "success" | "error" }[]
->([]);
-export function notify(message: string, kind: "success" | "error" = "success") {
-  const item = { message, kind };
-  notices.push(item);
-  setTimeout(() => {
-    const i = notices.indexOf(item);
-    if (i >= 0) notices.splice(i, 1);
-  }, 6000);
+export interface Notice {
+  id: number;
+  message: string;
+  kind: "success" | "error";
+}
+export const notices = reactive<Notice[]>([]);
+type PauseReason = "pointer" | "focus";
+type NoticeClock = {
+  remaining: number;
+  end: number;
+  timer?: ReturnType<typeof setTimeout>;
+  paused: Set<PauseReason>;
+};
+const clocks = new Map<number, NoticeClock>();
+let nextNoticeId = 0;
+export function dismissNotice(id: number) {
+  clearTimeout(clocks.get(id)?.timer);
+  clocks.delete(id);
+  const index = notices.findIndex((item) => item.id === id);
+  if (index >= 0) notices.splice(index, 1);
+}
+function schedule(id: number, clock: NoticeClock) {
+  clock.end = Date.now() + clock.remaining;
+  clock.timer = setTimeout(() => dismissNotice(id), clock.remaining);
+}
+export function pauseNotice(id: number, reason: PauseReason = "pointer") {
+  const clock = clocks.get(id);
+  if (!clock) return;
+  if (!clock.paused.size) {
+    clearTimeout(clock.timer);
+    clock.remaining = Math.max(0, clock.end - Date.now());
+  }
+  clock.paused.add(reason);
+}
+export function resumeNotice(id: number, reason: PauseReason = "pointer") {
+  const clock = clocks.get(id);
+  if (clock?.paused.delete(reason) && !clock.paused.size) schedule(id, clock);
+}
+export function notify(message: string, kind: Notice["kind"] = "success") {
+  const id = ++nextNoticeId,
+    clock: NoticeClock = { remaining: 6000, end: 0, paused: new Set() };
+  notices.push({ id, message, kind });
+  clocks.set(id, clock);
+  schedule(id, clock);
 }
 export function errorText(error: unknown) {
   return error instanceof ApiError

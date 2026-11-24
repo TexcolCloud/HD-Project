@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useConfirm } from "../composables/useConfirm";
 import { clearTransientQuery } from "../composables/transientQuery";
 import { isRowClick } from "../utils/tableRow";
 import ModuleTabs from "../components/ModuleTabs.vue";
@@ -23,6 +24,8 @@ import UploadField from "../components/UploadField.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
+
+const askConfirm = useConfirm();
 const listQuery = useLatestQuery();
 const route = useRoute(),
   router = useRouter();
@@ -233,15 +236,22 @@ watch(
   () => [modal.value, mode.value, form.roomId, form.inspectionDate, form.round],
   loadComparison,
 );
-function useComparison() {
+async function useComparison() {
   const match = comparison.value;
   if (!match || saving.value) return;
   if (match.sameRound) {
     if (
       dirty.value &&
-      !window.confirm("更正已有评分将放弃本次未保存的录入，是否继续？")
+      !(await askConfirm({
+        title: "放弃录入并更正已有评分？",
+        message: "当前录入尚未保存，切换后将使用原评分记录。",
+        confirmText: "放弃并去更正",
+        cancelText: "保留当前录入",
+        danger: true,
+      }))
     )
       return;
+    if (match !== comparison.value || modal.value !== "form") return;
     edit(match.record, "correction");
     return;
   }
@@ -584,8 +594,7 @@ watch(
         重置
       </button>
     </form>
-    <p v-if="busy" class="panel-body loading">正在读取卫生记录…</p>
-    <div class="table-wrap">
+    <div class="table-wrap" :aria-busy="busy" :class="{ 'is-loading': busy }">
       <table>
         <thead>
           <tr>
@@ -622,9 +631,13 @@ watch(
               <button class="text-link" @click="detail(h)">查看与更正</button>
             </td>
           </tr>
-          <tr v-if="!busy && !items.length">
+          <tr v-if="!items.length">
             <td colspan="7" class="empty-state">
-              暂无匹配的卫生记录，可调整筛选或录入评分。
+              {{
+                busy
+                  ? "正在读取卫生记录…"
+                  : "暂无匹配的卫生记录，可调整筛选或录入评分。"
+              }}
             </td>
           </tr>
         </tbody>
@@ -867,7 +880,12 @@ watch(
               target="_blank"
               rel="noopener"
             >
-              <img :src="image.thumbnailUrl" :alt="image.originalName" />
+              <img
+                loading="lazy"
+                decoding="async"
+                :src="image.thumbnailUrl"
+                :alt="image.originalName"
+              />
             </a>
           </div>
         </section>
@@ -954,7 +972,12 @@ watch(
           :href="file.url"
           target="_blank"
         >
-          <img :src="file.thumbnailUrl" :alt="file.originalName" />
+          <img
+            loading="lazy"
+            decoding="async"
+            :src="file.thumbnailUrl"
+            :alt="file.originalName"
+          />
         </a>
       </div>
     </section>

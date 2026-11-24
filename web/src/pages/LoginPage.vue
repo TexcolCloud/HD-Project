@@ -67,6 +67,9 @@ async function submit() {
       </div>
       <figure>
         <img
+          width="1200"
+          height="801"
+          decoding="async"
           src="/assets/images/campus-courtyard.jpg"
           alt="庭院树影与暖色建筑，校园生活氛围示意"
         />
