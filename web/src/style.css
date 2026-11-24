@@ -1110,9 +1110,11 @@ dialog::backdrop {
 }
 .notice-stack {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 24px 24px auto auto;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
   z-index: 100;
   display: grid;
   gap: 9px;
@@ -1576,7 +1578,7 @@ dialog::backdrop {
     font-size: var(--type-body);
   }
   .notice-stack {
-    bottom: 16px;
+    inset: 16px 16px auto auto;
   }
   .toast {
     font-size: var(--type-body);

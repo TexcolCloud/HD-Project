@@ -1,3 +1,4 @@
+import { BackPanels } from '../NavigationStack';
 import { Repair, Building, DispatchBoard, DispatchTask, DispatchRoute, DispatchUnassigned, DispatchSettingsRequest } from '../../models/ApiModels';
 import { DispatchController, DispatchSnapshot } from './DispatchController';
 import { RouteTaskCard } from './RouteTaskCard';
@@ -8,10 +9,14 @@ import { dateText } from '../../services/Labels';
 
 interface RouteCardArgs { task: DispatchTask | null; kind: string; canDepart: boolean; }
 
+
 @Component
 export struct RoutePage {
+  @Consume backPanels: BackPanels;
+  private releaseBack: () => void = () => {};
   controller: DispatchController = new DispatchController();
   @Prop night: boolean = false;
+  onFinish: (repair: Repair) => void = () => {};
   onOpenRepair: (repair: Repair) => void = () => {};
   @State board: DispatchBoard | null = null;
   @State buildings: Building[] = [];
@@ -27,6 +32,15 @@ export struct RoutePage {
   private live: boolean = false;
   private unsubscribe: () => void = () => {};
   aboutToAppear(): void {
+    this.releaseBack = this.backPanels.register((): boolean => {
+      if (this.blockedTask) {
+        if (!this.busy) this.blockedTask = null;
+        return true;
+      }
+      if (!this.showSettings) return false;
+      if (!this.busy) this.showSettings = false;
+      return true;
+    });
     this.live = true;
     this.unsubscribe = this.controller.subscribe((snapshot: DispatchSnapshot) => {
       if (!this.live) return;
@@ -35,7 +49,7 @@ export struct RoutePage {
     });
     this.controller.refresh(); this.controller.loadBuildings();
   }
-  aboutToDisappear(): void { this.live = false; this.unsubscribe(); }
+  aboutToDisappear(): void { this.releaseBack(); this.live = false; this.unsubscribe(); }
   private route(): DispatchRoute | null {
     if (!this.board) return null;
     return this.board.routes.find((route: DispatchRoute): boolean => route.manager.userId === this.board?.me.userId) || null;
@@ -53,6 +67,7 @@ export struct RoutePage {
   private blocked(): DispatchTask[] { return this.tasks().filter((task: DispatchTask): boolean => task.state === 'BLOCKED'); }
   private action(task: DispatchTask, action: string): void {
     if (action === 'block') { this.blockedTask = task; this.blockReason = ''; }
+    else if (action === 'finish') this.open(task, true);
     else this.controller.taskAction(task, action);
   }
   private async submitBlock(): Promise<void> {
@@ -60,11 +75,21 @@ export struct RoutePage {
     await this.controller.taskAction(this.blockedTask, 'block', this.blockReason);
     if (!this.controller.snapshot().error) { this.blockedTask = null; this.blockReason = ''; }
   }
-  private async open(task: DispatchTask): Promise<void> {
+  private async open(task: DispatchTask, finish: boolean = false): Promise<void> {
     if (this.opening) return;
     this.opening = true;
-    try { const repair = await this.controller.openRepair(task.orderId); if (this.live && repair) this.onOpenRepair(repair); }
-    finally { if (this.live) this.opening = false; }
+    try {
+      const repair = await this.controller.openRepair(task.orderId);
+      if (!this.live || !repair) return;
+      if (!finish) this.onOpenRepair(repair);
+      else if (repair.allowedActions.includes('finish')) this.onFinish(repair);
+      else {
+        await this.controller.refresh();
+        if (this.live) this.error = '工单状态已变化，请核对当前路线';
+      }
+    } finally {
+      if (this.live) this.opening = false;
+    }
   }
   private async settings(request: DispatchSettingsRequest): Promise<void> {
     if (await this.controller.saveSettings(request)) this.showSettings = false;
@@ -82,7 +107,7 @@ export struct RoutePage {
         Button('刷新').id('route-refresh').height(48).fontSize(14).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent)
           .enabled(!this.loading && !this.busy).onClick(() => this.controller.refresh())
       }.width('100%').margin({bottom: 8})
-      Text('到场后，在工单内填写维修结果。').fontSize(14).lineHeight(23)
+      Text('到场后可开始处理并提交完工结果。').fontSize(14).lineHeight(23)
         .fontColor(palette(this.night).muted).width('100%').margin({bottom: 18})
       if (this.offline) {
         Text('暂时离线，显示上次缓存路线。请刷新并由服务端确认后再执行新安排。').fontSize(14).lineHeight(22)

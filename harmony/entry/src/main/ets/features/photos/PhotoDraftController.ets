@@ -79,6 +79,12 @@ export class PhotoDraftController {
     draft.failed = [];
     this.emit();
   }
+  restoreResult(snapshot: PhotoSnapshot): void {
+    this.revisions.set("RESULT", this.revision("RESULT") + 1);
+    this.result.uploaded = snapshot.draft.uploaded.slice();
+    this.result.failed = snapshot.draft.failed.slice();
+    this.emit();
+  }
   removeFailed(uri: string, usage: string): void {
     const draft = this.draft(usage);
     draft.failed = draft.failed.filter(

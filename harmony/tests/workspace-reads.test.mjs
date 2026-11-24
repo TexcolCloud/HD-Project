@@ -488,3 +488,19 @@ test("the login room is available immediately and an old room refresh cannot ent
   await old;
   assert.equal(home.state.room.id, "B");
 });
+
+test('a linked recheck returns the saved inspection and the originating remediation once', async () => {
+  const Api = {epoch:1, assertCurrent(){}, post:async (_path, body) => ({...body, id:'new', totalScore:80})};
+  const {ReadScope} = await load('features/ReadScope.ets',{Api});
+  const {SubmissionKeys} = await load('services/SubmissionKeys.ets');
+  const {HygieneController} = await load('features/hygiene/HygieneController.ets',{Api, ReadScope, SubmissionKeys, ...await load('services/Labels.ets'), util:{generateRandomUUID:()=> 'key'}});
+  const pages=[], results=[];
+  const hygiene = new HygieneController({setError(){},flash(){},navigate: page=>pages.push(page),fail:e=>{throw e;}},{clear(){}});
+  hygiene.onRecheckSaved = (taskId,saved)=>results.push([taskId,saved.id,saved.relatedInspectionId,saved.totalScore]);
+  await hygiene.recheck({id:'source',roomId:'room',round:'ROUTINE'},'task');
+  Object.assign(hygiene.state,{targetChecked:true, floorScore:'20',deskScore:'20',bedScore:'20',bathroomScore:'20'});
+  await hygiene.submitHygiene();
+  assert.deepEqual(pages,['hygiene-create']);
+  assert.deepEqual(results,[['task','new','source',80]]);
+  assert.equal(hygiene.returnRemediationId,'');
+});

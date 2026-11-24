@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from "vue";
+import { ref, reactive, onMounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { get, post } from "../api/client";
 import type {
@@ -43,6 +43,8 @@ const filters = reactive({
   startDate: String(route.query.startDate || ""),
   endDate: String(route.query.endDate || ""),
 });
+const actionSection = ref<HTMLElement>();
+const accepting = ref(false);
 const selected = ref<Repair>(),
   events = ref<RepairEvent[]>([]),
   action = ref(""),
@@ -107,6 +109,30 @@ function begin(name: string) {
   actionError.value = "";
   images.value = [];
   uploadBlocked.value = false;
+  void nextTick(() => {
+    actionSection.value?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "nearest",
+    });
+    actionSection.value
+      ?.querySelector?.("textarea")
+      ?.focus?.({ preventScroll: true });
+  });
+}
+async function quickAccept(repair: Repair) {
+  if (accepting.value) return;
+  accepting.value = true;
+  try {
+    await post(`/repairs/${repair.id}/accept`, {
+      expectedVersion: repair.version,
+    });
+    notify("工单已接单");
+    await load();
+  } catch (cause) {
+    notify(errorText(cause), "error");
+  } finally {
+    accepting.value = false;
+  }
 }
 async function submitAction() {
   if (!selected.value) return;
@@ -287,7 +313,22 @@ watch(
             <td>{{ r.handlerName || "尚未接单" }}</td>
             <td>{{ dateTime(r.submittedAt) }}</td>
             <td>
-              <button class="text-link" @click="open(r.id)">查看并处理</button>
+              <div class="cell-actions">
+                <button
+                  v-if="
+                    r.status === 'SUBMITTED' &&
+                    r.allowedActions.includes('accept')
+                  "
+                  class="text-link"
+                  :disabled="accepting"
+                  @click="quickAccept(r)"
+                >
+                  接单
+                </button>
+                <button class="text-link" @click="open(r.id)">
+                  查看并处理
+                </button>
+              </div>
             </td>
           </tr>
           <tr v-if="!busy && !items.length">
@@ -313,7 +354,11 @@ watch(
     title="报修工单详情"
     :subtitle="selected.orderNo"
     :busy="saving || visitBusy || transferBusy"
-    :dirty="(!!action && !!note) || visitDirty || transferDirty"
+    :dirty="
+      (!!action && (!!note.trim() || images.length > 0)) ||
+      visitDirty ||
+      transferDirty
+    "
     @close="close"
   >
     <p v-if="detailError" class="error-banner">{{ detailError }}</p>
@@ -432,7 +477,7 @@ watch(
       :context-version="selected.version"
       :image-count="selected.reportImages.length"
     />
-    <section v-if="action" class="detail-section">
+    <section v-if="action" ref="actionSection" class="detail-section">
       <h3>{{ actionNames[action] }}</h3>
       <form class="form" @submit.prevent="submitAction">
         <label>
@@ -441,7 +486,9 @@ watch(
               ? "处理结果"
               : action === "reject" || action === "rework"
                 ? "具体原因"
-                : "处理说明"
+                : ["accept", "start"].includes(action)
+                  ? "处理说明（选填）"
+                  : "处理说明"
           }}
           {{
             ["finish", "reject", "rework", "notes"].includes(action) ? "*" : ""

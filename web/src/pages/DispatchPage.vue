@@ -8,7 +8,9 @@ import {
   type DispatchTask,
   type DispatchTaskAction,
 } from "../api/dispatch";
-import type { Building } from "../api/types";
+import UploadField from "../components/UploadField.vue";
+import { post } from "../api/client";
+import type { Building, FileAsset, Model } from "../api/types";
 import { useDispatchBoard } from "../composables/useDispatchBoard";
 import { managerPresence } from "../composables/useManagerPresence";
 import { dateTime, errorText, notify } from "../ui";
@@ -42,6 +44,10 @@ const buildings = ref<Building[]>([]),
   travelOpen = ref(false),
   operationBusy = ref(false),
   operationError = ref(""),
+  finishTask = ref<DispatchTask>(),
+  resultNote = ref(""),
+  resultImages = ref<FileAsset[]>([]),
+  uploadBlocked = ref(false),
   blockedTask = ref<DispatchTask>(),
   blockReason = ref("");
 const mine = computed(() =>
@@ -90,9 +96,18 @@ const actionsDisabled = computed(
 const canDepart = (task: DispatchTask) =>
   task.orderId === next.value?.orderId && !current.value;
 async function taskAction(
-  action: "claim" | DispatchTaskAction,
+  action: "claim" | "start" | "finish" | DispatchTaskAction,
   task: DispatchTask,
 ) {
+  if (actionsDisabled.value) return;
+  if (action === "finish") {
+    finishTask.value = task;
+    resultNote.value = "";
+    resultImages.value = [];
+    uploadBlocked.value = false;
+    operationError.value = "";
+    return;
+  }
   if (action === "block") {
     blockedTask.value = task;
     blockReason.value = "";
@@ -102,6 +117,14 @@ async function taskAction(
   operationBusy.value = true;
   operationError.value = "";
   try {
+    if (action === "start") {
+      await post(`/repairs/${task.orderId}/start`, {
+        expectedVersion: task.orderVersion,
+      });
+      notify("工单已开始处理");
+      await refresh();
+      return;
+    }
     if (action === "claim")
       await claimDispatchTask(task, board.value!.revision);
     else
@@ -123,6 +146,32 @@ async function taskAction(
   } catch (e) {
     operationError.value = errorText(e);
     await refresh();
+  } finally {
+    operationBusy.value = false;
+  }
+}
+async function finish() {
+  const task = finishTask.value;
+  if (
+    !task ||
+    operationBusy.value ||
+    uploadBlocked.value ||
+    resultNote.value.trim().length < 2
+  )
+    return;
+  operationBusy.value = true;
+  operationError.value = "";
+  try {
+    await post(`/repairs/${task.orderId}/finish`, {
+      expectedVersion: task.orderVersion,
+      resultDescription: resultNote.value.trim(),
+      resultImageIds: resultImages.value.map((file) => file.id),
+    } satisfies Model<"ActionRequest">);
+    finishTask.value = undefined;
+    notify("处理结果已提交，等待学生确认");
+    await refresh();
+  } catch (e) {
+    operationError.value = errorText(e);
   } finally {
     operationBusy.value = false;
   }
@@ -198,7 +247,7 @@ onMounted(async () => {
       <h1>任务调度</h1>
     </div>
     <div class="page-actions">
-      <button class="btn" :disabled="busy" @click="refresh">刷新计划</button>
+      <button class="btn" :disabled="busy" @click="refresh()">刷新计划</button>
       <button class="btn" @click="travelOpen = true">通行时间</button>
     </div>
   </div>
@@ -206,7 +255,7 @@ onMounted(async () => {
     {{ error }}
     <br />
     当前保留上次成功读取的计划，重新连通前不执行新的调度操作。
-    <button @click="refresh">重新读取</button>
+    <button @click="refresh()">重新读取</button>
   </div>
   <p v-if="operationError && !blockedTask" class="error-banner" role="alert">
     {{ operationError }}
@@ -361,7 +410,7 @@ onMounted(async () => {
           <header>
             <div>
               <h2>下一站</h2>
-              <p>接单后出发，到场后在工单内提交处理结果。</p>
+              <p>接单后出发，到场后可直接提交处理结果。</p>
             </div>
           </header>
           <DispatchTaskCard
@@ -545,6 +594,45 @@ onMounted(async () => {
       refresh();
     "
   />
+  <Drawer
+    v-if="finishTask"
+    title="提交完工结果"
+    :subtitle="
+      finishTask.buildingName +
+      ' ' +
+      finishTask.roomNo +
+      ' · ' +
+      finishTask.title
+    "
+    :dirty="!!resultNote.trim() || resultImages.length > 0 || uploadBlocked"
+    :busy="operationBusy"
+    @close="finishTask = undefined"
+  >
+    <form class="form" @submit.prevent="finish">
+      <label>
+        处理结果 *
+        <textarea
+          v-model.trim="resultNote"
+          required
+          minlength="2"
+          maxlength="1000"
+          :disabled="operationBusy"
+        />
+      </label>
+      <UploadField
+        v-model="resultImages"
+        usage="RESULT"
+        :disabled="operationBusy"
+        @blocked="uploadBlocked = $event"
+      />
+      <p v-if="operationError" class="error-banner" role="alert">
+        {{ operationError }}
+      </p>
+      <button class="btn primary" :disabled="operationBusy || uploadBlocked">
+        {{ operationBusy ? "正在提交…" : "提交完工" }}
+      </button>
+    </form>
+  </Drawer>
   <Drawer
     v-if="blockedTask"
     title="记录暂时受阻"

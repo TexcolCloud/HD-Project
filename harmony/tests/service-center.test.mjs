@@ -58,3 +58,38 @@ test('a late feedback result cannot replace another remediation detail', async (
   await pending;
   assert.equal(center.state.selected.id, 'B');
 });
+
+test('returning to review selects only a currently qualifying recheck of the same room and inspection', async () => {
+  let items = [];
+  const Api = {epoch:1, request:async () => ({items})};
+  const {ReadScope} = await load('features/ReadScope.ets', {Api});
+  const {ServiceCenterController} = await load('features/service/ServiceCenterController.ets', {Api,ReadScope});
+  const center = new ServiceCenterController({fail:e=>{throw e;}});
+  center.state.selected = {id:'task', roomId:'room', inspectionId:'original'};
+  const saved = {id:'check', roomId:'room', relatedInspectionId:'original', round:'RECHECK', totalScore:80};
+  await center.loadRechecks(saved);
+  assert.equal(center.state.recheckId, 'check');
+  items = [{...saved, voidedAt: '2026-11-20T10:30:00Z'}];
+  await center.loadRechecks(saved);
+  assert.equal(center.state.recheckId, '');
+  items = [];
+  await center.loadRechecks({...saved, roomId:'different'});
+  assert.deepEqual(center.state.rechecks, []);
+  await center.loadRechecks({...saved, totalScore:59});
+  assert.equal(center.state.recheckId, '');
+});
+
+test('leaving a remediation retires a pending source-inspection lookup', async () => {
+  let finish;
+  const Api = {epoch:1, request:()=>new Promise(resolve=>{finish=resolve;})};
+  const {ReadScope} = await load('features/ReadScope.ets', {Api});
+  const {ServiceCenterController} = await load('features/service/ServiceCenterController.ets', {Api, ReadScope});
+  const center = new ServiceCenterController({fail:e=>{throw e;}});
+  center.state.selected = {id:'task', inspectionId:'original',status:'SUBMITTED'};
+  let opened=false;
+  const pending=center.beginRecheck(async()=>{opened=true;});
+  center.suspend();
+  finish({id:'original'});
+  await pending;
+  assert.equal(opened,false);
+});

@@ -6,8 +6,12 @@ import { Repair, DispatchBoard, DispatchTask, DispatchUnassigned, DispatchRoute,
 import { FormInput } from '../../components/FormInput';
 import { palette } from '../../components/Palette';
 
+import { BackPanels } from '../NavigationStack';
+
 @Component
 export struct TaskTransfer {
+  @Consume backPanels: BackPanels;
+  private releaseBack: () => void = () => {};
   @Prop @Watch('contextChanged') repair: Repair;
   @Prop userId: string = '';
   @Prop night: boolean = false;
@@ -25,8 +29,19 @@ export struct TaskTransfer {
   private contextChanged(): void {
     this.generation++; this.board = null; this.reason = ''; this.target = ''; this.busy = false; this.opened = false; this.error = ''; this.keys.clear();
   }
-  aboutToAppear(): void { this.live = true; }
-  aboutToDisappear(): void { this.live = false; this.generation++; }
+  aboutToAppear(): void {
+    this.live = true;
+    this.releaseBack = this.backPanels.register((): boolean => {
+      if (!this.opened) return false;
+      if (!this.busy) this.opened = false;
+      return true;
+    });
+  }
+  aboutToDisappear(): void {
+    this.releaseBack();
+    this.live = false;
+    this.generation++;
+  }
   private own(): boolean { return this.repair.handlerUserId === this.userId; }
   private task(): DispatchTask | null {
     if (!this.board) return null;

@@ -152,6 +152,44 @@ class ServiceFollowupIntegrationTest {
     }
 
     @Test
+    void occupancyFiltersRespectCurrentResidenceAndBuildingScope() throws Exception {
+        String manager = token("manager2");
+        String inactive = "QAINACTIVE" + UUID.randomUUID().toString().substring(0, 8);
+        ok(
+                manager,
+                "POST",
+                "/students",
+                Map.of(
+                        "studentNo",
+                        inactive,
+                        "name",
+                        "QA",
+                        "college",
+                        "QA",
+                        "phone",
+                        "13800009999",
+                        "status",
+                        "INACTIVE"));
+        assertThat(
+                        ok(manager, "GET", "/students?status=UNASSIGNED&q=" + inactive, null)
+                                .path("total")
+                                .asInt())
+                .isEqualTo(1);
+        for (String filter : List.of("UNASSIGNED", "AVAILABLE")) {
+            var available = ok(manager, "GET", "/students?occupancy=" + filter, null).path("items");
+            assertThat(available)
+                    .extracting(row -> row.path("studentNo").asText())
+                    .contains("20260003")
+                    .doesNotContain("20260001", "20260002", inactive);
+        }
+        var assigned = ok(manager, "GET", "/students?occupancy=ASSIGNED", null).path("items");
+        assertThat(assigned)
+                .extracting(row -> row.path("studentNo").asText())
+                .contains("20260002")
+                .doesNotContain("20260001", "20260003");
+    }
+
+    @Test
     void messageReceiptIsPrivateAndIdempotent() throws Exception {
         String student = token("student1"),
                 manager = token("manager1"),
@@ -237,6 +275,19 @@ class ServiceFollowupIntegrationTest {
                                 "dueAt",
                                 Instant.now().plusSeconds(86400).toString()));
         String id = task.path("id").asText();
+        String query = "/hygiene-remediations?inspectionId=" + initial.path("id").asText() + "&q=";
+        for (String term : List.of("302", "A栋", "陈同学", "20260001", "清理")) {
+            String path =
+                    query
+                            + java.net.URLEncoder.encode(
+                                    term, java.nio.charset.StandardCharsets.UTF_8);
+            assertThat(ok(manager, "GET", path, null).path("items").path(0).path("id").asText())
+                    .isEqualTo(id);
+        }
+        assertThat(ok(manager, "GET", query + "unmatched", null).path("total").asInt()).isZero();
+        assertThat(ok(token("manager2"), "GET", query + "302", null).path("total").asInt())
+                .isZero();
+        assertThat(ok(outsider, "GET", query + "302", null).path("total").asInt()).isZero();
         assertThat(
                         ok(manager, "GET", "/hygiene-remediations?inspectionId=999999999", null)
                                 .path("total")

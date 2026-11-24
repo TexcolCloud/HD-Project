@@ -3,7 +3,7 @@ import { computed, onMounted, onScopeDispose, reactive, ref, watch } from "vue";
 import { onBeforeRouteUpdate, useRoute } from "vue-router";
 import { get, patch, post } from "../api/client";
 import type { Model, Hygiene } from "../api/types";
-import { dateTime, errorText, isoTime, notify } from "../ui";
+import { dateTime, errorText, isoTime, localDate, notify } from "../ui";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import Drawer from "../components/Drawer.vue";
 import Pagination from "../components/Pagination.vue";
@@ -29,6 +29,51 @@ const responsibleStudentId = ref(""),
   reason = ref(""),
   approved = ref(true),
   recheckId = ref("");
+const inline = ref(false);
+const scoreFields = [
+  ["floorScore", "地面"],
+  ["deskScore", "桌面"],
+  ["bedScore", "床铺"],
+  ["bathroomScore", "卫生间"],
+] as const;
+const scores = reactive<Record<(typeof scoreFields)[number][0], number | "">>({
+  floorScore: "",
+  deskScore: "",
+  bedScore: "",
+  bathroomScore: "",
+});
+const totalScore = computed(() =>
+  scoreFields.reduce((sum, [key]) => sum + Number(scores[key]), 0),
+);
+const qualified = computed(
+  () =>
+    totalScore.value >= 60 &&
+    scoreFields.every(
+      ([key]) =>
+        typeof scores[key] === "number" &&
+        Number.isInteger(scores[key]) &&
+        Number(scores[key]) >= 0 &&
+        Number(scores[key]) <= 25,
+    ),
+);
+const initial = ref("");
+function formSnapshot() {
+  return JSON.stringify([
+    responsibleStudentId.value,
+    dueLocal.value,
+    issueNote.value,
+    reason.value,
+    approved.value,
+    recheckId.value,
+    scores,
+  ]);
+}
+const isDirty = computed(
+  () =>
+    !!initial.value &&
+    (modal.value === "create" || !!editMode.value) &&
+    formSnapshot() !== initial.value,
+);
 const labels: Record<Model<"RemediationStatus">, string> = {
   OPEN: "待整改",
   SUBMITTED: "待复核",
@@ -72,6 +117,9 @@ function search() {
   void load();
 }
 function resetForms() {
+  initial.value = "";
+  inline.value = false;
+  for (const [key] of scoreFields) scores[key] = "";
   editMode.value = "";
   reason.value = "";
   recheckId.value = "";
@@ -161,6 +209,7 @@ async function create(inspectionId: string) {
       );
       issueNote.value =
         result.source.issueNote || result.source.remediationNote;
+      initial.value = formSnapshot();
     },
   );
 }
@@ -170,12 +219,16 @@ function edit(mode: "assign" | "review" | "cancel") {
   editMode.value = mode;
   responsibleStudentId.value = selected.value.responsibleStudentId;
   dueLocal.value = localTime(selected.value.dueAt);
+  initial.value = formSnapshot();
 }
 async function save() {
   if (saving.value) return;
   const task = selected.value,
     source = inspection.value,
     mode = editMode.value;
+  const reviewNote = reason.value;
+  const approveReview = approved.value;
+  let recordedRecheck = false;
   const dueAt = isoTime(dueLocal.value);
   formError.value = "";
   if ((modal.value === "create" || mode === "assign") && !dueAt) {
@@ -212,13 +265,35 @@ async function save() {
         } satisfies Model<"RemediationCancelRequest">,
       );
     } else if (task && mode === "review") {
+      if (approved.value && inline.value) {
+        if (!qualified.value) {
+          formError.value = "请填写四项 0–25 分的整数，合格复查总分须达到60分";
+          return;
+        }
+        const check = await post<Hygiene>("/hygiene-inspections", {
+          roomId: task.roomId,
+          inspectionDate: localDate(),
+          round: "RECHECK",
+          relatedInspectionId: task.inspectionId,
+          floorScore: Number(scores.floorScore),
+          deskScore: Number(scores.deskScore),
+          bedScore: Number(scores.bedScore),
+          bathroomScore: Number(scores.bathroomScore),
+          imageIds: [],
+        } satisfies Model<"HygieneRequest">);
+        if (disposed) return;
+        recordedRecheck = true;
+        rechecks.value = [check, ...rechecks.value];
+        recheckId.value = check.id;
+        inline.value = false;
+      }
       result = await post<Model<"Remediation">>(
         `/hygiene-remediations/${task.id}/review`,
         {
           expectedVersion: task.version,
-          approved: approved.value,
-          reviewNote: reason.value,
-          relatedRecheckId: approved.value ? recheckId.value : undefined,
+          approved: approveReview,
+          reviewNote,
+          relatedRecheckId: approveReview ? recheckId.value : undefined,
         } satisfies Model<"RemediationReviewRequest">,
       );
     } else {
@@ -231,7 +306,10 @@ async function save() {
     notify("整改任务已更新，处理记录已保留");
     await load();
   } catch (cause) {
-    if (!disposed) formError.value = errorText(cause);
+    if (!disposed)
+      formError.value =
+        (recordedRecheck ? "复查已保存并选中，请核对后重试验收。" : "") +
+        errorText(cause);
   } finally {
     if (!disposed) saving.value = false;
   }
@@ -244,7 +322,7 @@ function close() {
 }
 onBeforeRouteUpdate(() => {
   if (saving.value) return false;
-  if (modal.value === "create" || editMode.value)
+  if (isDirty.value || editMode.value === "cancel")
     return window.confirm("整改内容尚未保存，确定切换并放弃本次修改？");
   return true;
 });
@@ -357,7 +435,7 @@ onScopeDispose(() => {
     v-if="modal"
     :title="modal === 'create' ? '安排卫生整改' : '整改任务详情'"
     :busy="saving"
-    :dirty="modal === 'create' || !!editMode"
+    :dirty="isDirty"
     @close="close"
   >
     <p v-if="detailQuery.busy.value" class="muted">正在读取任务及宿舍信息…</p>
@@ -520,14 +598,14 @@ onScopeDispose(() => {
         <template v-if="editMode === 'review'">
           <label>
             复核结果
-            <select v-model="approved">
+            <select v-model="approved" :disabled="saving">
               <option :value="true">验收通过</option>
               <option :value="false">退回继续整改</option>
             </select>
           </label>
-          <label v-if="approved">
+          <label v-if="approved && !inline">
             关联现场复查
-            <select v-model="recheckId" required>
+            <select v-model="recheckId" :disabled="saving" required>
               <option value="">请选择与原巡检关联的合格复查</option>
               <option
                 v-for="check in validRechecks"
@@ -539,6 +617,30 @@ onScopeDispose(() => {
               </option>
             </select>
           </label>
+          <button
+            v-if="approved"
+            type="button"
+            class="btn"
+            :disabled="saving"
+            @click="inline = !inline"
+          >
+            {{ inline ? "选择已有复查" : "当场录入合格复查" }}
+          </button>
+          <fieldset v-if="approved && inline" :disabled="saving">
+            <legend>现场复查</legend>
+            <label v-for="[key, label] in scoreFields" :key="key">
+              {{ label }}（0–25 分）
+              <input
+                v-model.number="scores[key]"
+                type="number"
+                min="0"
+                max="25"
+                step="1"
+                required
+              />
+            </label>
+            <p>复查总分 {{ totalScore }} / 100，60 分及以上可验收。</p>
+          </fieldset>
           <RouterLink
             :to="{
               path: '/hygiene',
@@ -557,10 +659,21 @@ onScopeDispose(() => {
         </template>
         <label>
           {{ editMode === "review" ? "复核意见" : "办理原因" }}
-          <textarea v-model.trim="reason" required maxlength="1000" />
+          <textarea
+            v-model.trim="reason"
+            :disabled="saving"
+            required
+            maxlength="1000"
+          />
         </label>
         <div class="form-row">
-          <button class="btn primary" :disabled="saving">
+          <button
+            class="btn primary"
+            :disabled="
+              saving ||
+              (editMode === 'review' && approved && inline && !qualified)
+            "
+          >
             {{ saving ? "正在保存…" : "保存并通知相关人员" }}
           </button>
           <button

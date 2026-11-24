@@ -83,6 +83,8 @@ export class HygieneState {
 }
 
 export class HygieneController {
+  returnRemediationId: string = '';
+  onRecheckSaved: (taskId: string, saved: Hygiene) => void = () => {};
   state: HygieneState = new HygieneState();
   manager: boolean = false;
   private drafts: LocalDrafts | null = null;
@@ -160,6 +162,7 @@ export class HygieneController {
     this.saveDraft();
   }
   discardDraft(): void {
+    this.returnRemediationId = "";
     this.drafts?.clear("hygiene");
     this.drafts?.completeKey("hygiene");
     const fresh = new HygieneState();
@@ -196,6 +199,7 @@ export class HygieneController {
     this.state.loading = false;
   }
   reset(): void {
+    this.returnRemediationId = "";
     this.suspendReads();
     this.inspectionDraftStarted = false;
     this.draftEdited = false;
@@ -331,16 +335,19 @@ export class HygieneController {
     const state = this.state;
     if (state.draftBlocked || state.busy || state.uploading || state.inspectionDate === date || date > today()) return;
     if (!state.correctionId && this.draftInUse() && !await this.confirmDiscard()) return;
+    const previousTime = state.inspectionTime;
     if (!state.correctionId && this.draftInUse()) {
+      const taskId = this.returnRemediationId;
       const roomId = state.inspectionRoomId, related = state.inspectionRelated, round = state.inspectionRound;
       this.discardDraft();
+      this.returnRemediationId = taskId;
       state.inspectionRoomId = roomId;
       state.inspectionRelated = related;
       state.inspectionRound = round;
     }
     this.inspectionDraftStarted = true;
     state.inspectionDate = date;
-    state.inspectionTime = date === today() ? beijingClock() : "";
+    state.inspectionTime = date === today() ? beijingClock() : (previousTime || "09:00");
     this.saveDraft();
     if (!state.correctionId) await this.loadComparison();
   }
@@ -442,7 +449,7 @@ export class HygieneController {
           : "待整改";
   }
 
-  async recheck(item: Hygiene): Promise<void> {
+  async recheck(item: Hygiene, taskId: string = ""): Promise<void> {
     if (this.state.busy || this.state.uploading || this.state.draftBlocked) return;
     if (this.draftInUse() && !await this.confirmDiscard()) return;
     if (this.draftInUse() || this.state.correctionId) this.discardDraft();
@@ -452,6 +459,7 @@ export class HygieneController {
     this.state.failedInspectionPhotos = [];
     this.state.inspectionRoomId = item.roomId;
     this.state.inspectionRelated = item.id;
+    this.returnRemediationId = taskId;
     this.state.inspectionDate = today();
     this.state.inspectionTime = beijingClock();
     this.inspectionDraftStarted = true;
@@ -560,6 +568,7 @@ export class HygieneController {
         : await Api.post<Hygiene>("/hygiene-inspections", request, key);
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
+      const taskId = this.returnRemediationId;
       this.submissionKeys.complete("hygiene");
       this.discardDraft();
       this.drafts?.completeKey("hygiene");
@@ -572,7 +581,8 @@ export class HygieneController {
       this.state.inspectionRound = "ROUTINE";
       this.host.flash("卫生评分" + saved.totalScore + "分已保存");
       this.state.hygienePage = 1;
-      this.host.navigate("hygiene");
+      if (taskId && saved.relatedInspectionId) this.onRecheckSaved(taskId, saved);
+      else this.host.navigate("hygiene");
     } catch (error) {
       if (state === this.state) {
         const apiError = error as ApiError;

@@ -1,3 +1,4 @@
+import { BackPanels } from '../NavigationStack';
 import { palette } from '../../components/Palette';
 import { serviceLabel, serviceDetail } from '../../components/ServiceParts';
 import {
@@ -20,6 +21,8 @@ interface AccountFieldArgs {
 
 @Component
 export struct AccountWorkspace {
+  @Consume backPanels: BackPanels;
+  private releaseBack: () => void = () => {};
   @Prop screen: string = '';
   @Prop night: boolean = false;
   @Prop user: User | null = null;
@@ -46,10 +49,16 @@ export struct AccountWorkspace {
   private timer: number = -1;
 
   aboutToAppear(): void {
+    this.releaseBack = this.backPanels.register((): boolean => {
+      if (this.busy) return true;
+      if (this.resetToken || this.operation) { this.choose(''); return true; }
+      return false;
+    });
     this.timer = setInterval(() => this.updateCountdown(), 1000);
   }
 
   aboutToDisappear(): void {
+    this.releaseBack();
     clearInterval(this.timer);
     this.clearInputs();
   }

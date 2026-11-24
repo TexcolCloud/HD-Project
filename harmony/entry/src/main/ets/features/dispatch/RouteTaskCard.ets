@@ -51,6 +51,10 @@ export struct RouteTaskCard {
           Button('已到达现场').id('route-arrive-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
             .onClick(() => { if (this.task) this.onAction(this.task, 'arrive'); })
+        } else if (this.task.state === 'ON_SITE' && ['ACCEPTED', 'PROCESSING'].includes(this.task.repairStatus)) {
+          Button(this.task.repairStatus === 'ACCEPTED' ? '开始处理工单' : '提交完工结果 →').width('100%').height(48).fontSize(16).borderRadius(4)
+            .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
+            .onClick(() => { if (this.task) this.onAction(this.task, this.task.repairStatus === 'ACCEPTED' ? 'start' : 'finish'); })
         } else if (this.task.state === 'BLOCKED') {
           Button('恢复路线安排').id('route-resume-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)

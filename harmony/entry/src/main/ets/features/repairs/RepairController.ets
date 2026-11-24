@@ -204,16 +204,20 @@ export class RepairController {
     }
   }
   async loadDetail(order: Repair): Promise<void> {
+    this.state.selected = order;
+    await this.restoreDetail(order.id);
+  }
+  async restoreDetail(id: string): Promise<void> {
     const ticket = this.detailRead.begin();
     this.state.detailLoading = true;
-    this.state.selected = order;
+    if (this.state.selected?.id !== id) this.state.selected = null;
     this.state.events = [];
     try {
-      const selected = await Api.request<Repair>("/repairs/" + order.id);
+      const selected = await Api.request<Repair>("/repairs/" + id);
       if (!this.detailRead.current(ticket)) return;
       this.state.selected = selected;
       const events = await Api.request<RepairEvent[]>(
-        "/repairs/" + order.id + "/events",
+        "/repairs/" + id + "/events",
       );
       if (this.detailRead.current(ticket)) this.state.events = events;
     } catch (error) {
@@ -363,6 +367,18 @@ export class RepairController {
     }
   }
 
+  preserveAction(): () => void {
+    const state = this.state, order = state.selected, action = state.action, note = state.actionNote;
+    const revision = this.photoDrafts.draftVersion("RESULT");
+    const photos = this.photoDrafts.snapshot("RESULT");
+    return (): void => {
+      if (this.state !== state) return;
+      state.selected = order;
+      state.action = action;
+      state.actionNote = note;
+      if (this.photoDrafts.draftVersion("RESULT") !== revision) this.photoDrafts.restoreResult(photos);
+    };
+  }
   async beginAction(action: string): Promise<void> {
     const epoch = Api.epoch,
       state = this.state;

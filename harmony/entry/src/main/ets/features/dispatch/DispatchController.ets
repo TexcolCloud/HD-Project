@@ -1,7 +1,7 @@
 import { util } from '@kit.ArkTS';
 import { Api, ApiError } from '../../services/Api';
 import { SubmissionKeys } from '../../services/SubmissionKeys';
-import { User, Repair, Building, BuildingPage, DispatchBoard, DispatchManager, DispatchTask,
+import { ActionRequest, User, Repair, Building, BuildingPage, DispatchBoard, DispatchManager, DispatchTask,
   DispatchHeartbeatRequest, DispatchSettingsRequest, DispatchReplanRequest, DispatchClaimRequest,
   DispatchTaskActionRequest } from '../../models/ApiModels';
 import { AppVisibility } from './AppVisibility';
@@ -156,9 +156,12 @@ export class DispatchController {
   async taskAction(task: DispatchTask, action: string, reason: string = ''): Promise<void> {
     if (!this.board || !this.session || this.busy || this.offline) return;
     const epoch = this.epoch; this.busy = true; this.error = ''; this.emit();
-    const path = '/dispatch/tasks/' + task.orderId + '/' + action;
+    const path = (action === 'start' ? '/repairs/' : '/dispatch/tasks/') + task.orderId + '/' + action;
     try {
-      if (action === 'claim') {
+      if (action === 'start') {
+        const request: ActionRequest = {expectedVersion: task.orderVersion};
+        await Api.post<Repair>(path, request, this.keys.reserve(path, JSON.stringify(request)));
+      } else if (action === 'claim') {
         const request: DispatchClaimRequest = {expectedOrderVersion: task.orderVersion, expectedRevision: this.board.revision};
         await Api.post<Repair>(path, request, this.keys.reserve(path, JSON.stringify(request)));
       } else if (['depart', 'arrive', 'block', 'resume'].includes(action)) {
@@ -166,8 +169,17 @@ export class DispatchController {
         if (reason.trim()) request.reason = reason.trim();
         await Api.post<DispatchTask>(path, request, this.keys.reserve(path, JSON.stringify(request)));
       } else throw new Error('无法识别这项路线操作');
-      if (this.active(epoch)) { this.keys.complete(path); await this.refresh(false); }
-    } catch (error) { if (this.active(epoch)) { this.handle(error as Error); await this.refresh(false); } }
+      if (this.active(epoch)) {
+        this.keys.complete(path);
+        this.boardRead.reset();
+        await this.refresh(false);
+      }
+    } catch (error) {
+      if (this.active(epoch)) {
+        await this.refresh(false);
+        if (this.active(epoch)) this.handle(error as Error);
+      }
+    }
     finally { if (this.active(epoch)) { this.busy = false; this.emit(); } }
   }
   async openRepair(orderId: string): Promise<Repair | null> {

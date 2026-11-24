@@ -1,3 +1,4 @@
+import { DateTimeField, TimePresets } from '../../components/DateTimeFields';
 import { ServiceCenterController, ServiceCenterState } from './ServiceCenterController';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
 import { ServiceMessage, Remediation, Hygiene, Student, FileAsset } from '../../models/ApiModels';
@@ -5,12 +6,13 @@ import { palette } from '../../components/Palette';
 import { FormInput } from '../../components/FormInput';
 import { SecureImage } from '../../components/SecureImage';
 import { Api, UploadedPhoto } from "../../services/Api";
-import { dateText } from '../../services/Labels';
+import { beijingParts, dateText } from '../../services/Labels';
 import { PhotoAttachments } from '../photos/PhotoAttachments';
 import { PhotoDraftController } from '../photos/PhotoDraftController';
 
 @Component
 export struct ServiceCenterWorkspace {
+  onRecheck: (source: Hygiene, taskId: string) => Promise<void> = async () => {};
   @ObjectLink state: ServiceCenterState;
   @Prop page: string = 'messages';
   @Prop night: boolean = false;
@@ -19,6 +21,9 @@ export struct ServiceCenterWorkspace {
   controller: ServiceCenterController = new ServiceCenterController(this.host);
   photos: PhotoDraftController = new PhotoDraftController((error: Error): void => this.host.fail(error));
 
+  private recheckLabel(check?: Hygiene): string {
+    return check ? check.inspectionDate + ' · ' + check.totalScore + '分' : '选择合格复查';
+  }
   private status(item: Remediation): string {
     return item.status === 'CLOSED' ? '已验收' : item.status === 'CANCELLED' ? '已取消' : item.status === 'SUBMITTED' ? '待复查' : item.overdue ? '已逾期 · 待整改' : '待整改';
   }
@@ -50,9 +55,9 @@ export struct ServiceCenterWorkspace {
       }.width('100%').padding({top: 16, bottom: 16}).border({width: {bottom: 1}, color: palette(this.night).line})
     }, (message: ServiceMessage) => message.id + ':' + message.version)
     Row({space: 12}) {
-      Button('上一页').enabled(this.state.messagePage > 1 && !this.state.loading).onClick(() => { this.state.messagePage--; this.controller.loadMessages(); })
+      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage > 1 && !this.state.loading).onClick(() => { this.state.messagePage--; this.controller.loadMessages(); })
       Text(String(this.state.messagePage)).fontColor(palette(this.night).muted)
-      Button('下一页').enabled(this.state.messagePage * 10 < this.state.messageTotal && !this.state.loading).onClick(() => { this.state.messagePage++; this.controller.loadMessages(); })
+      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage * 10 < this.state.messageTotal && !this.state.loading).onClick(() => { this.state.messagePage++; this.controller.loadMessages(); })
     }.height(48).width('100%').justifyContent(FlexAlign.SpaceBetween)
   }
   @Builder
@@ -68,9 +73,9 @@ export struct ServiceCenterWorkspace {
       }.width('100%').padding({top: 16, bottom: 16}).border({width: {bottom: 1}, color: palette(this.night).line})
     }, (item: Remediation) => item.id + ':' + item.version)
     Row({space: 12}) {
-      Button('上一页').enabled(this.state.remediationPage > 1 && !this.state.loading).onClick(() => { this.state.remediationPage--; this.controller.loadRemediations(); })
+      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage > 1 && !this.state.loading).onClick(() => { this.state.remediationPage--; this.controller.loadRemediations(); })
       Text(String(this.state.remediationPage)).fontColor(palette(this.night).muted)
-      Button('下一页').enabled(this.state.remediationPage * 10 < this.state.remediationTotal && !this.state.loading).onClick(() => { this.state.remediationPage++; this.controller.loadRemediations(); })
+      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage * 10 < this.state.remediationTotal && !this.state.loading).onClick(() => { this.state.remediationPage++; this.controller.loadRemediations(); })
     }.height(48).width('100%').justifyContent(FlexAlign.SpaceBetween)
   }
   @Builder
@@ -79,9 +84,11 @@ export struct ServiceCenterWorkspace {
     if (this.page !== 'remediation-assignment') { FormInput({label: '整改要求', value: this.state.issue, multiline: true, night: this.night, onChange: (value: string) => this.state.issue = value}) }
     Text('责任学生').fontSize(14).fontColor(palette(this.night).ink)
     Select(this.state.students.map((student: Student): SelectOption => ({value: student.name}))).value(this.state.students.find((student: Student): boolean => student.id === this.state.responsibleStudentId)?.name || '请选择')
-      .width('100%').height(50).onSelect((index: number) => this.state.responsibleStudentId = this.state.students[index].id).margin({bottom: 16})
-    FormInput({label: '截止日期（年-月-日）', value: this.state.dueDay, night: this.night, onChange: (value: string) => this.state.dueDay = value})
-    FormInput({label: '截止时间（时:分）', value: this.state.dueClock, night: this.night, onChange: (value: string) => this.state.dueClock = value})
+      .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).onSelect((index: number) => this.state.responsibleStudentId = this.state.students[index].id).margin({bottom: 16})
+    TimePresets({labels: ['明天 18:00','2天后 18:00','3天后 18:00'], night: this.night, disabled: this.state.busy,
+      onChoose: (index: number) => { this.state.dueDay = beijingParts(new Date(Date.now() + (index + 1) * 86400000).toISOString()).day; this.state.dueClock = '18:00'; }})
+    DateTimeField({label: '截止日期', inputId: 'remediation-due-date', disabled: this.state.busy, value: this.state.dueDay, night: this.night, onChange: (value: string) => this.state.dueDay = value})
+    DateTimeField({label: '截止时间', clock: true, inputId: 'remediation-due-time', disabled: this.state.busy, value: this.state.dueClock, night: this.night, onChange: (value: string) => this.state.dueClock = value})
     if (this.page === 'remediation-assignment') { FormInput({label: '调整原因', value: this.state.assignmentReason, multiline: true, night: this.night, onChange: (value: string) => this.state.assignmentReason = value}) }
     Button(this.page === 'remediation-assignment' ? '保存责任与期限' : '发送整改任务').id('remediation-create-submit').height(48).width('100%').backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).borderRadius(4)
       .enabled(!this.state.busy && !!this.state.responsibleStudentId).onClick(() => { if (this.page === "remediation-assignment") this.controller.saveAssignment(); else this.controller.create(); })
@@ -102,9 +109,13 @@ export struct ServiceCenterWorkspace {
       }
       if (this.manager && this.state.selected.status === 'SUBMITTED') {
         Text('先录入关联原检查的合格复查，再确认验收。').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).margin({bottom: 12})
-        Button('刷新可关联复查').height(44).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).onClick(() => this.controller.loadRechecks())
-        Select(this.state.rechecks.map((h: Hygiene): SelectOption => ({value: h.inspectionDate + ' · ' + h.totalScore + '分'}))).value(this.state.recheckId ? '已选择复查' : '选择合格复查')
-          .width('100%').height(50).onSelect((index: number) => this.state.recheckId = this.state.rechecks[index].id).margin({bottom: 16})
+        Button('＋ 去录入合格复查').height(48).fontSize(16).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).soft)
+          .borderRadius(4).enabled(!this.state.busy).onClick(() => this.controller.beginRecheck(this.onRecheck))
+        Button('刷新可关联复查').enabled(!this.state.busy).height(48).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).onClick(() => this.controller.loadRechecks())
+        Select(this.state.rechecks.map((h: Hygiene): SelectOption => ({value: this.recheckLabel(h)})))
+          .selected(this.state.rechecks.findIndex((h: Hygiene): boolean => h.id === this.state.recheckId))
+          .value(this.recheckLabel(this.state.rechecks.find((h: Hygiene): boolean => h.id === this.state.recheckId)))
+          .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).onSelect((index: number) => this.state.recheckId = this.state.rechecks[index].id).margin({bottom: 16})
         FormInput({label: '验收意见', value: this.state.reviewNote, multiline: true, night: this.night, onChange: (value: string) => this.state.reviewNote = value})
         Button('确认验收通过').id('remediation-review-approve').height(48).width('100%').backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).borderRadius(4).enabled(!this.state.busy && !!this.state.recheckId).onClick(() => this.controller.review(true))
         Button('退回继续整改').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).enabled(!this.state.busy).onClick(() => this.controller.review(false))
