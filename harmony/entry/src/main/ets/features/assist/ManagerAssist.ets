@@ -83,13 +83,13 @@ export struct ManagerAssist {
         Row({space: 8}) {
           Checkbox({name: 'manager-assist-consent'}).id('manager-assist-consent').select(this.consent).selectedColor(palette(this.night).accent)
             .onChange((value: boolean) => this.consent = value)
-          Text('同意发送本次工单摘要与业务统计进行AI分析，不含学生电话或访客信息。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1)
+          Text('同意发送本次工单摘要与业务统计进行AI分析，不含学生电话或访客信息。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.consent = !this.consent)
         }.width('100%')
         if (this.orderId) {
         Row({space: 8}) {
           Checkbox({name: 'manager-assist-images'}).id('manager-assist-images').select(this.includeImages).selectedColor(palette(this.night).accent)
             .onChange((value: boolean) => this.includeImages = value)
-          Text('附带本单前3张故障图（可选）').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).layoutWeight(1)
+          Text('附带本单前3张故障图（可选）').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.includeImages = !this.includeImages)
         }.width('100%')
         }
         Button(this.busy ? '正在整理…' : this.orderId ? '生成本单研判' : '生成值班简报').id('manager-assist-generate').width('100%').height(48).fontSize(16)

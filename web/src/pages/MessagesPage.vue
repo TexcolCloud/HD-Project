@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onScopeDispose } from "vue";
+import { isRowClick } from "../utils/tableRow";
+import { computed, ref, onMounted, onScopeDispose } from "vue";
 import { get, post } from "../api/client";
 import type { Model } from "../api/types";
 import { dateTime, errorText } from "../ui";
@@ -16,7 +17,9 @@ const selected = ref<Model<"ServiceMessage">>(),
   page = ref(1),
   total = ref(0),
   unreadOnly = ref(false);
-const saving = ref(false),
+const pending = ref(new Set<string>()),
+  batch = ref(false);
+const saving = computed(() => batch.value || pending.value.size > 0),
   actionError = ref("");
 let disposed = false,
   timer: ReturnType<typeof setInterval>;
@@ -47,31 +50,57 @@ function search() {
   page.value = 1;
   void load();
 }
-function detail(message: Model<"ServiceMessage">) {
+type Message = Model<"ServiceMessage">;
+function detail(message: Message) {
   selected.value = message;
   actionError.value = "";
+  void read(message);
 }
-async function read() {
-  const message = selected.value;
-  if (!message || message.readAt || saving.value) return;
+async function read(message: Message) {
+  if (message.readAt || pending.value.has(message.id)) return;
+  pending.value.add(message.id);
   query.cancel();
-  saving.value = true;
-  actionError.value = "";
   try {
-    const updated = await post<Model<"ServiceMessage">>(
-      `/messages/${message.id}/read`,
-      {
-        expectedVersion: message.version,
-      } satisfies Model<"ServiceMessageReadRequest">,
-    );
-    if (disposed) return;
-    selected.value = updated;
+    const updated = await post<Message>("/messages/" + message.id + "/read", {
+      expectedVersion: message.version,
+    } satisfies Model<"ServiceMessageReadRequest">);
     syncInboxBadge();
-    await load();
+    if (disposed) return;
+    if (selected.value?.id === message.id) selected.value = updated;
+    if (
+      unreadOnly.value &&
+      items.value.some((item) => item.id === message.id)
+    ) {
+      items.value = items.value.filter((item) => item.id !== message.id);
+      total.value = Math.max(0, total.value - 1);
+      page.value = Math.min(
+        page.value,
+        Math.max(1, Math.ceil(total.value / 20)),
+      );
+    } else {
+      items.value = items.value.map((item) =>
+        item.id === message.id ? updated : item,
+      );
+    }
   } catch (cause) {
     if (!disposed) actionError.value = errorText(cause);
   } finally {
-    if (!disposed) saving.value = false;
+    pending.value.delete(message.id);
+    if (!disposed && !saving.value) await load();
+  }
+}
+async function readPage() {
+  if (saving.value) return;
+  batch.value = true;
+  actionError.value = "";
+  try {
+    for (const message of items.value.filter((item) => !item.readAt)) {
+      if (disposed) break;
+      await read(message);
+    }
+  } finally {
+    batch.value = false;
+    if (!disposed) await load();
   }
 }
 onMounted(() => {
@@ -95,12 +124,23 @@ onScopeDispose(() => {
     </button>
   </div>
   <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
+  <p v-if="!selected && actionError" class="error-banner" role="alert">
+    {{ actionError }}
+  </p>
   <section class="panel">
     <div class="panel-head">
       <div>
         <h2>我的收件箱</h2>
         <p class="muted">{{ summary?.unreadCount ?? 0 }} 条未读</p>
       </div>
+      <button
+        type="button"
+        class="btn"
+        :disabled="busy || saving || !items.some((item) => !item.readAt)"
+        @click="readPage"
+      >
+        本页未读标为已读
+      </button>
       <label>
         <input v-model="unreadOnly" type="checkbox" @change="search" />
         只看未读
@@ -117,7 +157,12 @@ onScopeDispose(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="message in items" :key="message.id">
+          <tr
+            v-for="message in items"
+            :key="message.id"
+            class="open-row"
+            @click="isRowClick($event) && detail(message)"
+          >
             <td>
               <span
                 class="status"
@@ -128,17 +173,23 @@ onScopeDispose(() => {
             </td>
             <td>
               <strong>{{ message.title }}</strong>
-              <small class="muted">{{ message.body }}</small>
+              <small class="muted cell-clamp" :title="message.body">
+                {{ message.body }}
+              </small>
             </td>
             <td>{{ dateTime(message.createdAt) }}</td>
             <td>
-              <button
-                class="text-link"
-                :disabled="saving"
-                @click="detail(message)"
-              >
+              <button class="text-link" @click="detail(message)">
                 查看消息
               </button>
+              <RouterLink
+                v-if="messageDestination(message)"
+                class="text-link"
+                :to="messageDestination(message)!"
+                @click="read(message)"
+              >
+                查看相关记录
+              </RouterLink>
             </td>
           </tr>
           <tr v-if="!items.length">
@@ -166,7 +217,6 @@ onScopeDispose(() => {
     v-if="selected"
     :title="selected.title"
     :subtitle="dateTime(selected.createdAt)"
-    :busy="saving"
     @close="selected = undefined"
   >
     <p class="description">{{ selected.body }}</p>
@@ -183,7 +233,7 @@ onScopeDispose(() => {
         v-if="!selected.readAt"
         class="btn primary"
         :disabled="saving"
-        @click="read"
+        @click="read(selected)"
       >
         标记已读
       </button>

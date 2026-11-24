@@ -16,6 +16,7 @@ export struct RoutePage {
   private releaseBack: () => void = () => {};
   controller: DispatchController = new DispatchController();
   @Prop night: boolean = false;
+  onCalibrate: () => void = () => {};
   onFinish: (repair: Repair) => void = () => {};
   onOpenRepair: (repair: Repair) => void = () => {};
   @State board: DispatchBoard | null = null;
@@ -117,15 +118,16 @@ export struct RoutePage {
       if (this.notice) {
         Column({space: 8}) {
           Text(this.notice).id('route-change-notice').fontSize(14).lineHeight(23).fontColor(palette(this.night).ink).width('100%')
-          Button('已了解本次变化').fontSize(14).height(44).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.dismissNotice())
+          Button('已了解本次变化').fontSize(14).height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.dismissNotice())
         }.width('100%').padding(14).backgroundColor(palette(this.night).soft).borderRadius(4).margin({bottom: 14})
       }
+      Button('定位与扫码校准').height(48).fontSize(14).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(this.onCalibrate)
       if (this.loading) { LoadingProgress().width(24).height(24).color(palette(this.night).accent).margin({bottom: 12}) }
       if (this.board) {
         Row() {
           Column({space: 5}) {
             Text(this.board.onlineCount + ' 人在线 · ' + this.board.participatingCount + ' 人参与').id('route-manager-counts').fontSize(16).fontColor(palette(this.night).ink)
-            Text('计划版本 ' + this.board.revision).fontSize(14).fontColor(palette(this.night).muted)
+
           }.layoutWeight(1).alignItems(HorizontalAlign.Start)
           Button('接单与位置').id('route-settings').height(48).fontSize(14).fontColor(palette(this.night).ink)
             .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.showSettings = !this.showSettings)
@@ -150,7 +152,7 @@ export struct RoutePage {
               onChange: (value: string) => this.blockReason = value})
             Button('确认受阻').id('route-block-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink)
               .borderRadius(4).enabled(!this.busy && !!this.blockReason.trim()).onClick(() => this.submitBlock())
-            Button('取消').height(44).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent).onClick(() => this.blockedTask = null)
+            Button('取消').height(48).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent).onClick(() => this.blockedTask = null)
           }.width('100%').padding(16).backgroundColor(palette(this.night).soft).borderRadius(4).margin({bottom: 16})
         }
         if (this.current()) { this.Card({task: this.current(), kind: '当前现场', canDepart: false}) }

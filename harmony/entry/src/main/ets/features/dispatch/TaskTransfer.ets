@@ -92,7 +92,7 @@ export struct TaskTransfer {
           Text(this.own() ? '仅未开始、未出发的工单可以正常交接。' : '仅原办理人停用、失去负责范围或持续离线时可接续。接续后先核对现场，再恢复路线。').fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
           if (this.own()) {
             Select(this.candidates().map((m: DispatchManager): SelectOption => ({value: m.displayName}))).value(this.candidates().find((m: DispatchManager): boolean => m.userId === this.target)?.displayName || '选择接续宿管')
-              .width('100%').height(48).onSelect((index: number) => this.target = this.candidates()[index].userId)
+              .width('100%').height(48).backgroundColor(palette(this.night).surface).fontColor(palette(this.night).ink).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.target = this.candidates()[index].userId)
           }
           FormInput({label: '交接或接续原因', value: this.reason, multiline: true, night: this.night, onChange: (value: string) => this.reason = value})
           Button('确认责任接续').id('task-transfer-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4)

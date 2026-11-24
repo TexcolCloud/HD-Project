@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isRowClick } from "../utils/tableRow";
 import { ref, reactive, onMounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { get, post } from "../api/client";
@@ -213,7 +214,7 @@ watch(
       </label>
       <label>
         楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -222,7 +223,7 @@ watch(
       </label>
       <label>
         状态
-        <select v-model="filters.status">
+        <select v-model="filters.status" @change="search">
           <option value="">全部状态</option>
           <option
             v-for="status in [
@@ -243,7 +244,7 @@ watch(
       </label>
       <label>
         类型
-        <select v-model="filters.category">
+        <select v-model="filters.category" @change="search">
           <option value="">全部类型</option>
           <option
             v-for="(label, code) in categoryNames"
@@ -296,9 +297,14 @@ watch(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in items" :key="r.id">
+          <tr
+            v-for="r in items"
+            :key="r.id"
+            class="open-row"
+            @click="isRowClick($event) && open(r.id)"
+          >
             <td>
-              <strong>{{ r.title }}</strong>
+              <strong class="cell-clamp" :title="r.title">{{ r.title }}</strong>
               <small class="num">{{ r.orderNo }}</small>
             </td>
             <td>

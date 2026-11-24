@@ -65,7 +65,7 @@ const minutes = (number: number | null | undefined) =>
           </dd>
         </div>
         <div>
-          <dt>平均绝对预测误差</dt>
+          <dt>预计与实际平均偏差</dt>
           <dd :class="{ num: value.meanAbsoluteErrorMinutes !== null }">
             {{ minutes(value.meanAbsoluteErrorMinutes) }}
           </dd>

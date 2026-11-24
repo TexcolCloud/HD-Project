@@ -34,13 +34,21 @@ export struct ServiceCenterWorkspace {
     const saved = await this.controller.feedback(snapshot.draft.uploaded.map((p: UploadedPhoto): string => p.asset.id));
     if (saved && this.state.selected?.id === id && epoch === Api.epoch && generation === this.photos.draftVersion('REMEDIATION')) this.photos.clear('REMEDIATION');
   }
+  private showUnread(value: boolean): void {
+    if (this.state.busy || this.state.unreadOnly === value) return;
+    this.state.unreadOnly = value;
+    this.state.messagePage = 1;
+    this.controller.loadMessages();
+  }
   @Builder
   private Messages() {
     Row({space: 10}) {
-      Checkbox().select(this.state.unreadOnly).selectedColor(palette(this.night).accent).onChange((value: boolean) => { this.state.unreadOnly = value; this.state.messagePage = 1; this.controller.loadMessages(); })
-      Text('只看未读').fontSize(14).fontColor(palette(this.night).ink).layoutWeight(1)
-      Button('刷新').height(44).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).onClick(() => this.controller.loadMessages())
+      Checkbox().enabled(!this.state.busy).select(this.state.unreadOnly).selectedColor(palette(this.night).accent).onChange((value: boolean) => this.showUnread(value))
+      Text('只看未读').fontSize(14).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({ minHeight: 48 }).onClick(() => this.showUnread(!this.state.unreadOnly))
+      Button('刷新').enabled(!this.state.busy).height(48).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).onClick(() => this.controller.loadMessages())
     }.width('100%')
+    Button('本页未读标为已读').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).soft)
+      .enabled(!this.state.busy && !this.state.loading && this.state.messages.some((item: ServiceMessage): boolean => !item.readAt)).onClick(() => this.controller.readPage())
     Text('服务消息会保留在收件箱。应用关闭时的新消息，请重新打开后查看。').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).margin({bottom: 16})
     if (!this.state.messages.length && !this.state.loading) { Text('暂时没有服务消息').fontColor(palette(this.night).muted).padding(20) }
     ForEach(this.state.messages, (message: ServiceMessage) => {
@@ -49,33 +57,33 @@ export struct ServiceCenterWorkspace {
         Text(message.body).fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
         Text(dateText(message.createdAt)).fontSize(14).fontColor(palette(this.night).muted).width('100%')
         Row({space: 12}) {
-          Button('查看事项').height(44).fontSize(14).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).enabled(!this.state.busy).onClick(() => this.controller.openMessage(message))
-          if (!message.readAt) { Button('标为已读').height(44).fontSize(14).backgroundColor(Color.Transparent).fontColor(palette(this.night).muted).enabled(!this.state.busy).onClick(() => this.controller.readMessage(message)) }
+          Button('查看事项').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).enabled(!this.state.busy).onClick(() => this.controller.openMessage(message))
+          if (!message.readAt) { Button('标为已读').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(palette(this.night).muted).enabled(!this.state.busy).onClick(() => this.controller.readMessage(message)) }
         }
       }.width('100%').padding({top: 16, bottom: 16}).border({width: {bottom: 1}, color: palette(this.night).line})
     }, (message: ServiceMessage) => message.id + ':' + message.version)
     Row({space: 12}) {
-      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage > 1 && !this.state.loading).onClick(() => { this.state.messagePage--; this.controller.loadMessages(); })
+      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage > 1 && !this.state.loading && !this.state.busy).onClick(() => { this.state.messagePage--; this.host.scrollTop?.(); this.controller.loadMessages(); })
       Text(String(this.state.messagePage)).fontColor(palette(this.night).muted)
-      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage * 10 < this.state.messageTotal && !this.state.loading).onClick(() => { this.state.messagePage++; this.controller.loadMessages(); })
+      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.messagePage * 10 < this.state.messageTotal && !this.state.loading && !this.state.busy).onClick(() => { this.state.messagePage++; this.host.scrollTop?.(); this.controller.loadMessages(); })
     }.height(48).width('100%').justifyContent(FlexAlign.SpaceBetween)
   }
   @Builder
   private List() {
-    Button('刷新整改任务').height(44).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.loadRemediations())
+    Button('刷新整改任务').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.loadRemediations())
     if (!this.state.remediations.length && !this.state.loading) { Text('暂时没有整改任务').fontColor(palette(this.night).muted).padding(20) }
     ForEach(this.state.remediations, (item: Remediation) => {
       Column({space: 10}) {
         Text(item.buildingName + ' ' + item.roomNo + ' · ' + this.status(item)).fontSize(18).fontColor(palette(this.night).ink).width('100%')
         Text(item.issueNote).fontSize(14).lineHeight(24).fontColor(palette(this.night).muted).width('100%')
         Text('责任学生：' + item.responsibleName + '\n截止：' + dateText(item.dueAt)).fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%')
-        Button('查看整改 →').height(44).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => { this.controller.openRemediation(item.id); })
+        Button('查看整改 →').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => { this.controller.openRemediation(item.id); })
       }.width('100%').padding({top: 16, bottom: 16}).border({width: {bottom: 1}, color: palette(this.night).line})
     }, (item: Remediation) => item.id + ':' + item.version)
     Row({space: 12}) {
-      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage > 1 && !this.state.loading).onClick(() => { this.state.remediationPage--; this.controller.loadRemediations(); })
+      Button('上一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage > 1 && !this.state.loading).onClick(() => { this.state.remediationPage--; this.host.scrollTop?.(); this.controller.loadRemediations(); })
       Text(String(this.state.remediationPage)).fontColor(palette(this.night).muted)
-      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage * 10 < this.state.remediationTotal && !this.state.loading).onClick(() => { this.state.remediationPage++; this.controller.loadRemediations(); })
+      Button('下一页').height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).enabled(this.state.remediationPage * 10 < this.state.remediationTotal && !this.state.loading).onClick(() => { this.state.remediationPage++; this.host.scrollTop?.(); this.controller.loadRemediations(); })
     }.height(48).width('100%').justifyContent(FlexAlign.SpaceBetween)
   }
   @Builder
@@ -84,7 +92,7 @@ export struct ServiceCenterWorkspace {
     if (this.page !== 'remediation-assignment') { FormInput({label: '整改要求', value: this.state.issue, multiline: true, night: this.night, onChange: (value: string) => this.state.issue = value}) }
     Text('责任学生').fontSize(14).fontColor(palette(this.night).ink)
     Select(this.state.students.map((student: Student): SelectOption => ({value: student.name}))).value(this.state.students.find((student: Student): boolean => student.id === this.state.responsibleStudentId)?.name || '请选择')
-      .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).onSelect((index: number) => this.state.responsibleStudentId = this.state.students[index].id).margin({bottom: 16})
+      .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.state.responsibleStudentId = this.state.students[index].id).margin({bottom: 16})
     TimePresets({labels: ['明天 18:00','2天后 18:00','3天后 18:00'], night: this.night, disabled: this.state.busy,
       onChoose: (index: number) => { this.state.dueDay = beijingParts(new Date(Date.now() + (index + 1) * 86400000).toISOString()).day; this.state.dueClock = '18:00'; }})
     DateTimeField({label: '截止日期', inputId: 'remediation-due-date', disabled: this.state.busy, value: this.state.dueDay, night: this.night, onChange: (value: string) => this.state.dueDay = value})
@@ -100,7 +108,7 @@ export struct ServiceCenterWorkspace {
       Text(this.state.selected.issueNote).fontSize(16).lineHeight(26).fontColor(palette(this.night).ink).width('100%')
       Text('责任学生：' + this.state.selected.responsibleName + '\n整改截止：' + dateText(this.state.selected.dueAt)).fontSize(14).lineHeight(24).fontColor(palette(this.night).muted).margin({top: 12, bottom: 20})
       if (this.state.selected.feedbackNote) { Text('整改反馈：' + this.state.selected.feedbackNote).fontSize(14).lineHeight(24).fontColor(palette(this.night).ink).width('100%').margin({bottom: 12}) }
-      ForEach(this.state.selected.evidenceImages, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}) }, (asset: FileAsset) => asset.id)
+      ForEach(this.state.selected.evidenceImages, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}) }, (asset: FileAsset) => asset.id)
       if (this.state.selected.reviewNote) { Text('验收意见：' + this.state.selected.reviewNote).fontSize(14).lineHeight(24).fontColor(palette(this.night).ink).width('100%').margin({bottom: 16}) }
       if (!this.manager && this.state.selected.status === 'OPEN') {
         FormInput({label: '整改情况', value: this.state.feedback, multiline: true, night: this.night, onChange: (value: string) => this.state.feedback = value})
@@ -115,7 +123,7 @@ export struct ServiceCenterWorkspace {
         Select(this.state.rechecks.map((h: Hygiene): SelectOption => ({value: this.recheckLabel(h)})))
           .selected(this.state.rechecks.findIndex((h: Hygiene): boolean => h.id === this.state.recheckId))
           .value(this.recheckLabel(this.state.rechecks.find((h: Hygiene): boolean => h.id === this.state.recheckId)))
-          .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).onSelect((index: number) => this.state.recheckId = this.state.rechecks[index].id).margin({bottom: 16})
+          .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.state.recheckId = this.state.rechecks[index].id).margin({bottom: 16})
         FormInput({label: '验收意见', value: this.state.reviewNote, multiline: true, night: this.night, onChange: (value: string) => this.state.reviewNote = value})
         Button('确认验收通过').id('remediation-review-approve').height(48).width('100%').backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).borderRadius(4).enabled(!this.state.busy && !!this.state.recheckId).onClick(() => this.controller.review(true))
         Button('退回继续整改').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).enabled(!this.state.busy).onClick(() => this.controller.review(false))

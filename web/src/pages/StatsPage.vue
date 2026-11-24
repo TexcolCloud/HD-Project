@@ -68,6 +68,13 @@ async function load() {
     },
   );
 }
+function period(days: number) {
+  filters.endDate = localDate();
+  filters.startDate = days
+    ? localDate(new Date(Date.now() - (days - 1) * 86400000))
+    : filters.endDate.slice(0, 7) + "-01";
+  void load();
+}
 function drill(status: string) {
   void router.push({ path: "/repairs", query: { ...applied.value, status } });
 }
@@ -92,7 +99,7 @@ onMounted(async () => {
     <form class="filters" style="padding-bottom: 18px" @submit.prevent="load">
       <label>
         统计楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="load">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -112,6 +119,19 @@ onMounted(async () => {
           required
         />
       </label>
+      <button
+        v-for="[days, label] in [
+          [7, '近7天'],
+          [30, '近30天'],
+          [0, '本月'],
+        ] as const"
+        :key="days"
+        type="button"
+        class="btn"
+        @click="period(days)"
+      >
+        {{ label }}
+      </button>
       <button class="btn primary" :disabled="busy">
         {{ busy ? "正在统计…" : "更新统计" }}
       </button>
@@ -184,7 +204,15 @@ onMounted(async () => {
             <p>所选区间提交的工单 · 单位：单</p>
           </div>
         </header>
-        <DataBars :items="repairs.byCategory" :labels="categoryNames" />
+        <DataBars
+          :items="repairs.byCategory"
+          :labels="categoryNames"
+          interactive
+          @choose="
+            (category) =>
+              router.push({ path: '/repairs', query: { ...applied, category } })
+          "
+        />
       </section>
       <section class="panel">
         <header class="panel-head">
@@ -193,7 +221,15 @@ onMounted(async () => {
             <p>有效巡检记录 · 单位：条</p>
           </div>
         </header>
-        <DataBars :items="hygiene.byGrade" :labels="statusNames" />
+        <DataBars
+          :items="hygiene.byGrade"
+          :labels="statusNames"
+          interactive
+          @choose="
+            (grade) =>
+              router.push({ path: '/hygiene', query: { ...applied, grade } })
+          "
+        />
       </section>
       <section class="panel">
         <header class="panel-head"><h2>办理与环境概况</h2></header>

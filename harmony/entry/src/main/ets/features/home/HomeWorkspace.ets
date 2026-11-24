@@ -76,7 +76,7 @@ export struct HomeWorkspace {
         }.width('100%').alignItems(HorizontalAlign.Start).padding(12).margin({top: 12}).backgroundColor(this.soft()).borderRadius(4)
       }
       Image($rawfile('campus-courtyard.jpg')).width('100%').height(88).objectFit(ImageFit.Cover).borderRadius(2).margin({top: 16})
-      Text('示意图 · Nick Allen / CC BY-SA 3.0').fontSize(14).fontColor(this.muted()).width('100%').constraintSize({minHeight: 36})
+      Text('示意图 · Nick Allen / CC BY-SA 3.0').fontSize(14).fontColor(this.muted()).width('100%').constraintSize({minHeight: 48})
         .onClick(() => this.host.navigate('credits'))
       Button() {
         Text('提交宿舍报修').fontSize(16).fontColor(this.onPrimary()).fontWeight(FontWeight.Medium)

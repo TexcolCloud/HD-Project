@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { clearTransientQuery } from "../composables/transientQuery";
 import { ref, reactive, onMounted, watch } from "vue";
 import { get, post, patch } from "../api/client";
 import type { Model, Student, Residence } from "../api/types";
@@ -9,8 +10,9 @@ import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import { isMobilePhone, mobilePhoneError } from "../phone";
-import { useRoute } from "vue-router";
-const route = useRoute();
+import { useRoute, useRouter } from "vue-router";
+const route = useRoute(),
+  router = useRouter();
 const buildingQuery = useLatestQuery(),
   buildings = ref<Model<"Building">[]>([]),
   buildingId = ref(""),
@@ -234,6 +236,14 @@ onMounted(() => {
     (result) => (buildings.value = result.items),
   );
 });
+watch(
+  modal,
+  (current, previous) => {
+    if (!current && previous)
+      void clearTransientQuery(route, router, ["action"]);
+  },
+  { flush: "post" },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -272,7 +282,7 @@ onMounted(() => {
       </label>
       <label>
         档案状态
-        <select v-model="status">
+        <select v-model="status" @change="search">
           <option value="">全部</option>
           <option value="ACTIVE">在校</option>
           <option value="INACTIVE">停用</option>
@@ -280,7 +290,7 @@ onMounted(() => {
       </label>
       <label>
         住宿状态
-        <select v-model="occupancy">
+        <select v-model="occupancy" @change="search">
           <option value="">全部</option>
           <option value="ASSIGNED">已入住</option>
           <option value="UNASSIGNED">未入住</option>
@@ -288,7 +298,7 @@ onMounted(() => {
       </label>
       <label>
         所属楼栋
-        <select v-model="buildingId">
+        <select v-model="buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}

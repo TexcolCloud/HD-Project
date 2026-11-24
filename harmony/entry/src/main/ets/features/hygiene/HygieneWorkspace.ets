@@ -186,7 +186,7 @@ export struct HygieneWorkspace {
         serviceField({label: '更正原因 *', value: this.state.correctionReason, change: (v: string) => { this.state.correctionReason = v; this.controller.editDraft(); }, placeholder: '说明更正依据', multiline: true, night: this.night, page: this.page})
         if (this.state.attachedImages.length) {
           serviceLabel({text: '原现场图片 · ' + this.state.attachedImages.length + ' 张', night: this.night})
-          ForEach(this.state.attachedImages, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}) }, (asset: FileAsset) => asset.id)
+          ForEach(this.state.attachedImages, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}) }, (asset: FileAsset) => asset.id)
         }
       }
       this.Uploads('INSPECTION')
@@ -237,7 +237,7 @@ export struct HygieneWorkspace {
           if (item.issueNote) { Text('检查说明：' + item.issueNote).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%') }
           if (item.remediationNote) { Text('整改建议：' + item.remediationNote).fontSize(14).fontColor(this.muted()).lineHeight(24).width('100%') }
           Text('检查人：' + item.inspectorName).fontSize(14).fontColor(this.muted()).width('100%')
-          ForEach(item.images, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}) }, (asset: FileAsset) => asset.id)
+          ForEach(item.images, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}) }, (asset: FileAsset) => asset.id)
           if (this.manager()) {
             serviceSecondary({label: '更正评分', click: () => this.controller.correct(item), night: this.night, busy: this.state.busy})
             serviceSecondary({label: '查看更正记录', click: () => this.controller.history(item), night: this.night, busy: this.state.busy})
@@ -248,10 +248,10 @@ export struct HygieneWorkspace {
       }, (item: Hygiene) => item.id + ':' + item.version)
       Row({space: 12}) {
         Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.hygienePage > 1 && !this.state.loading).onClick(() => { this.state.hygienePage--; this.controller.loadHygiene(); })
+          .enabled(this.state.hygienePage > 1 && !this.state.loading).onClick(() => { this.state.hygienePage--; this.host.scrollTop?.(); this.controller.loadHygiene(); })
         Text(String(this.state.hygienePage)).fontSize(14).fontColor(this.muted())
         Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.hygienePage * 10 < this.state.hygieneTotal && !this.state.loading).onClick(() => { this.state.hygienePage++; this.controller.loadHygiene(); })
+          .enabled(this.state.hygienePage * 10 < this.state.hygieneTotal && !this.state.loading).onClick(() => { this.state.hygienePage++; this.host.scrollTop?.(); this.controller.loadHygiene(); })
       }.width('100%')
     }.width('100%').alignItems(HorizontalAlign.Start)
   }

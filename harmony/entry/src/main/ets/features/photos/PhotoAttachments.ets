@@ -28,15 +28,16 @@ export struct PhotoAttachments {
         Text(this.usage === 'REPORT' ? '故障图片' : this.usage === 'RESULT' ? '处理后图片' : '现场图片').fontSize(16).fontColor(palette(this.night).ink).layoutWeight(1)
         Text(this.draft.uploaded.length + ' 已上传 / ' + this.count() + ' 已选').fontSize(14).fontColor(palette(this.night).muted)
       }.width('100%')
-      ForEach(this.draft.uploaded, (photo: UploadedPhoto) => {
-        Row({space: 12}) {
-          Image(photo.uri).width(66).height(66).objectFit(ImageFit.Cover).borderRadius(3)
-          Column({space: 4}) { Text('图片已上传').fontSize(14).fontColor(palette(this.night).ink); Text(Math.ceil(photo.asset.sizeBytes / 1024) + ' KB').fontSize(14).fontColor(palette(this.night).muted) }
-            .alignItems(HorizontalAlign.Start).layoutWeight(1)
-          Button('移除').fontSize(14).height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).enabled(!this.disabled && !this.busy)
-            .onClick(() => this.controller.remove(photo, this.usage))
-        }.width('100%').padding(10).backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line}).borderRadius(4)
-      }, (photo: UploadedPhoto) => photo.asset.id)
+      Flex({wrap: FlexWrap.Wrap}) {
+        ForEach(this.draft.uploaded, (photo: UploadedPhoto) => {
+          Column({space: 4}) {
+            Image(photo.uri).width('100%').aspectRatio(1).objectFit(ImageFit.Cover).borderRadius(4)
+            Text(Math.ceil(photo.asset.sizeBytes / 1024) + ' KB').fontSize(14).fontColor(palette(this.night).muted)
+            Button('移除').width('100%').height(48).fontSize(14).fontColor(palette(this.night).accent)
+              .backgroundColor(Color.Transparent).enabled(!this.disabled && !this.busy).onClick(() => this.controller.remove(photo, this.usage))
+          }.width('33.33%').padding(4)
+        }, (photo: UploadedPhoto) => photo.asset.id)
+      }.width('100%')
       ForEach(this.draft.failed, (uri: string) => {
         Row({space: 10}) {
           Image(uri).width(56).height(56).objectFit(ImageFit.Cover).borderRadius(3)

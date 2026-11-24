@@ -148,7 +148,7 @@ export class MobilityController {
     this.stopDevice(); const run = this.run;
     this.streamId = util.generateRandomUUID(); this.sequence = 0; this.collecting = true;
     this.armLease();
-    this.notice = '正在申请设备能力；拒绝后仍可用人工锚点与工单'; this.emit();
+    this.notice = '正在申请设备能力；拒绝后仍可用手动选择位置与工单'; this.emit();
     await this.device.start(context, background, (value: DeviceMovement): void => {
       if (this.current(epoch) && run === this.run) this.observe(value);
     }, (message: string, stopped: boolean = false): void => {
@@ -174,12 +174,12 @@ export class MobilityController {
     // A one-shot expiry safeguard, not a background publication timer. Every observation also checks expiry.
     this.leaseTimer = setTimeout((): void => {
       if (!this.current(epoch) || run !== this.run) return;
-      this.stopDevice(); this.error = '位置来源租约已过期，设备已停止，请重新开启'; this.emit();
+      this.stopDevice(); this.error = '定位辅助已超时自动停止，请重新开启'; this.emit();
     }, Math.max(1, Date.parse(lease.leaseExpiresAt) - Date.now()));
   }
   private observe(value: DeviceMovement): void {
     if (!this.view?.session || Date.parse(this.view.session.leaseExpiresAt) <= Date.now()) {
-      this.stopDevice(); this.error = '位置来源租约已过期，请重新开启'; this.emit(); return;
+      this.stopDevice(); this.error = '定位辅助已超时自动停止，请重新开启'; this.emit(); return;
     }
     const estimate = this.estimator.accept(value.position, Date.now());
     if (!estimate) return;
@@ -204,7 +204,7 @@ export class MobilityController {
     const epoch = this.epoch, run = this.run, session = this.view?.session, now = Date.now();
     if (!this.current(epoch) || !session || !this.collecting || this.sending || this.ownerEpoch !== session.sourceEpoch ||
       now - this.lastSend < Math.max(15000, (this.view?.policy.reportIntervalSeconds || 15) * 1000)) return;
-    if (Date.parse(session.leaseExpiresAt) <= now) { this.stopDevice(); this.error = '位置来源租约已过期，请刷新并重新开启'; this.emit(); return; }
+    if (Date.parse(session.leaseExpiresAt) <= now) { this.stopDevice(); this.error = '定位辅助已超时自动停止，请重新开启'; this.emit(); return; }
     this.pending = this.pending.filter((sample: MobilitySample): boolean => now - Date.parse(sample.observedAt) <= 60000);
     if (this.retryBatch && this.retryBatch.samples.some((sample: MobilitySample): boolean => now - Date.parse(sample.observedAt) > 60000)) this.retryBatch = null;
     if (!this.retryBatch && !this.pending.length) return;

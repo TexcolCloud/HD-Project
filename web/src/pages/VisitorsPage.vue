@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { clearTransientQuery } from "../composables/transientQuery";
+import { isRowClick } from "../utils/tableRow";
 import { openModal } from "../components/modal";
 import { ref, reactive, onMounted, onUnmounted, watch } from "vue";
-import { onBeforeRouteLeave, useRoute } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { get, post, patch, ApiError } from "../api/client";
 import type { Model, Visitor, Building } from "../api/types";
 import { errorText, notify, dateTime, isoTime } from "../ui";
@@ -14,7 +16,8 @@ import { useLatestQuery } from "../composables/useLatestQuery";
 import { isMobilePhone, mobilePhoneError } from "../phone";
 import { session } from "../session";
 const listQuery = useLatestQuery();
-const route = useRoute();
+const route = useRoute(),
+  router = useRouter();
 const detailQuery = useLatestQuery();
 let contactRevision = 0;
 const { busy, error } = listQuery;
@@ -311,6 +314,14 @@ watch(
   },
   { immediate: true },
 );
+watch(
+  modal,
+  (current, previous) => {
+    if (!current && previous)
+      void clearTransientQuery(route, router, ["visitorId", "action"]);
+  },
+  { flush: "post" },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -343,7 +354,7 @@ watch(
       </label>
       <label>
         楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -352,7 +363,7 @@ watch(
       </label>
       <label>
         来访状态
-        <select v-model="filters.status">
+        <select v-model="filters.status" @change="search">
           <option value="">全部</option>
           <option value="VISITING">在访</option>
           <option value="LEFT">已离访</option>
@@ -398,7 +409,12 @@ watch(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="v in items" :key="v.id">
+          <tr
+            v-for="v in items"
+            :key="v.id"
+            class="open-row"
+            @click="isRowClick($event) && detail(v)"
+          >
             <td>
               <strong>{{ v.visitorName }}</strong>
               <small>{{ v.phone }}</small>
@@ -407,7 +423,9 @@ watch(
               {{ v.studentName }}
               <small>{{ v.buildingName }} {{ v.roomNo }}</small>
             </td>
-            <td>{{ v.purpose }}</td>
+            <td>
+              <span class="cell-clamp" :title="v.purpose">{{ v.purpose }}</span>
+            </td>
             <td>
               {{ dateTime(v.arrivedAt) }}
               <small>{{ v.leftAt ? dateTime(v.leftAt) : "尚未离访" }}</small>

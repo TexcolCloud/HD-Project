@@ -1279,10 +1279,15 @@ dialog::backdrop {
   border-radius: 4px;
   color: var(--text);
 }
+.login-form .theme-switch {
+  margin-bottom: 16px;
+}
+.login-form .btn.primary:has(svg) {
+  justify-content: space-between;
+}
 .login-form .btn {
   margin-top: 10px;
   min-height: 48px;
-  justify-content: space-between;
   padding: 11px 16px;
   font-size: var(--type-body);
 }
@@ -1445,10 +1450,37 @@ dialog::backdrop {
     padding: 11px 16px;
   }
   .profile {
+    display: flex;
+    min-width: 0;
+  }
+  .profile > div {
+    display: block;
+  }
+  .profile .avatar,
+  .profile small {
     display: none;
   }
+  .profile strong {
+    max-width: 6em;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .top-actions {
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px;
+  }
+  .top-actions .theme-switch svg {
+    display: none;
+  }
+  .top-actions .theme-switch button {
+    white-space: nowrap;
+  }
+  .top-actions .btn {
+    padding-inline: 10px;
   }
   .theme-switch button {
     font-size: var(--type-caption);
@@ -1515,12 +1547,16 @@ dialog::backdrop {
     font-size: var(--type-caption);
   }
   .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 16px 15px 0;
     gap: 9px;
   }
   .filters input,
   .filters select {
-    max-width: 145px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     font-size: var(--type-caption);
   }
   .filters .btn {
@@ -1618,18 +1654,30 @@ dialog::backdrop {
 .field-error {
   color: var(--danger) !important;
 }
-.changes-json {
-  max-width: 100%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--soft);
-  border-radius: 4px;
-  padding: 12px;
-  font-size: var(--type-caption);
-}
 .form .form-note {
   margin-top: 0;
 }
 .upload-area .form-note {
   margin-bottom: 0;
+}
+
+.cell-clamp {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-wrap:not(.stat-trend) :is(th, td:not([colspan])):last-child {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+tr.open-row {
+  cursor: pointer;
+}
+.upload-area.dragging {
+  background: var(--soft);
+  border-color: var(--accent);
 }

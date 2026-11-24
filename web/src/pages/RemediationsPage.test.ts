@@ -7,6 +7,7 @@ const navigation = vi.hoisted(() => ({ update: vi.fn() }));
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
   useRoute: () => ({ query: {} }),
   onBeforeRouteLeave: vi.fn(),
   onBeforeRouteUpdate: navigation.update,

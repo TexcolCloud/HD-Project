@@ -14,8 +14,9 @@ const router = useRouter(),
   route = useRoute();
 function selectMode(next: typeof mode.value) {
   if (mode.value === next) return;
+  if (mode.value === "ACTIVATE" || next === "ACTIVATE") password.value = "";
   mode.value = next;
-  username.value = password.value = error.value = "";
+  error.value = "";
 }
 async function submit() {
   if (busy.value) return;

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AnchorCode from "../components/mobility/AnchorCode.vue";
 import ModuleTabs from "../components/ModuleTabs.vue";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
@@ -87,7 +88,7 @@ async function rollback(model: Model<"MobilityTravelModel">) {
         ? updated
         : item,
     );
-    notify("已停用此方向的学习估算，路线恢复人工通行基线");
+    notify("已停用此方向的学习估算，路线已恢复默认通行时间");
   } catch (e) {
     error.value = errorText(e);
   } finally {
@@ -287,11 +288,7 @@ onBeforeUnmount(() => clearInterval(clock));
             <tr v-for="item in view.anchors" :key="item.id">
               <td>
                 <strong>{{ item.name }}</strong>
-                <details class="mobility-code">
-                  <summary>查看扫码内容</summary>
-                  <code>{{ "dormlink-anchor:" + item.scanCode }}</code>
-                  <small>静态码需在移动端预览并确认，仅用于地点校正。</small>
-                </details>
+                <AnchorCode :anchor="item" />
               </td>
               <td>
                 {{ item.buildingName }} ·
@@ -367,7 +364,7 @@ onBeforeUnmount(() => clearInterval(clock));
               <td>
                 {{ model.sampleCount }} 段 · {{ model.sessionCount }} 次工作
               </td>
-              <td>{{ model.enabled ? "已启用" : "已恢复人工基线" }}</td>
+              <td>{{ model.enabled ? "已启用" : "已恢复默认通行时间" }}</td>
               <td>
                 <button
                   v-if="model.enabled"
@@ -375,7 +372,7 @@ onBeforeUnmount(() => clearInterval(clock));
                   :disabled="busy || !!error"
                   @click="rollback(model)"
                 >
-                  恢复人工基线
+                  恢复默认通行时间
                 </button>
                 <span v-else class="muted">已停用自动更新</span>
               </td>

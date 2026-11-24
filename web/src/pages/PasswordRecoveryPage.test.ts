@@ -12,6 +12,7 @@ vi.mock("vue-router", () => ({
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),
   vModelText: {},
+  vModelDynamic: {},
 }));
 
 let unmount: (() => void) | undefined;

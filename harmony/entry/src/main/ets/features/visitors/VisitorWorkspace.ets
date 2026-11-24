@@ -99,13 +99,13 @@ export struct VisitorWorkspace {
       if (this.state.buildings.length > 1) {
         Select([{value: '全部负责楼栋'}, ...this.state.buildings.map((building: Building): SelectOption => { return {value: building.name}; })])
           .id('visitor-building').selected(this.state.buildings.findIndex((building: Building): boolean => building.id === this.state.buildingId) + 1)
-          .value(this.controller.buildingChoice()).onSelect((index: number) => this.controller.selectBuilding(index ? this.state.buildings[index - 1].id : ''))
+          .value(this.controller.buildingChoice()).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.controller.selectBuilding(index ? this.state.buildings[index - 1].id : ''))
           .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).margin({bottom: 8})
       } else if (this.state.buildings.length === 1) {
         Text('负责楼栋 · ' + this.state.buildings[0].name).fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 8})
       }
       Select([{value: '全部来访'}, {value: '当前在访'}, {value: '已离访'}]).selected(['', 'VISITING', 'LEFT'].indexOf(this.state.visitorFilter)).value(this.state.visitorFilter === 'VISITING' ? '当前在访' : this.state.visitorFilter === 'LEFT' ? '已离访' : '全部来访')
-        .onSelect((index: number) => { this.state.visitorFilter = ['', 'VISITING', 'LEFT'][index]; this.state.visitorPage = 1; this.controller.loadVisitors(); })
+        .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.visitorFilter = ['', 'VISITING', 'LEFT'][index]; this.state.visitorPage = 1; this.controller.loadVisitors(); })
         .height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).margin({bottom: 18})
       Text('共 ' + this.state.visitorTotal + ' 条记录').fontSize(14).fontColor(this.muted()).width('100%').margin({bottom: 12})
       if (!this.state.visitors.length && !this.state.loading) { serviceEmpty({message: '暂无符合条件的访客记录。', night: this.night}) }
@@ -126,10 +126,10 @@ export struct VisitorWorkspace {
       }, (visitor: Visitor) => visitor.id + ':' + visitor.version + ':' + String(visitor.overdue))
       Row({space: 12}) {
         Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.visitorPage > 1 && !this.state.loading).onClick(() => { this.state.visitorPage--; this.controller.loadVisitors(); })
+          .enabled(this.state.visitorPage > 1 && !this.state.loading).onClick(() => { this.state.visitorPage--; this.host.scrollTop?.(); this.controller.loadVisitors(); })
         Text(String(this.state.visitorPage)).fontColor(this.muted()).fontSize(14)
         Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.visitorPage * 10 < this.state.visitorTotal && !this.state.loading).onClick(() => { this.state.visitorPage++; this.controller.loadVisitors(); })
+          .enabled(this.state.visitorPage * 10 < this.state.visitorTotal && !this.state.loading).onClick(() => { this.state.visitorPage++; this.host.scrollTop?.(); this.controller.loadVisitors(); })
       }.width('100%')
     }.width('100%').alignItems(HorizontalAlign.Start)
   }

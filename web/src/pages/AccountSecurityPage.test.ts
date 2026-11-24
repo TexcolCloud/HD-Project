@@ -81,12 +81,16 @@ it("换绑验证旧号与新号，保留一次性恢复码直到确认后返回�
     purpose: "CHANGE_PHONE_OLD",
     currentPassword: "only-for-test",
   });
+  expect(text(root)).toMatch(/\d+秒后可重发/);
+  input("当前密码", "edited-for-test");
+  await nextTick();
+  expect(text(root)).toContain("旧号验证码");
   click("向新号发送验证码");
   await vi.waitFor(() => expect(text(root)).toContain("新号验证码"));
   expect(api.post).toHaveBeenNthCalledWith(2, "/auth/phone/challenges", {
     purpose: "CHANGE_PHONE_NEW",
     phone: "13800000001",
-    currentPassword: "only-for-test",
+    currentPassword: "edited-for-test",
   });
   input("旧号验证码", "000011");
   input("新号验证码", "000012");

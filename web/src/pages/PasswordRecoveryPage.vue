@@ -7,6 +7,9 @@ import { isMobilePhone, mobilePhoneError } from "../phone";
 import { clearLocalSession } from "../session";
 import { errorText, notify } from "../ui";
 
+import { useResendWait } from "../composables/useResendWait";
+const { seconds: wait, start: startWait } = useResendWait();
+const showRecovery = ref(false);
 const router = useRouter();
 const phone = ref(""),
   challengeId = ref(""),
@@ -36,6 +39,7 @@ async function act(operation: () => Promise<void>) {
 }
 
 function requestCode() {
+  if (wait.value) return;
   return act(async () => {
     if (!isMobilePhone(phone.value)) {
       error.value = mobilePhoneError;
@@ -48,6 +52,7 @@ function requestCode() {
         clientType: "WEB",
       } satisfies Model<"PasswordRecoveryChallengeRequest">,
     );
+    startWait();
     challengeId.value = result.challengeId;
     code.value = "";
   });
@@ -94,6 +99,7 @@ function complete() {
   });
 }
 function reset() {
+  showRecovery.value = false;
   proof.value = undefined;
   password.value = confirmation.value = recoveryCode.value = error.value = "";
 }
@@ -158,10 +164,10 @@ function reset() {
             <button
               class="text-link"
               type="button"
-              :disabled="busy"
+              :disabled="busy || wait > 0"
               @click="requestCode"
             >
-              重新发送验证码
+              {{ wait ? wait + "秒后可重发" : "重新发送验证码" }}
             </button>
           </template>
         </template>
@@ -172,12 +178,21 @@ function reset() {
               v-model="recoveryCode"
               required
               name="recovery-code"
-              type="password"
+              :type="showRecovery ? 'text' : 'password'"
               autocomplete="off"
               :disabled="busy"
             />
             <small>请输入绑定时保存的恢复码，重设成功后请重新生成。</small>
           </label>
+          <button
+            v-if="proof.recoveryCodeRequired"
+            type="button"
+            class="text-link"
+            :aria-pressed="showRecovery"
+            @click="showRecovery = !showRecovery"
+          >
+            {{ showRecovery ? "隐藏恢复码" : "显示恢复码" }}
+          </button>
           <label>
             新密码
             <input
@@ -189,7 +204,7 @@ function reset() {
               autocomplete="new-password"
               :disabled="busy"
             />
-            <small>至少10位，UTF-8长度不超过72字节。</small>
+            <small>至少10位字符，建议包含字母、数字或符号。</small>
           </label>
           <label>
             确认新密码
@@ -219,7 +234,11 @@ function reset() {
         >
           {{ error }}
         </p>
-        <button class="btn primary full" type="submit" :disabled="busy">
+        <button
+          class="btn primary full"
+          type="submit"
+          :disabled="busy || (!proof && !challengeId && wait > 0)"
+        >
           {{
             busy
               ? "正在处理…"
@@ -227,7 +246,9 @@ function reset() {
                 ? "重设密码并返回登录"
                 : challengeId
                   ? "验证短信"
-                  : "发送验证码"
+                  : wait
+                    ? wait + "秒后可重发"
+                    : "发送验证码"
           }}
         </button>
         <RouterLink to="/login">返回登录</RouterLink>

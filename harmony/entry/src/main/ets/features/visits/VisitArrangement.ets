@@ -129,7 +129,7 @@ export struct VisitArrangement {
           if (this.error) { Text(this.error).fontSize(14).lineHeight(22).fontColor(palette(this.night).danger).width('100%') }
           Button(this.busy ? '正在保存…' : '保存访问安排').id('visit-save').width('100%').height(50).fontSize(16).fontColor(palette(this.night).onPrimary)
             .backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy).onClick(() => this.save())
-          Button('取消修改').width('100%').height(44).fontSize(14).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent)
+          Button('取消修改').width('100%').height(48).fontSize(14).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent)
             .enabled(!this.busy).onClick(() => this.editing = false)
         }
       }.width('100%').alignItems(HorizontalAlign.Start).padding({top: 16, bottom: 16}).border({width: {top: 1}, color: palette(this.night).line}).margin({top: 20, bottom: 12})
