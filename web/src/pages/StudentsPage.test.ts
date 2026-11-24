@@ -6,7 +6,10 @@ import StudentsPage from "./StudentsPage.vue";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
-vi.mock("vue-router", () => ({ onBeforeRouteLeave: vi.fn() }));
+vi.mock("vue-router", () => ({
+  onBeforeRouteLeave: vi.fn(),
+  useRoute: () => ({ query: {} }),
+}));
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),
   vModelText: {},
@@ -117,4 +120,65 @@ it("新建学生档案时保留粘贴内容，并阻止提交12位手机号", as
   expect(text(dialog)).toContain("请输入11位手机号");
   expect(phone.props.maxlength).toBeUndefined();
   expect(api.post).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["调宿", "transfer"],
+  ["退宿", "check-out"],
+])("行内%s等有效入住返回后才允许按当前版本办理", async (label, path) => {
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    setTimeout,
+  });
+  let finish!: (v: unknown) => void;
+  const read = new Promise((resolve) => (finish = resolve));
+  api.get.mockImplementation(async (url: string) =>
+    url === "/residences"
+      ? read
+      : {
+          items:
+            url === "/students"
+              ? [{ id: "s", roomId: "r", name: "测试", status: "ACTIVE" }]
+              : [],
+          total: 1,
+        },
+  );
+  const root = node("root"),
+    app = renderer.createApp(StudentsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  const btn = (name: string) =>
+    find(root, (n) => n.tag === "button" && text(n).trim() === name);
+  await vi.waitFor(() => expect(btn(label)).toBeDefined());
+  (btn(label)!.props.onClick as () => void)();
+  await nextTick();
+  expect(text(root)).toContain("正在核对当前入住记录");
+  expect(btn("确认" + label)?.props.disabled).toBe(true);
+  finish({
+    items: [
+      { id: "old", checkedOutAt: "2025-01-01" },
+      { id: "current", version: 7, checkedOutAt: null },
+    ],
+  });
+  await vi.waitFor(() =>
+    expect(btn("确认" + label)?.props.disabled).toBe(false),
+  );
+  const dialog = find(root, (n) => n.tag === "dialog")!;
+  (
+    find(dialog, (n) => n.tag === "textarea")!.props["onUpdate:modelValue"] as (
+      v: string,
+    ) => void
+  )("学生申请");
+  (
+    find(dialog, (n) => n.tag === "form")!.props.onSubmit as (e: {
+      preventDefault(): void;
+    }) => void
+  )({ preventDefault() {} });
+  await vi.waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith(
+      "/residences/current/" + path,
+      expect.objectContaining({ expectedVersion: 7, reason: "学生申请" }),
+    ),
+  );
 });

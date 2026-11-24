@@ -107,6 +107,35 @@ it("在访超时显示状态，取消离访后保留登记", async () => {
   expect(api.post).not.toHaveBeenCalled();
 });
 
+it("补登记离访将实际离开时刻从北京时间换算并携带当前版本", async () => {
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+  api.get.mockImplementation(async (path: string) => ({
+    items: path === "/visitors" ? [visitor] : [],
+    total: 1,
+  }));
+  api.post.mockResolvedValue({ ...visitor, status: "LEFT", version: 2 });
+  const root = node("root"),
+    app = renderer.createApp(VisitorsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  await vi.waitFor(() => expect(button(root, "登记离访")).toBeDefined());
+  click(root, "登记离访");
+  await nextTick();
+  const dialog = confirmation(root)!;
+  const field = find(dialog, (n) => n.props.type === "datetime-local")!;
+  (field.props["onUpdate:modelValue"] as (v: string) => void)(
+    "2026-11-12T10:15",
+  );
+  click(dialog, "确认离访");
+  expect(api.post).toHaveBeenCalledWith("/visitors/visitor-1/leave", {
+    expectedVersion: 1,
+    leftAt: "2026-11-12T02:15:00.000Z",
+  });
+});
+
 it("登记离访成功后，晚到的详情查询不能恢复旧的在访状态", async () => {
   vi.stubGlobal("window", {
     confirm: () => true,

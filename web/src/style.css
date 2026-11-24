@@ -203,6 +203,15 @@ svg {
   color: #bfc0b2;
   margin: 8px 14px 24px;
 }
+.nav-group {
+  font-size: 12px;
+  color: inherit;
+  padding: 8px 12px 0;
+}
+.top-actions .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .sidebar nav {
   display: grid;
   gap: 5px;
@@ -633,14 +642,16 @@ td small {
   border-bottom: 1px solid var(--border);
   margin-bottom: 20px;
 }
-.tabs button {
+.tabs button,
+.tabs a {
   background: transparent;
   color: var(--muted);
   padding: 10px 17px;
   font-size: var(--type-body);
   border-bottom: 2px solid transparent;
 }
-.tabs button.active {
+.tabs button.active,
+.tabs a.router-link-exact-active {
   color: var(--text);
   border-bottom-color: var(--accent);
   font-weight: 600;
@@ -1080,6 +1091,9 @@ dialog::backdrop {
   min-height: 34px;
 }
 .score-total {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1095,11 +1109,15 @@ dialog::backdrop {
 }
 .score-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 15px;
   border-bottom: 1px solid var(--border);
   padding: 12px 0;
+}
+.form-fields {
+  display: contents;
 }
 .score-row input {
   width: 82px;
@@ -1399,6 +1417,7 @@ dialog::backdrop {
     padding: 0 6px;
     margin-bottom: 13px;
   }
+  .sidebar .nav-group,
   .sidebar-note,
   .sidebar-foot {
     display: none;

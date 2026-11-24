@@ -32,6 +32,7 @@ export class VisitorState {
   draftBlocked: boolean = false;
   busy: boolean = false;
   loading: boolean = false;
+  target: Student | null = null;
   students: Student[] = [];
   targetSearch: string = "";
   visitors: Visitor[] = [];
@@ -56,6 +57,8 @@ export class VisitorController {
   private drafts: LocalDrafts | null = null;
   private host: WorkspaceHost;
   private listRead: ReadScope = new ReadScope();
+  private contactRead: ReadScope = new ReadScope();
+  private searchTimer: number = -1;
   private studentRead: ReadScope = new ReadScope();
   private buildingRead: ReadScope = new ReadScope();
   private detailRead: ReadScope = new ReadScope();
@@ -103,6 +106,8 @@ export class VisitorController {
     this.state.visitorName = fresh.visitorName;
     this.state.visitorPhone = fresh.visitorPhone;
     this.state.phoneError = "";
+    this.state.target = null;
+    this.state.targetSearch = "";
     this.state.visitedStudentId = fresh.visitedStudentId;
     this.state.visitorPurpose = fresh.visitorPurpose;
     this.state.visitorRemark = fresh.visitorRemark;
@@ -112,6 +117,8 @@ export class VisitorController {
   suspendReads(): void {
     this.listRevision++;
     this.listRead.invalidate();
+    clearTimeout(this.searchTimer);
+    this.contactRead.invalidate();
     this.studentRead.invalidate();
     this.buildingRead.invalidate();
     this.detailRead.invalidate();
@@ -205,26 +212,43 @@ export class VisitorController {
   buildingChoice(): string {
     return this.state.buildings.find((building: Building): boolean => building.id === this.state.buildingId)?.name || "全部负责楼栋";
   }
+  searchStudents(text: string): void {
+    this.state.targetSearch = text;
+    this.state.students = [];
+    this.studentRead.invalidate();
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.loadStudents(),250);
+  }
+  chooseStudent(student: Student): void {
+    this.state.target = student;
+    this.state.visitedStudentId = student.id;
+    this.saveDraft();
+  }
   async loadStudents(): Promise<void> {
+    clearTimeout(this.searchTimer);
     const ticket = this.studentRead.begin();
     try {
       const data = await Api.request<StudentPage>(
-        "/students?pageSize=100&q=" +
+        "/students?pageSize=30&occupancy=ASSIGNED&q=" +
           encodeURIComponent(this.state.targetSearch),
       );
       if (!this.studentRead.current(ticket)) return;
       this.state.students = data.items.filter(
         (student: Student): boolean => !!student.roomId,
       );
-      if (
-        !this.state.students.some(
-          (student: Student): boolean =>
-            student.id === this.state.visitedStudentId,
-        )
-      )
-        this.state.visitedStudentId = !this.state.draftRestored && this.state.students.length
-          ? this.state.students[0].id
-          : "";
+      const id = this.state.visitedStudentId;
+      if (id) {
+        const match = this.state.students.find((student: Student): boolean => student.id === id);
+        if (match) this.state.target = match;
+        else if (!this.state.target) {
+          let selected: Student | null = null;
+          try { selected = await Api.request<Student>("/students/" + encodeURIComponent(id)); }
+          catch (error) { if (![403,404].includes((error as ApiError).status)) throw error as Error; }
+          if (!this.studentRead.current(ticket) || this.state.visitedStudentId !== id) return;
+          if (selected && selected.id === id && selected.roomId) this.state.target = selected;
+          else { this.state.visitedStudentId = ""; this.saveDraft(); }
+        }
+      }
     } catch (error) {
       if (this.studentRead.shouldReport(ticket, error as Error))
         this.host.fail(error as Error);
@@ -242,7 +266,7 @@ export class VisitorController {
     }
     if (
       !this.state.visitorName.trim() ||
-      !this.state.visitedStudentId ||
+      !this.state.visitedStudentId || (this.state.draftRestored && !this.state.target) ||
       !this.state.visitorPurpose.trim()
     ) {
       this.host.setError("请填写访客姓名、有效电话、被访学生和来访事由");
@@ -347,29 +371,22 @@ export class VisitorController {
     }
   }
 
-  async contact(visitor: Visitor): Promise<void> {
-    const epoch = Api.epoch,
-      state = this.state;
+  async contact(visitor: Visitor, show: (phone: string, current: () => boolean) => Promise<void>): Promise<void> {
+    const ticket = this.contactRead.begin();
     try {
       const request: EmptyRequest = {};
       const result = await Api.post<ContactResult>(
         "/visitors/" + visitor.id + "/reveal-contact",
         request,
       );
-      if (state !== this.state || epoch !== Api.epoch) return;
-      await this.host.inform(
-        visitor.visitorName + " · 联系电话",
-        result.phone + "\n此次查看已记录。请仅用于本次来访联系。",
-      );
+      if (this.contactRead.current(ticket)) await show(result.phone, () => this.contactRead.current(ticket));
     } catch (error) {
-      if (state === this.state) this.host.fail(error as Error);
+      if (this.contactRead.shouldReport(ticket, error as Error)) this.host.fail(error as Error);
     }
   }
 
   studentChoice(): string {
-    const selected = this.state.students.find(
-      (s: Student): boolean => s.id === this.state.visitedStudentId,
-    );
+    const selected = this.state.target;
     return selected
       ? (selected.buildingName || "") +
           " " +

@@ -24,6 +24,18 @@ vi.mock("vue", async (original) => ({
   vModelText: {},
 }));
 
+const manager: User = {
+  id: "manager-1",
+  username: "demo-manager",
+  displayName: "演示宿管",
+  role: "MANAGER",
+  buildingIds: ["building-1"],
+  studentId: null,
+  currentRoom: null,
+  mustChangePassword: false,
+  phoneMasked: "138****0000",
+  recoveryCodeConfigured: true,
+};
 let unmount: (() => void) | undefined;
 afterEach(() => {
   unmount?.();
@@ -32,18 +44,7 @@ afterEach(() => {
 });
 
 it("换绑验证旧号与新号，保留一次性恢复码直到确认后返回登录", async () => {
-  session.user = {
-    id: "manager-1",
-    username: "demo-manager",
-    displayName: "演示宿管",
-    role: "MANAGER",
-    buildingIds: ["building-1"],
-    studentId: null,
-    currentRoom: null,
-    mustChangePassword: false,
-    phoneMasked: "138****0000",
-    recoveryCodeConfigured: true,
-  };
+  session.user = { ...manager };
   api.post
     .mockResolvedValueOnce({ challengeId: "challenge-old" })
     .mockResolvedValueOnce({ challengeId: "challenge-new" })
@@ -105,5 +106,56 @@ it("换绑验证旧号与新号，保留一次性恢复码直到确认后返回�
   click("我已保存，重新登录");
   await nextTick();
   expect(text(root)).not.toContain("RECOVER-DEMO");
+  expect(router.replace).toHaveBeenCalledWith("/login");
+});
+
+it("两次新密码一致才修改登录密码并清除会话", async () => {
+  session.user = { ...manager };
+  const root = node("root"),
+    app = renderer.createApp(AccountSecurityPage);
+  vi.stubGlobal("window", { setTimeout });
+  app.component("RouterLink", { template: "<a><slot /></a>" });
+  app.mount(root);
+  unmount = () => {
+    app.unmount();
+    vi.unstubAllGlobals();
+  };
+  const change = find(
+    root,
+    (n) => n.tag === "button" && text(n).trim() === "修改登录密码",
+  )!;
+  (change.props.onClick as () => void)();
+  await nextTick();
+  function type(label: string, value: string) {
+    const wrapper = find(
+      root,
+      (n) => n.tag === "label" && text(n).trim().startsWith(label),
+    )!;
+    (
+      find(wrapper, (n) => n.tag === "input")!.props["onUpdate:modelValue"] as (
+        v: string,
+      ) => void
+    )(value);
+  }
+  const submit = () =>
+    (
+      find(root, (n) => n.tag === "form")!.props.onSubmit as (e: {
+        preventDefault(): void;
+      }) => Promise<void>
+    )({ preventDefault() {} });
+  type("当前密码", "current-example");
+  type("新密码", "new-example-1");
+  type("确认新密码", "mismatch-example");
+  await submit();
+  await nextTick();
+  expect(text(root)).toContain("两次输入的新密码不一致");
+  expect(api.post).not.toHaveBeenCalled();
+  type("确认新密码", "new-example-1");
+  await submit();
+  expect(session.user).toBeNull();
+  expect(api.post).toHaveBeenCalledWith("/auth/change-password", {
+    oldPassword: "current-example",
+    newPassword: "new-example-1",
+  });
   expect(router.replace).toHaveBeenCalledWith("/login");
 });

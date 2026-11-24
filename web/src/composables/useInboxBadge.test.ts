@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { effectScope, nextTick, ref } from "vue";
 import type { User } from "../api/types";
-import { useInboxBadge } from "./useInboxBadge";
+import { useInboxBadge, syncInboxBadge } from "./useInboxBadge";
 const api = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("../api/client", () => api);
 afterEach(() => {
@@ -35,6 +35,18 @@ it("换号后旧消息数量不回填，页面隐藏及卸载时停止轮询", a
   finish({ unreadCount: 99 });
   await nextTick();
   expect(badge.value).toBe(2);
+  let finishPoll!: (value: { unreadCount: number }) => void;
+  api.get.mockImplementationOnce(
+    () => new Promise((resolve) => (finishPoll = resolve)),
+  );
+  await vi.advanceTimersByTimeAsync(30000);
+  syncInboxBadge(2);
+  syncInboxBadge();
+  expect(badge.value).toBe(1);
+  finishPoll({ unreadCount: 8 });
+  await nextTick();
+  await nextTick();
+  expect(badge.value).toBe(1);
   document.hidden = true;
   document.dispatchEvent(new Event("visibilitychange"));
   const calls = api.get.mock.calls.length;

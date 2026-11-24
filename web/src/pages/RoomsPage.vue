@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { get } from "../api/client";
 import type { Model, Building, Room } from "../api/types";
@@ -18,7 +18,7 @@ const buildings = ref<Building[]>([]),
   total = ref(0);
 const filters = reactive({
   q: String(route.query.q || ""),
-  buildingId: "",
+  buildingId: String(route.query.buildingId || ""),
   status: "",
 });
 const modal = ref<"room" | "building" | "detail" | null>(null),
@@ -26,6 +26,25 @@ const modal = ref<"room" | "building" | "detail" | null>(null),
   selectedBuilding = ref<Building>();
 const listQuery = useLatestQuery(),
   buildingQuery = useLatestQuery();
+const detailId = ref("");
+watch(
+  () => route.query.roomId,
+  (id) => {
+    if (typeof id === "string" && id) {
+      detailId.value = id;
+      selectedRoom.value = undefined;
+      modal.value = "detail";
+    } else if (modal.value === "detail") modal.value = null;
+  },
+  { immediate: true },
+);
+watch(
+  () => route.query.buildingId,
+  (id) => {
+    filters.buildingId = typeof id === "string" ? id : "";
+    search();
+  },
+);
 const busy = listQuery.busy;
 const error = computed(
   () => listQuery.error.value || buildingQuery.error.value,
@@ -73,11 +92,12 @@ function editBuilding(building?: Building) {
   modal.value = "building";
 }
 function detail(room: Room) {
+  detailId.value = room.id;
   selectedRoom.value = room;
   modal.value = "detail";
 }
-async function saved(buildingChanged = false) {
-  modal.value = null;
+async function saved(buildingChanged = false, keepOpen = false) {
+  if (!keepOpen) modal.value = null;
   notify("档案已保存");
   await (buildingChanged ? refresh() : load());
 }
@@ -241,7 +261,7 @@ onMounted(refresh);
     :room="selectedRoom"
     :buildings="buildings"
     @close="modal = null"
-    @saved="saved()"
+    @saved="saved(false, $event)"
   />
   <BuildingEditor
     v-if="modal === 'building'"
@@ -251,8 +271,9 @@ onMounted(refresh);
     @saved="saved(true)"
   />
   <RoomDetail
-    v-if="modal === 'detail' && selectedRoom"
-    :key="selectedRoom.id"
+    v-if="modal === 'detail'"
+    :key="detailId"
+    :room-id="detailId"
     :room="selectedRoom"
     @close="modal = null"
   />

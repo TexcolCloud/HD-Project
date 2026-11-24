@@ -80,10 +80,12 @@ function click(root: TestNode, label: string) {
 function updateField(
   root: TestNode,
   field: TestNode | undefined,
-  value: string,
+  value: string | number,
 ) {
   if (!field) throw new Error(text(root));
-  (field.props["onUpdate:modelValue"] as (value: string) => void)(value);
+  (field.props["onUpdate:modelValue"] as (value: string | number) => void)(
+    value,
+  );
 }
 async function openForm() {
   vi.stubGlobal("window", {
@@ -234,4 +236,62 @@ it("低分巡检先保存记录，派单失败后关闭创建表单并提供补�
   });
   expect(find(root, (el) => el.tag === "dialog")).toBeUndefined();
   expect(text(root)).toContain("巡检已保存");
+});
+
+it("连续录入跳过停用和异层宿舍，恢复四项满分并在楼层末尾清空目标", async () => {
+  const room = {
+    id: "room-1",
+    buildingId: "b",
+    roomNo: "101",
+    floorNo: 1,
+    enabled: true,
+  };
+  const next = { ...room, id: "room-3", roomNo: "103" };
+  api.get.mockImplementation(async (path: string) =>
+    path === "/rooms/room-1"
+      ? room
+      : path === "/rooms/room-3"
+        ? next
+        : path === "/rooms"
+          ? {
+              items: [
+                next,
+                { ...room, id: "disabled", roomNo: "102", enabled: false },
+                { ...room, id: "other", roomNo: "102", floorNo: 2 },
+                room,
+              ],
+              total: 4,
+            }
+          : { items: [], total: 0 },
+  );
+  api.post.mockResolvedValue(previous);
+  const { dialog } = await openForm();
+  const submit = () =>
+    (
+      find(dialog, (n) => n.tag === "form")!.props.onSubmit as (
+        event: unknown,
+      ) => Promise<void>
+    )({ preventDefault() {}, submitter: { getAttribute: () => "next" } });
+  updateField(
+    dialog,
+    find(dialog, (n) => n.props.id === "floorScore"),
+    15,
+  );
+  await submit();
+  await nextTick();
+  expect(text(dialog)).toContain("本次总分 / 优秀");
+  await submit();
+  await nextTick();
+  await submit();
+  expect(
+    api.post.mock.calls.map(([, body]) => [body.roomId, body.floorScore]),
+  ).toEqual([
+    ["room-1", 15],
+    ["room-3", 25],
+  ]);
+  expect(api.get).toHaveBeenCalledWith(
+    "/rooms",
+    expect.objectContaining({ buildingId: "b", floorNo: 1, status: "ENABLED" }),
+    expect.any(AbortSignal),
+  );
 });

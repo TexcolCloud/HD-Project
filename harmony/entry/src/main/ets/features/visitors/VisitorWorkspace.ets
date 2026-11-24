@@ -1,3 +1,5 @@
+import { pasteboard } from '@kit.BasicServicesKit';
+import { call } from '@kit.TelephonyKit';
 import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceEmpty, serviceDetail } from '../../components/ServiceParts';
 import { Student, Building, Visitor } from '../../models/ApiModels';
@@ -14,6 +16,21 @@ export struct VisitorWorkspace {
   @Prop night: boolean = false;
   host: WorkspaceHost = emptyWorkspaceHost();
   controller: VisitorController = new VisitorController(this.host);
+  private async phoneActions(visitor: Visitor): Promise<void> {
+    await this.controller.contact(visitor, async (phone: string, current: () => boolean): Promise<void> => {
+      const result = await this.getUIContext().getPromptAction().showDialog({
+        title: visitor.visitorName + ' · 联系电话', message: phone + '\n此次查看已记录，请仅用于本次来访联系。',
+        buttons: [{text:'关闭',color:this.muted()},{text:'复制号码',color:this.accent()},{text:'呼叫',color:this.accent()}]
+      });
+      if (!current() || (result.index !== 1 && result.index !== 2)) return;
+      if (result.index === 2 && canIUse('SystemCapability.Telephony.CallManager') && call.hasVoiceCapability()) {
+        await call.makeCall(phone);
+        return;
+      }
+      await pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, phone));
+      if (current()) this.host.flash(result.index === 2 ? '当前设备不支持直接拨号，号码已复制' : '号码已复制');
+    });
+  }
   private surface(): string { return palette(this.night).surface; }
 
   private ink(): string { return palette(this.night).ink; }
@@ -39,18 +56,30 @@ export struct VisitorWorkspace {
         placeholder: '请输入11位手机号', inputType: InputType.PhoneNumber, night: this.night, page: this.page})
       serviceLabel({text: '被访学生 / 宿舍 *', night: this.night})
       Row({space: 8}) {
-        TextInput({text: this.state.targetSearch, placeholder: '按学号或姓名查找'}).id('visitor-target-search').height(48).layoutWeight(1)
+        TextInput({text: this.state.targetSearch, placeholder: '按房号、姓名或学号查找'}).id('visitor-target-search').height(48).layoutWeight(1)
           .fontSize(14).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
-          .onChange((v: string) => this.state.targetSearch = v).onSubmit(() => this.controller.loadStudents())
+          .onChange((v: string) => this.controller.searchStudents(v)).onSubmit(() => this.controller.loadStudents())
         serviceSecondary({label: '查找', click: () => this.controller.loadStudents(), night: this.night, busy: this.state.busy})
       }.width('100%').margin({top: 8, bottom: 4})
       if (this.state.students.length) {
-        Select(this.state.students.map((s: Student): SelectOption => { return {value: (s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name}; }))
-          .id('visitor-target').selected(this.state.students.findIndex((s: Student): boolean => s.id === this.state.visitedStudentId)).value(this.controller.studentChoice())
-          .onSelect((index: number) => { this.state.visitedStudentId = this.state.students[index].id; this.controller.saveDraft(); }).width('100%').height(50)
-          .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 20})
+        Column({space: 4}) {
+          ForEach(this.state.students,(s: Student) => {
+            Button((s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name + ' · ' + s.studentNo)
+              .width('100%').height(48).fontColor(this.ink()).borderRadius(4)
+              .backgroundColor(this.state.visitedStudentId === s.id ? this.soft() : this.surface())
+              .border({width: 1, color: this.state.visitedStudentId === s.id ? this.accent() : this.line()})
+              .onClick(() => this.controller.chooseStudent(s))
+          },(s: Student) => s.id)
+        }.id('visitor-target').width('100%')
       } else { serviceEmpty({message: '暂无可登记的在住学生，请先核对入住信息。', night: this.night}) }
+      if (this.state.target) { Text('已选：' + this.controller.studentChoice()).fontSize(14).fontColor(this.ink()).width('100%') }
       serviceField({label: '来访事由 *', value: this.state.visitorPurpose, change: (v: string)  => { this.state.visitorPurpose = v; this.controller.saveDraft(); }, placeholder: '例如：家属探访', night: this.night, page: this.page})
+      Flex({wrap: FlexWrap.Wrap}) {
+        ForEach(['家属探访','同学来访','搬运物品','公务联系'],(purpose: string) => {
+          Button(purpose).height(48).fontSize(14).fontColor(this.ink()).borderRadius(4).backgroundColor(this.soft()).margin({right:4,bottom:4})
+            .onClick(() => { this.state.visitorPurpose = purpose; this.controller.saveDraft(); })
+        })
+      }
       serviceField({label: '备注', value: this.state.visitorRemark, change: (v: string)  => { this.state.visitorRemark = v; this.controller.saveDraft(); }, placeholder: '可补充说明', multiline: true, night: this.night, page: this.page})
       Text('到访时间以保存时的服务端时间记录。').fontSize(14).fontColor(this.muted()).margin({bottom: 20})
       servicePrimary({label: '保存来访登记', click: () => this.controller.submitVisitor(), night: this.night, page: this.page, busy: this.state.busy, uploading: false})
@@ -113,7 +142,7 @@ export struct VisitorWorkspace {
   @Builder
   private Actions($$: VisitorArgs) {
     Row({space: 8}) {
-      Button($$.visitor.phone + '  查看').fontSize(14).fontColor(this.ink()).height(48).backgroundColor(this.soft()).borderRadius(4).layoutWeight(1).onClick(() => this.controller.contact($$.visitor))
+      Button($$.visitor.phone + '  查看').fontSize(14).fontColor(this.ink()).height(48).backgroundColor(this.soft()).borderRadius(4).layoutWeight(1).onClick(() => this.phoneActions($$.visitor))
       if ($$.visitor.status === 'VISITING') {
         Button('登记离访').id('visitor-leave-' + $$.visitor.id).fontSize(14).height(48).fontColor(this.onPrimary()).backgroundColor(this.ink()).borderRadius(4)
           .enabled(!this.state.busy && !this.state.loading).onClick(() => this.controller.leave($$.visitor))

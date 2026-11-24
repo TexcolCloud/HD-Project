@@ -2,11 +2,10 @@
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { session, clearLocalSession, logout } from "./session";
-import { get, post } from "./api/client";
+import { get } from "./api/client";
 import type { Model } from "./api/types";
 import { errorText, notices, notify } from "./ui";
 import Icon from "./components/Icon.vue";
-import Drawer from "./components/Drawer.vue";
 import { useManagerPresence } from "./composables/useManagerPresence";
 import { useInboxBadge } from "./composables/useInboxBadge";
 import { useLatestQuery } from "./composables/useLatestQuery";
@@ -47,19 +46,44 @@ watch(
 const theme = ref(
   localStorage.getItem("dormlink-theme") === "night" ? "night" : "day",
 );
-const links = [
-  ["/dashboard", "home", "工作台"],
-  ["/housing/rooms", "building", "宿舍档案"],
-  ["/housing/students", "people", "学生入住"],
-  ["/repairs", "tool", "报修工单"],
-  ["/dispatch", "route", "任务调度"],
-  ["/mobility", "location", "现场位置"],
-  ["/hygiene", "shield", "卫生巡检"],
-  ["/remediations", "clipboard", "卫生整改"],
-  ["/visitors", "clipboard", "访客登记"],
-  ["/messages", "message", "服务消息"],
-  ["/statistics", "chart", "数据统计"],
+const groups = [
+  {
+    title: "日常值班",
+    links: [
+      ["/dashboard", "home", "工作台"],
+      ["/visitors", "visitor", "访客登记"],
+    ],
+  },
+  {
+    title: "住宿档案",
+    links: [
+      ["/housing/rooms", "building", "宿舍档案"],
+      ["/housing/students", "people", "学生入住"],
+    ],
+  },
+  {
+    title: "维修与调度",
+    links: [
+      ["/repairs", "tool", "报修工单"],
+      ["/dispatch", "route", "任务调度"],
+    ],
+  },
+  {
+    title: "卫生与统计",
+    links: [
+      ["/hygiene", "shield", "卫生督办"],
+      ["/statistics", "chart", "数据统计"],
+    ],
+  },
 ];
+function active(path: string) {
+  return (
+    route.path === path ||
+    (path === "/repairs" && route.path.startsWith("/repairs/")) ||
+    (path === "/dispatch" && route.path === "/mobility") ||
+    (path === "/hygiene" && route.path === "/remediations")
+  );
+}
 function applyTheme(value: string) {
   theme.value = value;
   document.documentElement.dataset.theme = value;
@@ -80,30 +104,6 @@ function expired() {
   notify("登录已过期，请重新登录后继续办理", "error");
   void router.replace({ path: "/login", query: { redirect: route.fullPath } });
 }
-const passwordOpen = ref(false),
-  passwordBusy = ref(false),
-  oldPassword = ref(""),
-  newPassword = ref(""),
-  passwordError = ref("");
-async function changePassword() {
-  passwordBusy.value = true;
-  passwordError.value = "";
-  try {
-    await post("/auth/change-password", {
-      oldPassword: oldPassword.value,
-      newPassword: newPassword.value,
-    });
-    passwordOpen.value = false;
-    oldPassword.value = newPassword.value = "";
-    clearLocalSession();
-    await router.replace("/login");
-    notify("密码已修改，请使用新密码登录");
-  } catch (e) {
-    passwordError.value = errorText(e);
-  } finally {
-    passwordBusy.value = false;
-  }
-}
 onMounted(() => window.addEventListener("session-expired", expired));
 onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
 </script>
@@ -117,15 +117,18 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
       <RouterLink class="brand" to="/dashboard">寓见</RouterLink>
       <p class="sidebar-note">学生公寓管理</p>
       <nav aria-label="管理功能">
-        <RouterLink
-          v-for="[path, icon, label] in links"
-          :key="path"
-          :to="path"
-          :class="{ active: route.path.startsWith(path) }"
-        >
-          <Icon :name="icon" />
-          {{ label }}
-        </RouterLink>
+        <template v-for="group in groups" :key="group.title">
+          <span class="nav-group">{{ group.title }}</span>
+          <RouterLink
+            v-for="[path, icon, label] in group.links"
+            :key="path"
+            :to="path"
+            :class="{ active: active(path) }"
+          >
+            <Icon :name="icon" />
+            {{ label }}
+          </RouterLink>
+        </template>
       </nav>
       <div class="sidebar-foot">
         <span v-if="buildingNames.length" :title="buildingNames.join('、')">
@@ -136,7 +139,9 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
     </aside>
     <div class="workspace">
       <header class="topbar">
-        <div class="breadcrumb">学生公寓综合服务平台</div>
+        <div class="breadcrumb">
+          公寓服务 / {{ route.meta.title || "工作台" }}
+        </div>
         <div class="top-actions">
           <div class="theme-switch" aria-label="界面主题">
             <button :aria-pressed="theme === 'day'" @click="applyTheme('day')">
@@ -154,6 +159,7 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
           <RouterLink
             class="btn"
             to="/messages"
+            :class="{ active: route.path === '/messages' }"
             :aria-label="`服务消息，${unreadMessages}条未读`"
           >
             消息
@@ -169,14 +175,6 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
             </div>
           </div>
           <RouterLink class="btn" to="/account-security">账号安全</RouterLink>
-          <button
-            class="icon-button"
-            title="修改密码"
-            aria-label="修改密码"
-            @click="passwordOpen = true"
-          >
-            <Icon name="shield" />
-          </button>
           <button
             class="icon-button"
             title="退出登录"
@@ -208,42 +206,4 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
       {{ notice.message }}
     </div>
   </div>
-  <Drawer
-    v-if="passwordOpen"
-    title="修改登录密码"
-    :busy="passwordBusy"
-    :dirty="!!oldPassword || !!newPassword"
-    @close="passwordOpen = false"
-  >
-    <form class="form" @submit.prevent="changePassword">
-      <p class="form-note">修改成功后所有会话将失效，需要重新登录。</p>
-      <label>
-        原密码
-        <input
-          v-model="oldPassword"
-          type="password"
-          required
-          autocomplete="current-password"
-        />
-      </label>
-      <label>
-        新密码
-        <input
-          v-model="newPassword"
-          type="password"
-          required
-          minlength="10"
-          maxlength="128"
-          autocomplete="new-password"
-        />
-        <small>至少10位，建议同时包含大小写字母、数字和符号。</small>
-      </label>
-      <p v-if="passwordError" class="error-banner" role="alert">
-        {{ passwordError }}
-      </p>
-      <button class="btn primary" :disabled="passwordBusy">
-        {{ passwordBusy ? "正在修改…" : "修改密码并重新登录" }}
-      </button>
-    </form>
-  </Drawer>
 </template>

@@ -5,15 +5,16 @@ import { ApiError, get, post } from "../api/client";
 import type { Model, User } from "../api/types";
 import { isMobilePhone, mobilePhoneError } from "../phone";
 import { clearLocalSession, session } from "../session";
-import { errorText } from "../ui";
+import { errorText, notify } from "../ui";
 
 const props = defineProps<{ activation?: boolean }>();
 const router = useRouter();
-type Action = "bind" | "change" | "replace";
+type Action = "bind" | "change" | "replace" | "password";
 const action = ref<Action>();
 const phoneMasked = computed(() => session.user?.phoneMasked);
 const mode = computed(() => (props.activation ? "activate" : action.value));
 const titles = {
+  password: "修改登录密码",
   activate: "验证手机号并激活",
   bind: "绑定登录手机号",
   change: "更换登录手机号",
@@ -31,7 +32,9 @@ const phone = ref(""),
   error = ref("");
 const old = reactive({ id: "", code: "" });
 const next = reactive({ id: "", code: "" });
-const needsPhone = computed(() => mode.value !== "replace");
+const needsPhone = computed(
+  () => mode.value !== "replace" && mode.value !== "password",
+);
 const purpose = computed<Model<"PhoneChallengeRequest">["purpose"]>(() =>
   mode.value === "activate"
     ? "ACTIVATE"
@@ -125,6 +128,21 @@ function sendCode(forOld = false) {
 function submit() {
   return act(async () => {
     const selected = mode.value;
+    if (selected === "password") {
+      if (newPassword.value !== confirmation.value) {
+        error.value = "两次输入的新密码不一致";
+        return;
+      }
+      await post("/auth/change-password", {
+        oldPassword: currentPassword.value,
+        newPassword: newPassword.value,
+      });
+      clearForm();
+      clearLocalSession();
+      notify("密码已修改，请使用新密码登录");
+      await router.replace("/login");
+      return;
+    }
     if (
       !selected ||
       !next.id ||
@@ -255,6 +273,9 @@ async function acknowledge() {
               生成新恢复码
             </button>
           </template>
+          <button class="btn" type="button" @click="select('password')">
+            修改登录密码
+          </button>
         </div>
         <p class="form-note">
           遗失原号码或需要人工恢复时，请联系学校账号维护人员核验身份。
@@ -269,7 +290,7 @@ async function acknowledge() {
           验证绑定号码 {{ phoneMasked }} 后生成新恢复码，原码随即失效。
         </p>
         <label v-if="!activation">
-          当前密码
+          当前密码 *
           <input
             v-model="currentPassword"
             type="password"
@@ -318,7 +339,13 @@ async function acknowledge() {
             {{ phoneError }}
           </small>
         </label>
-        <button type="button" class="btn" :disabled="busy" @click="sendCode()">
+        <button
+          v-if="mode !== 'password'"
+          type="button"
+          class="btn"
+          :disabled="busy"
+          @click="sendCode()"
+        >
           {{
             next.id
               ? "重新发送验证码"
@@ -340,9 +367,9 @@ async function acknowledge() {
             :disabled="busy"
           />
         </label>
-        <template v-if="activation && next.id">
+        <template v-if="(activation && next.id) || mode === 'password'">
           <label>
-            新密码
+            新密码 *
             <input
               v-model="newPassword"
               required
@@ -355,7 +382,7 @@ async function acknowledge() {
             <small>至少10位，UTF-8长度不超过72字节。</small>
           </label>
           <label>
-            确认新密码
+            确认新密码 *
             <input
               v-model="confirmation"
               required
@@ -369,7 +396,7 @@ async function acknowledge() {
         </template>
         <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
         <button
-          v-if="next.id"
+          v-if="next.id || mode === 'password'"
           class="btn primary"
           type="submit"
           :disabled="busy || (mode === 'change' && !old.id)"

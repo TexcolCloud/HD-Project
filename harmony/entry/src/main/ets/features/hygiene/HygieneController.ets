@@ -53,6 +53,10 @@ export class HygieneState {
   loading: boolean = false;
   rooms: Room[] = [];
   roomSearch: string = "";
+  buildingChoice: string = "";
+  floorChoice: number = 0;
+  listKeyword: string = "";
+  listGrade: string = "";
   hygiene: Hygiene[] = [];
   hygieneTotal: number = 0;
   hygienePage: number = 1;
@@ -231,18 +235,51 @@ export class HygieneController {
   async loadRooms(): Promise<void> {
     const ticket = this.roomRead.begin();
     try {
-      const data = await Api.request<RoomPage>(
-        "/rooms?pageSize=100&q=" + encodeURIComponent(this.state.roomSearch),
-      );
-      if (!this.roomRead.current(ticket)) return;
-      this.state.rooms = data.items;
-      if (!this.state.inspectionRoomId && !this.state.draftRestored && this.state.rooms.length)
-        this.state.inspectionRoomId = this.state.rooms[0].id;
-      if (!this.state.correctionId) await this.loadComparison();
+      const rooms: Room[] = [];
+      for (let page = 1; ; page++) {
+        const data = await Api.request<RoomPage>("/rooms?status=ENABLED&pageSize=100&page=" + page);
+        if (!this.roomRead.current(ticket)) return;
+        rooms.push(...data.items);
+        if (!data.items.length || rooms.length >= data.total || data.items.length < 100) break;
+      }
+      this.state.rooms = rooms;
+      const selected = rooms.find((r: Room): boolean => r.id === this.state.inspectionRoomId);
+      const first = selected || rooms[0];
+      if (first) { this.state.buildingChoice = first.buildingId; this.state.floorChoice = first.floorNo; }
+      if (this.state.inspectionRoomId && !this.state.correctionId) await this.loadComparison();
     } catch (error) {
       if (this.roomRead.shouldReport(ticket, error as Error))
         this.host.fail(error as Error);
     }
+  }
+  buildingRooms(): Room[] {
+    return this.state.rooms.filter((r: Room): boolean => r.buildingId === this.state.buildingChoice);
+  }
+  floors(): number[] {
+    return Array.from(new Set(this.buildingRooms().map((r: Room): number => r.floorNo))).sort((a: number,b:number):number => a-b);
+  }
+  visibleRooms(): Room[] {
+    const search = this.state.roomSearch.trim();
+    return this.state.rooms.filter((r: Room): boolean => search ? r.roomNo.includes(search) :
+      r.buildingId === this.state.buildingChoice && r.floorNo === this.state.floorChoice);
+  }
+  async browseFloor(building: string, floor: number): Promise<void> {
+    if (this.state.busy || this.state.uploading || this.state.draftBlocked) return;
+    if (building === this.state.buildingChoice && (!floor || floor === this.state.floorChoice)) {
+      this.state.roomSearch = "";
+      return;
+    }
+    if (this.state.inspectionRoomId) {
+      await this.chooseRoom("");
+      if (this.state.inspectionRoomId) return;
+    }
+    this.state.roomSearch = "";
+    this.state.buildingChoice = building;
+    this.state.floorChoice = floor || this.floors()[0] || 0;
+  }
+  fullScore(): void {
+    this.state.floorScore = this.state.deskScore = this.state.bedScore = this.state.bathroomScore = "25";
+    this.editDraft();
   }
   async loadHygiene(): Promise<void> {
     const ticket = this.listRead.begin();
@@ -252,7 +289,7 @@ export class HygieneController {
         (this.manager ? "/hygiene-inspections" : "/me/hygiene-inspections") +
           "?page=" +
           this.state.hygienePage +
-          "&pageSize=10",
+          "&pageSize=10" + (this.manager ? "&q=" + encodeURIComponent(this.state.listKeyword.trim()) + "&grade=" + encodeURIComponent(this.state.listGrade) : ""),
       );
       if (!this.listRead.current(ticket)) return;
       this.state.hygiene = data.items;
@@ -326,6 +363,8 @@ export class HygieneController {
     this.discardDraft();
     this.inspectionDraftStarted = true;
     state.inspectionRoomId = id;
+    const chosen = state.rooms.find((r: Room): boolean => r.id === id);
+    if (chosen) { state.buildingChoice = chosen.buildingId; state.floorChoice = chosen.floorNo; state.roomSearch = ''; }
     state.inspectionDate = date;
     state.inspectionTime = time;
     this.saveDraft();
@@ -475,7 +514,7 @@ export class HygieneController {
     this.host.navigate("hygiene-create");
   }
 
-  async submitHygiene(): Promise<void> {
+  async submitHygiene(continueNext: boolean = false): Promise<void> {
     if (this.state.draftBlocked) { this.host.setError("上次提交结果未确认，请先查看服务记录；确认后可清除草稿重新填写"); return; }
     const epoch = Api.epoch,
       state = this.state;
@@ -569,6 +608,9 @@ export class HygieneController {
       Api.assertCurrent(epoch);
       if (state !== this.state) return;
       const taskId = this.returnRemediationId;
+      const continueRoutine = continueNext && !state.correctionId && state.inspectionRound === "ROUTINE" && !taskId;
+      const room = state.rooms.find((r: Room): boolean => r.id === request.roomId);
+      const time = state.inspectionTime;
       this.submissionKeys.complete("hygiene");
       this.discardDraft();
       this.drafts?.completeKey("hygiene");
@@ -582,7 +624,19 @@ export class HygieneController {
       this.host.flash("卫生评分" + saved.totalScore + "分已保存");
       this.state.hygienePage = 1;
       if (taskId && saved.relatedInspectionId) this.onRecheckSaved(taskId, saved);
-      else this.host.navigate("hygiene");
+      else if (continueRoutine) {
+        this.inspectionDraftStarted = true;
+        state.inspectionDate = request.inspectionDate;
+        state.inspectionTime = time;
+        const siblings = state.rooms.filter((r: Room): boolean => !!room && r.enabled && r.buildingId === room.buildingId && r.floorNo === room.floorNo)
+          .sort((a: Room,b: Room): number => a.roomNo.localeCompare(b.roomNo, 'zh-CN', {numeric:true}));
+        const index = siblings.findIndex((r: Room): boolean => r.id === request.roomId);
+        const next = index >= 0 ? siblings[index + 1] : undefined;
+        state.inspectionRoomId = next ? next.id : "";
+        state.roomSearch = "";
+        if (next) { this.saveDraft(); await this.loadComparison(); }
+        else this.host.flash("本层已查完，请选择其他楼层或宿舍");
+      } else this.host.navigate("hygiene");
     } catch (error) {
       if (state === this.state) {
         const apiError = error as ApiError;

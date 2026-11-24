@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModuleTabs from "../components/ModuleTabs.vue";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   getMobility,
@@ -180,6 +181,7 @@ onBeforeUnmount(() => clearInterval(clock));
       </button>
     </div>
   </div>
+  <ModuleTabs domain="dispatch" />
   <p v-if="error" class="error-banner" role="alert">
     {{ error }}
     <br />

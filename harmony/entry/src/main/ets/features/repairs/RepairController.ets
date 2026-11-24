@@ -73,7 +73,31 @@ export class RepairState {
   actionNote: string = "";
 }
 
+interface ManualRepair { title: string; description: string; category: string; }
+
 export class RepairController {
+  private defaultContact: string = "";
+  private manualRepair: ManualRepair | null = null;
+  initializeContact(name: string): void { this.defaultContact = name; this.state.contactName = name; }
+  adoptSuggestion(): void {
+    const state = this.state;
+    if (!state.ai || state.busy || state.draftBlocked || state.aiAdopted) return;
+    this.manualRepair = {title: state.repairTitle, description: state.repairDescription, category: state.repairCategory};
+    state.repairTitle = state.ai.title;
+    state.repairDescription = state.ai.summary;
+    state.repairCategory = state.ai.category;
+    state.aiAdopted = true;
+    this.saveDraft();
+  }
+  undoSuggestion(): void {
+    if (!this.manualRepair || this.state.busy || this.state.draftBlocked) return;
+    this.state.repairTitle = this.manualRepair.title;
+    this.state.repairDescription = this.manualRepair.description;
+    this.state.repairCategory = this.manualRepair.category;
+    this.state.aiAdopted = false;
+    this.manualRepair = null;
+    this.saveDraft();
+  }
   state: RepairState = new RepairState();
   private drafts: LocalDrafts | null = null;
   private host: WorkspaceHost;
@@ -141,7 +165,12 @@ export class RepairController {
     this.state.repairCategory = fresh.repairCategory;
     this.state.repairPriority = fresh.repairPriority;
     this.state.repairUrgentReason = fresh.repairUrgentReason;
-    this.state.contactName = fresh.contactName;
+    this.state.contactName = this.defaultContact;
+    this.manualRepair = null;
+    this.aiEpoch++;
+    this.state.ai = null;
+    this.state.aiBusy = this.state.aiAdopted = this.state.aiConsent = false;
+    this.state.aiError = "";
     this.state.contactPhone = fresh.contactPhone;
     this.state.phoneError = "";
     this.state.contactTime = fresh.contactTime;
@@ -157,6 +186,8 @@ export class RepairController {
     this.state.detailLoading = false;
   }
   reset(): void {
+    this.manualRepair = null;
+    this.defaultContact = '';
     this.listRead.invalidate();
     this.detailRead.invalidate();
     this.aiEpoch++;
