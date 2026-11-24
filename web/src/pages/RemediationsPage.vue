@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useConfirm } from "../composables/useConfirm";
 import { clearTransientQuery } from "../composables/transientQuery";
 import { isRowClick } from "../utils/tableRow";
 import ModuleTabs from "../components/ModuleTabs.vue";
@@ -17,6 +18,8 @@ import {
 import { useLatestQuery } from "../composables/useLatestQuery";
 import Drawer from "../components/Drawer.vue";
 import Pagination from "../components/Pagination.vue";
+
+const askConfirm = useConfirm();
 const route = useRoute(),
   router = useRouter();
 const listQuery = useLatestQuery(),
@@ -339,7 +342,13 @@ function close() {
 onBeforeRouteUpdate(() => {
   if (saving.value) return false;
   if (isDirty.value || editMode.value === "cancel")
-    return window.confirm("整改内容尚未保存，确定切换并放弃本次修改？");
+    return askConfirm({
+      title: "放弃未保存的整改内容？",
+      message: "当前整改处置尚未保存，切换任务将丢失已填内容。",
+      confirmText: "放弃并切换",
+      cancelText: "继续编辑",
+      danger: true,
+    });
   return true;
 });
 watch(
@@ -598,7 +607,12 @@ watch(
             target="_blank"
             rel="noopener"
           >
-            <img :src="image.thumbnailUrl" :alt="image.originalName" />
+            <img
+              loading="lazy"
+              decoding="async"
+              :src="image.thumbnailUrl"
+              :alt="image.originalName"
+            />
           </a>
         </div>
       </section>

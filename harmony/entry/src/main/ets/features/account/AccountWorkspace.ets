@@ -241,7 +241,7 @@ export struct AccountWorkspace {
         .maxLength($$.maximum).enabled(!this.busy).onChange($$.change)
         .fontSize(16).fontColor(this.ink()).placeholderColor(palette(this.night).muted)
         .height(50).padding({left: 12, right: 12}).borderRadius(4)
-        .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line})
+        .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).outline})
     }.alignItems(HorizontalAlign.Start).width('100%')
   }
   @Builder
@@ -251,7 +251,7 @@ export struct AccountWorkspace {
       : second ? '向新手机号发送验证码' : this.kind() === 'change' ? '向原手机号发送验证码' : '发送验证码')
       .id(second ? 'account-send-new' : 'account-send').fontSize(14).height(48)
       .fontColor(this.ink()).backgroundColor(palette(this.night).surface).borderRadius(4)
-      .border({width: 1, color: palette(this.night).line})
+      .border({width: 1, color: palette(this.night).outline})
       .enabled(!this.busy && (second ? this.secondWait === 0 : this.firstWait === 0))
       .onClick(() => this.sendCode(second))
   }

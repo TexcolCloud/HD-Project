@@ -199,7 +199,12 @@ onBeforeUnmount(() => {
     <div class="upload-items">
       <div v-for="asset in modelValue" :key="asset.id" class="upload-item">
         <a :href="asset.url" target="_blank">
-          <img :src="asset.thumbnailUrl" :alt="asset.originalName" />
+          <img
+            loading="lazy"
+            decoding="async"
+            :src="asset.thumbnailUrl"
+            :alt="asset.originalName"
+          />
         </a>
         <div>
           <p>{{ asset.originalName }}</p>
@@ -210,7 +215,12 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <div v-for="item in pending" :key="item.id" class="upload-item">
-        <img :src="item.url" :alt="item.file.name" />
+        <img
+          loading="lazy"
+          decoding="async"
+          :src="item.url"
+          :alt="item.file.name"
+        />
         <div>
           <p>{{ item.file.name }}</p>
           <small :class="{ 'field-error': item.status === 'failed' }">

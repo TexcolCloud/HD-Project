@@ -89,7 +89,6 @@ function updateField(
 }
 async function openForm() {
   vi.stubGlobal("window", {
-    confirm: () => true,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -142,10 +141,15 @@ it("同轮记录进入带原版本和四项分数的更正流程", async () => {
     }),
   );
   api.patch.mockResolvedValue(previous);
-  const { dialog } = await openForm();
+  const { root, dialog } = await openForm();
   await vi.waitFor(() => expect(text(dialog)).toContain("已有同轮评分"));
   expect(button(dialog, "保存卫生评分")?.props.disabled).toBe(true);
+  (find(dialog, (n) => n.tag === "form")!.props.onInput as () => void)();
+  await nextTick();
   click(dialog, "更正评分");
+  await nextTick();
+  click(root, "放弃并去更正");
+  await nextTick();
   await nextTick();
   expect(text(dialog)).toContain("更正卫生评分");
   const notes = find(

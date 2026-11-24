@@ -2,7 +2,7 @@ import { TaskTransfer } from "../dispatch/TaskTransfer";
 import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceSection, serviceEmpty, serviceDetail, repairStatusColor } from '../../components/ServiceParts';
 import { User, Room, Repair, RepairEvent, FileAsset } from '../../models/ApiModels';
-import { statusLabel, categoryLabel, actionLabel, dateText, appointment } from '../../services/Labels';
+import { statusLabel, categoryLabel, actionLabel, dateText, appointment, statusPrefix } from '../../services/Labels';
 import { palette } from '../../components/Palette';
 import { SecureImage } from '../../components/SecureImage';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
@@ -49,7 +49,7 @@ export struct RepairWorkspace {
     Column({space: 10}) {
       Row() {
         Text($$.order.orderNo).fontSize(14).fontColor(this.muted()).layoutWeight(1)
-        Text(statusLabel($$.order.status)).fontSize(14).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
+        Text(statusPrefix($$.order.status) + statusLabel($$.order.status)).fontSize(14).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
           .backgroundColor(this.soft()).borderRadius(3)
       }.width('100%')
       Text($$.order.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
@@ -63,7 +63,7 @@ export struct RepairWorkspace {
         Text('查看进度 →').fontSize(14).fontColor(this.accent())
       }.width('100%')
     }.padding({top: 18, bottom: 18}).width('100%').alignItems(HorizontalAlign.Start)
-      .border({width: {bottom: 1}, color: this.line()}).onClick(() => this.host.openRepair($$.order))
+      .border({width: {bottom: 1}, color: this.line()}).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => this.host.openRepair($$.order))
   }
 
   @Builder
@@ -101,11 +101,11 @@ export struct RepairWorkspace {
       serviceLabel({text: '故障分类', night: this.night})
       Select([{value: '其他'}, {value: '水电'}, {value: '门窗家具'}, {value: '网络'}])
         .selected(['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'].indexOf(this.state.repairCategory)).value(categoryLabel(this.state.repairCategory)).width('100%').height(50)
-        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
+        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
         .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.repairCategory = ['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'][index]; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
       serviceLabel({text: '紧急程度', night: this.night})
       Select([{value: '一般'}, {value: '较急'}]).selected(this.state.repairPriority === 'URGENT' ? 1 : 0).value(this.state.repairPriority === 'URGENT' ? '较急' : '一般').width('100%').height(50)
-        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
+        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
         .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.repairPriority = index === 1 ? 'URGENT' : 'NORMAL'; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
       if (this.state.repairPriority === 'URGENT') { serviceField({label: '较急原因 *', value: this.state.repairUrgentReason, change: (v: string)  => { this.state.repairUrgentReason = v; this.controller.saveDraft(); }, placeholder: '说明需要优先处理的情况', multiline: true, night: this.night, page: this.page}) }
       serviceField({label: '联系人 *', value: this.state.contactName, change: (v: string)  => { this.state.contactName = v; this.controller.saveDraft(); }, placeholder: '方便宿管联系的姓名', night: this.night, page: this.page})
@@ -128,13 +128,13 @@ export struct RepairWorkspace {
     Column({space: 0}) {
       Row({space: 8}) {
         TextInput({text: this.state.repairSearch, placeholder: '搜索工单或宿舍'}).id('repair-search').layoutWeight(1).height(48)
-          .fontSize(16).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
+          .fontSize(16).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
           .onChange((v: string) => this.state.repairSearch = v).onSubmit(() => { this.state.repairPage = 1; this.controller.loadRepairs(); })
         serviceSecondary({label: '查询', click: () => { this.state.repairPage = 1; this.controller.loadRepairs(); }, night: this.night, busy: this.state.busy})
       }.width('100%').margin({bottom: 12})
       Select([{value: '全部状态'}, {value: '待受理'}, {value: '已接单'}, {value: '处理中'}, {value: '待确认'}, {value: '已完成'}, {value: '已取消'}, {value: '已驳回'}])
         .selected(['', 'SUBMITTED', 'ACCEPTED', 'PROCESSING', 'PENDING_CONFIRMATION', 'COMPLETED', 'CANCELLED', 'REJECTED'].indexOf(this.state.repairFilter))
-        .value(this.state.repairFilter ? statusLabel(this.state.repairFilter) : '全部状态').height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        .value(this.state.repairFilter ? statusLabel(this.state.repairFilter) : '全部状态').border({width: 1, color: palette(this.night).outline}).height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
         .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => {
           this.state.repairFilter = ['', 'SUBMITTED', 'ACCEPTED', 'PROCESSING', 'PENDING_CONFIRMATION', 'COMPLETED', 'CANCELLED', 'REJECTED'][index];
           this.state.repairPage = 1; this.controller.loadRepairs();
@@ -165,7 +165,7 @@ export struct RepairWorkspace {
     Column({space: 0}) {
       Row() {
         Text(this.state.selected.orderNo).fontSize(14).fontColor(this.muted()).layoutWeight(1)
-        Text(statusLabel(this.state.selected.status)).fontSize(14).fontColor(repairStatusColor(this.state.selected.status, this.night)).padding(6).backgroundColor(this.soft()).borderRadius(3)
+        Text(statusPrefix(this.state.selected.status) + statusLabel(this.state.selected.status)).fontSize(14).fontColor(repairStatusColor(this.state.selected.status, this.night)).padding(6).backgroundColor(this.soft()).borderRadius(3)
       }.width('100%')
       Text(this.state.selected.title).fontSize(28).fontWeight(FontWeight.Medium).fontColor(this.ink()).lineHeight(38)
         .width('100%').margin({top: 16, bottom: 20})

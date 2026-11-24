@@ -106,7 +106,7 @@ export struct VisitArrangement {
         }
         if (!this.editing && this.editable()) {
           Button(this.manager ? '调整访问安排' : '调整可上门时段').id('visit-edit').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
-            .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line}).borderRadius(4).onClick(() => this.edit())
+            .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.edit())
         }
         if (this.editing) {
           VisitWindowFields({draft: this.draft, night: this.night, onChange: (draft: VisitWindowDraft) => { this.draft = draft; this.confirmed = false; }})

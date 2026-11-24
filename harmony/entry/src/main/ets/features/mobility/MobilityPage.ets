@@ -102,7 +102,7 @@ export struct MobilityPage {
   @Builder
   private Action($$: MobilityActionArgs) {
     Button($$.label).id($$.id).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
-      .border({width: 1, color: palette(this.night).line}).borderRadius(4).enabled(!this.snapshot.busy).onClick($$.run)
+      .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.snapshot.busy).onClick($$.run)
   }
   build() {
     Column({space: 16}) {
@@ -155,8 +155,8 @@ export struct MobilityPage {
       this.Action({label: this.scanning ? '正在扫码…' : '扫描地点二维码', id: 'mobility-scan', run: () => { if (!this.scanning) this.scan(); }})
       if (this.scanError) { Text(this.scanError).fontSize(14).fontColor(palette(this.night).danger).width('100%') }
       ForEach(this.snapshot.view?.anchors || [], (anchor: CampusAnchor) => {
-        Button(anchor.buildingName + ' · ' + anchor.name + (anchor.floorNo !== null ? ' · ' + anchor.floorNo + '层' : ''))
-          .width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4)
+        Button() { Text(anchor.buildingName + ' · ' + anchor.name + (anchor.floorNo !== null ? ' · ' + anchor.floorNo + '层' : '')).fontSize(14).fontColor(palette(this.night).ink) }
+          .width('100%').constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4)
           .enabled(this.snapshot.ownsSource).onClick(() => { this.preview = anchor; this.source = 'MANUAL'; })
       }, (anchor: CampusAnchor) => anchor.id + ':' + anchor.version)
       if (!this.snapshot.view?.anchors.length) { Text('暂无已登记地点，请在网页端的现场位置页添加楼栋入口或楼层。').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%') }

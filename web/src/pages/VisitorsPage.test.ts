@@ -3,6 +3,7 @@ import { nextTick } from "vue";
 import { onBeforeRouteLeave, useRoute } from "vue-router";
 import type { Visitor } from "../api/types";
 import { node, renderer, find, text, type TestNode } from "../test/renderer";
+import { ApiError } from "../api/client";
 import VisitorsPage from "./VisitorsPage.vue";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
@@ -64,9 +65,7 @@ const confirmation = (root: TestNode) =>
   );
 
 it("在访超时显示状态，取消离访后保留登记", async () => {
-  const confirm = vi.fn(() => false);
   vi.stubGlobal("window", {
-    confirm,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -90,7 +89,6 @@ it("在访超时显示状态，取消离访后保留登记", async () => {
   expect(confirmation(root)).toBeDefined();
   expect(text(confirmation(root)!)).toContain("回归访客");
   expect(text(confirmation(root)!)).toContain("A栋 302");
-  expect(confirm).not.toHaveBeenCalled();
   click(confirmation(root)!, "返回");
   await nextTick();
   expect(confirmation(root)).toBeUndefined();
@@ -142,7 +140,6 @@ it("补登记离访将实际离开时刻从北京时间换算并携带当前版�
 
 it("登记离访成功后，晚到的详情查询不能恢复旧的在访状态", async () => {
   vi.stubGlobal("window", {
-    confirm: () => true,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -202,7 +199,6 @@ it("登记离访成功后，晚到的详情查询不能恢复旧的在访状态"
 
 it("切换访客记录时作废已打开的离访确认", async () => {
   vi.stubGlobal("window", {
-    confirm: vi.fn(() => false),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -226,6 +222,45 @@ it("切换访客记录时作废已打开的离访确认", async () => {
   expect(confirmation(root)).toBeUndefined();
   staleConfirm();
   expect(api.post).not.toHaveBeenCalled();
+});
+
+it("重复在访登记只在确认新来访后重试提交", async () => {
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+  api.get.mockResolvedValue({ items: [], total: 0 });
+  const duplicate = Object.assign(
+    new ApiError(409, "VISITOR_DUPLICATE_CONFIRMATION_REQUIRED", "已有记录"),
+    { code: "VISITOR_DUPLICATE_CONFIRMATION_REQUIRED" },
+  );
+  api.post
+    .mockReset()
+    .mockRejectedValueOnce(duplicate)
+    .mockRejectedValueOnce(duplicate)
+    .mockResolvedValueOnce(visitor);
+  const root = node("root"),
+    app = renderer.createApp(VisitorsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  click(root, "登记来访");
+  await nextTick();
+  const form = find(root, (n) => n.tag === "form" && n.props.class === "form")!;
+  const phone = find(form, (n) => n.props.type === "tel")!;
+  (phone.props["onUpdate:modelValue"] as (v: string) => void)("13800000000");
+  for (const choice of ["返回核对", "确认新来访"]) {
+    const result = (form.props.onSubmit as (e: unknown) => Promise<void>)({
+      preventDefault() {},
+    });
+    await vi.waitFor(() => expect(button(root, choice)).toBeDefined());
+    click(root, choice);
+    await result;
+  }
+  expect(api.post.mock.calls.map(([, body]) => body.confirmDuplicate)).toEqual([
+    false,
+    false,
+    true,
+  ]);
 });
 
 it("离开访客页面时撤销尚未确认的操作", async () => {

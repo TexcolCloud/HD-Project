@@ -47,7 +47,7 @@ export struct PhotoAttachments {
         }.width('100%').padding(8).backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line}).borderRadius(4)
       }, (uri: string) => uri)
       Button(this.busy ? '正在上传，请稍候…' : '＋ 从相册选择图片').id(this.usage === 'REPORT' ? 'repair-add-image' : this.usage === 'RESULT' ? 'result-add-image' : 'hygiene-add-image').width('100%').height(54).fontSize(16)
-        .fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4).border({width: 1, color: palette(this.night).line, style: BorderStyle.Dashed})
+        .fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4).border({width: 1, color: palette(this.night).outline, style: BorderStyle.Dashed})
         .enabled(!this.busy && !this.disabled && this.count() + this.alreadyAttached < 6).onClick(() => this.controller.choose(this.usage, this.getUIContext().getHostContext() as common.UIAbilityContext, false, this.alreadyAttached))
       Button('打开系统相机拍照').id('system-camera-' + this.usage).width('100%').height(48).fontSize(14).fontColor(palette(this.night).accent)
         .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy && !this.disabled && this.count() + this.alreadyAttached < 6)

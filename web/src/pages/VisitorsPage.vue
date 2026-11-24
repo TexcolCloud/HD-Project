@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useConfirm } from "../composables/useConfirm";
 import { clearTransientQuery } from "../composables/transientQuery";
 import { isRowClick } from "../utils/tableRow";
 import { openModal } from "../components/modal";
@@ -15,6 +16,8 @@ import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import { isMobilePhone, mobilePhoneError } from "../phone";
 import { session } from "../session";
+
+const askConfirm = useConfirm();
 const listQuery = useLatestQuery();
 const route = useRoute(),
   router = useRouter();
@@ -133,11 +136,28 @@ async function save() {
   saving.value = true;
   try {
     if (modal.value === "create") {
-      await post("/visitors", {
+      const registration = {
         ...form,
         phone,
         arrivedAt: isoTime(arrivedLocal.value),
-      });
+      };
+      try {
+        await post("/visitors", registration);
+      } catch (cause) {
+        if (
+          !(cause instanceof ApiError) ||
+          cause.code !== "VISITOR_DUPLICATE_CONFIRMATION_REQUIRED"
+        )
+          throw cause;
+        const confirmed = await askConfirm({
+          title: "确认登记新来访？",
+          message: "该联系电话当前已有在访记录，请核实是否为新的来访批次。",
+          confirmText: "确认新来访",
+          cancelText: "返回核对",
+        });
+        if (!confirmed || modal.value !== "create") return;
+        await post("/visitors", { ...registration, confirmDuplicate: true });
+      }
     } else if (selected.value) {
       await patch(`/visitors/${selected.value.id}`, {
         visitorName: form.visitorName,
@@ -155,16 +175,6 @@ async function save() {
     notify("访客记录已保存");
     await load();
   } catch (e) {
-    if (
-      e instanceof ApiError &&
-      e.code === "VISITOR_DUPLICATE_CONFIRMATION_REQUIRED" &&
-      window.confirm("该联系电话已有在访登记。请确认是本次新的来访，是否继续？")
-    ) {
-      form.confirmDuplicate = true;
-      saving.value = false;
-      await save();
-      return;
-    }
     formError.value = errorText(e);
   } finally {
     saving.value = false;
@@ -195,7 +205,9 @@ function currentLeaveCandidate() {
   )
     return candidate;
 }
-watch(leaveDialog, (dialog) => openModal(dialog), { flush: "post" });
+watch(leaveDialog, (dialog, _old, cleanup) => cleanup(openModal(dialog)), {
+  flush: "post",
+});
 watch(
   currentLeaveCandidate,
   (candidate) => {

@@ -35,7 +35,8 @@
   --text: #242622;
   --muted: #62665c;
   --border: #dad5c9;
-  --border-strong: #bfbfb1;
+  --border-strong: #8a8a7e;
+  --nav-bg: #242622;
   --soft: #ede8df;
   --accent: #a64b2a;
   --warning: #87532a;
@@ -63,7 +64,8 @@
   --text: #ece6d9;
   --muted: #bcbbaf;
   --border: #454a42;
-  --border-strong: #636b5d;
+  --border-strong: #8c9386;
+  --nav-bg: #151815;
   --soft: #33382f;
   --accent: #e2a183;
   --warning: #e5be8b;
@@ -178,7 +180,7 @@ svg {
 }
 .sidebar {
   min-width: 0;
-  background: #242622;
+  background: var(--nav-bg);
   color: #cfd0c3;
   padding: 30px 16px 24px;
   display: flex;
@@ -290,7 +292,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 5px;
-  min-height: 32px;
+  min-height: 40px;
   padding: 5px 8px;
   font-size: var(--type-caption);
   border-radius: calc(4px - 3px);
@@ -329,8 +331,8 @@ svg {
   color: var(--muted);
 }
 .icon-button {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   background: transparent;
@@ -372,7 +374,7 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 9px 15px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
@@ -390,13 +392,30 @@ svg {
   border-color: var(--primary);
   color: var(--on-primary);
 }
-.btn:hover {
-  filter: brightness(0.97);
+.btn:hover:not(:disabled) {
+  background: var(--soft);
   border-color: var(--text);
+}
+.btn.primary:hover:not(:disabled) {
+  opacity: 0.88;
+  background: var(--primary);
+}
+.btn.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+.theme-switch button:active:not(:disabled),
+.text-link:active:not(:disabled),
+.tabs :is(a, button):active:not(:disabled),
+.toast-close:active,
+.btn:active:not(:disabled),
+.icon-button:active:not(:disabled),
+.pagination button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .btn.subtle {
   background: var(--soft);
-  border-color: var(--border);
+  border-color: var(--border-strong);
 }
 .btn.danger {
   color: var(--danger);
@@ -406,10 +425,14 @@ svg {
   width: 100%;
 }
 .text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   color: var(--text);
   font-size: var(--type-body);
-  min-height: 32px;
+  min-height: 40px;
+  min-width: 40px;
   padding: 4px 0;
   white-space: nowrap;
 }
@@ -487,7 +510,24 @@ td small {
   align-items: center;
   gap: 14px;
 }
+.status:is(.SUBMITTED, .PENDING_CONFIRMATION)::before {
+  content: "○" / "";
+}
+.status:is(.ACCEPTED, .PROCESSING, .VISITING)::before {
+  content: "◐" / "";
+}
+.status:is(.COMPLETED, .EXCELLENT, .GOOD, .PASS, .ACTIVE)::before {
+  content: "✓" / "";
+}
+.status:is(.REJECTED, .RECTIFY, .VISITOR_OVERDUE, .INACTIVE)::before {
+  content: "!" / "";
+  font-weight: 700;
+}
+.status:is(.CANCELLED, .LEFT)::before {
+  content: "–" / "";
+}
 .status {
+  gap: 5px;
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
@@ -498,8 +538,7 @@ td small {
   font-size: var(--type-caption);
 }
 .status.SUBMITTED,
-.status.PENDING_CONFIRMATION,
-.status.VISITING {
+.status.PENDING_CONFIRMATION {
   background: var(--warning-bg);
   color: var(--warning);
 }
@@ -523,13 +562,15 @@ td small {
   gap: 8px;
 }
 .status.ACCEPTED,
-.status.PROCESSING {
+.status.PROCESSING,
+.status.VISITING {
   background: var(--info-bg);
   color: var(--info);
 }
 .status.COMPLETED,
 .status.EXCELLENT,
 .status.GOOD,
+.status.PASS,
 .status.ACTIVE {
   background: var(--success-bg);
   color: var(--success);
@@ -540,10 +581,6 @@ td small {
 .status.INACTIVE {
   background: var(--danger-bg);
   color: var(--danger);
-}
-.status.PASS {
-  background: var(--warning-bg);
-  color: var(--warning);
 }
 .pagination {
   padding: 14px 20px;
@@ -559,14 +596,20 @@ td small {
   display: flex;
   gap: 8px;
 }
-.pagination button {
+.pagination button,
+.pagination select {
   padding: 6px 10px;
-  min-height: 34px;
+  min-height: 40px;
   background: var(--soft);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 3px;
 }
+.pagination button:hover:not(:disabled) {
+  border-color: var(--text);
+  background: var(--raised);
+}
+
 .empty-state {
   padding: 32px 20px !important;
   color: var(--muted);
@@ -628,7 +671,7 @@ td small {
 .filters input,
 .filters select {
   padding: 8px 10px;
-  min-height: 39px;
+  min-height: 40px;
   max-width: 220px;
   font-size: var(--type-body);
   border: 1px solid var(--border-strong);
@@ -1140,8 +1183,50 @@ dialog::backdrop {
   max-width: calc(100vw - 32px);
   pointer-events: none;
 }
+.confirmation-dialog {
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  width: min(420px, calc(100% - 32px));
+  background: var(--surface);
+  color: var(--text);
+}
+.confirmation-dialog::backdrop {
+  background: rgb(0 0 0 / 38%);
+}
+.confirmation-content {
+  padding: 24px;
+}
+.confirmation-content h2 {
+  font-size: var(--type-section);
+}
+.confirmation-content p {
+  margin: 12px 0 20px;
+}
+.confirmation-content .button-row {
+  justify-content: flex-end;
+}
+.toast-close {
+  color: inherit;
+  background: transparent;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 1.25em;
+}
+.toast-close:focus-visible {
+  outline-color: currentColor;
+  outline-offset: -3px;
+}
+.toast-close:hover {
+  text-decoration: underline;
+}
 .toast {
-  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: auto;
+  padding: 4px 6px 4px 16px;
   background: var(--text);
   color: var(--surface);
   border-radius: 4px;
@@ -1436,7 +1521,7 @@ dialog::backdrop {
   }
   .sidebar nav a {
     flex: none;
-    min-height: 40px;
+    min-height: 44px;
     font-size: var(--type-caption);
     padding: 8px 10px;
     gap: 6px;
@@ -1487,9 +1572,32 @@ dialog::backdrop {
     padding: 5px 6px;
     min-height: 32px;
   }
-  .top-actions .icon-button {
-    width: 32px;
-    height: 32px;
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .tabs a,
+  .tabs button,
+  .text-link,
+  .filters select,
+  .filters input,
+  .pagination button,
+  .pagination select,
+  .top-actions .theme-switch button,
+  .theme-switch button,
+  td .text-link,
+  .form .checkbox,
+  .toast-close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  td .text-link {
+    display: inline-flex;
+    align-items: center;
+  }
+  .form .checkbox input {
+    width: 20px;
+    height: 20px;
   }
   .content {
     padding: 24px 16px;
@@ -1508,7 +1616,7 @@ dialog::backdrop {
   .page-actions .btn {
     font-size: var(--type-caption);
     padding: 8px 11px;
-    min-height: 40px;
+    min-height: 44px;
   }
   .lead-actions {
     gap: 10px;
@@ -1668,7 +1776,8 @@ dialog::backdrop {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.table-wrap:not(.stat-trend) :is(th, td:not([colspan])):last-child {
+.table-wrap:not(.stat-trend) th:last-child,
+.table-wrap:not(.stat-trend) td:not([colspan]):last-child {
   position: sticky;
   right: 0;
   background: var(--surface);
@@ -1680,4 +1789,13 @@ tr.open-row {
 .upload-area.dragging {
   background: var(--soft);
   border-color: var(--accent);
+}
+
+.table-wrap:not(.stat-trend) th:last-child,
+.table-wrap:not(.stat-trend) tbody tr:hover td:not([colspan]):last-child {
+  background: var(--raised);
+}
+.table-wrap.is-loading tbody {
+  opacity: 0.65;
+  transition: opacity 0.16s;
 }

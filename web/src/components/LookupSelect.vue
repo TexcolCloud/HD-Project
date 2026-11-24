@@ -112,7 +112,13 @@ function move(step: number) {
   );
 }
 function keydown(event: KeyboardEvent) {
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+  if (
+    props.modelValue &&
+    (event.key === "Backspace" || event.key === "Delete")
+  ) {
+    event.preventDefault();
+    void clear();
+  } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     move(event.key === "ArrowDown" ? 1 : -1);
   } else if (open.value && event.key === "Escape") {

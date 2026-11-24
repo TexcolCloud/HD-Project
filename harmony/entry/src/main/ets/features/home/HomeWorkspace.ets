@@ -1,6 +1,6 @@
 import { serviceSecondary, serviceSection, serviceEmpty, serviceDetail, repairStatusColor } from '../../components/ServiceParts';
 import { User, Residence, Repair, Remediation } from '../../models/ApiModels';
-import { statusLabel, categoryLabel, gradeLabel, dateText } from '../../services/Labels';
+import { statusLabel, categoryLabel, gradeLabel, dateText, statusPrefix } from '../../services/Labels';
 import { palette } from '../../components/Palette';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
 import { ManagerAssist } from '../assist/ManagerAssist';
@@ -37,7 +37,7 @@ export struct HomeWorkspace {
     Column({space: 10}) {
       Row() {
         Text($$.order.orderNo).fontSize(14).fontColor(this.muted()).layoutWeight(1)
-        Text(statusLabel($$.order.status)).fontSize(14).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
+        Text(statusPrefix($$.order.status) + statusLabel($$.order.status)).fontSize(14).fontColor(repairStatusColor($$.order.status, this.night)).padding({left: 8, right: 8, top: 3, bottom: 3})
           .backgroundColor(this.soft()).borderRadius(3)
       }.width('100%')
       Text($$.order.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
@@ -47,7 +47,7 @@ export struct HomeWorkspace {
         Text('查看进度 →').fontSize(14).fontColor(this.accent())
       }.width('100%')
     }.padding({top: 18, bottom: 18}).width('100%').alignItems(HorizontalAlign.Start)
-      .border({width: {bottom: 1}, color: this.line()}).onClick(() => this.host.openRepair($$.order))
+      .border({width: {bottom: 1}, color: this.line()}).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => this.host.openRepair($$.order))
   }
 
   @Builder
@@ -64,12 +64,12 @@ export struct HomeWorkspace {
         Row() {
           Text(this.state.room.buildingName + ' ' + this.state.room.roomNo).fontSize(18).fontColor(this.ink()).layoutWeight(1)
           Text(this.state.room.capacity + '人间 · 在住').fontSize(14).fontColor(this.muted())
-        }.width('100%').height(54).border({width: {top: 1, bottom: 1}, color: this.line()}).onClick(() => this.host.navigate('room'))
+        }.width('100%').constraintSize({minHeight: 54}).padding({top: 8, bottom: 8, left: 12, right: 12}).border({width: {top: 1, bottom: 1}, color: this.line()}).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => this.host.navigate('room'))
       } else { serviceEmpty({message: '尚未关联宿舍，请联系宿管办理入住。', night: this.night}) }
       if (this.state.openRemediations.length) {
         Column({space: 6}) {
           serviceSection({title: '待办卫生整改 · ' + this.state.openTotal + ' 项', action: '查看全部', night: this.night, click: () => this.host.navigate('remediations')})
-          Button(this.state.openRemediations[0].issueNote).width('100%').height(48).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
+          Button() { Text(this.state.openRemediations[0].issueNote).fontSize(16).fontColor(this.ink()) }.width('100%').constraintSize({minHeight: 48}).padding({top: 10, bottom: 10, left: 12, right: 12}).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
             .onClick(() => this.onRemediation(this.state.openRemediations[0].id))
           Text('截止 ' + dateText(this.state.openRemediations[0].dueAt)).fontSize(14).fontColor(this.muted())
           if (this.state.openRemediations.some((r: Remediation): boolean => r.overdue)) { Text('已有整改逾期').fontSize(14).fontColor(palette(this.night).danger) }
@@ -88,7 +88,7 @@ export struct HomeWorkspace {
         Text('卫生记录').fontSize(16).fontColor(this.ink()).layoutWeight(1)
         Text(this.state.hygiene.length ? this.state.hygiene[0].totalScore + ' 分 · ' + gradeLabel(this.state.hygiene[0].grade) + ' →' : '查看 →')
           .fontSize(14).fontColor(this.muted())
-      }.width('100%').height(56).border({width: {top: 1, bottom: 1}, color: this.line()}).onClick(() => { this.onHygieneListReset(); this.host.navigate('hygiene'); })
+      }.width('100%').constraintSize({minHeight: 56}).padding({top: 8, bottom: 8, left: 12, right: 12}).border({width: {top: 1, bottom: 1}, color: this.line()}).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => { this.onHygieneListReset(); this.host.navigate('hygiene'); })
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
@@ -99,18 +99,18 @@ export struct HomeWorkspace {
       Text((this.user?.displayName || '') + ' · 宿管').fontSize(14).fontColor(this.muted()).width('100%').margin({top: 6})
       Row() {
         Column({space: 6}) { Text(String(this.state.overview?.openRepairs ?? 0)).fontSize(28).fontColor(this.ink()).fontWeight(FontWeight.Medium); Text('待跟进工单').fontSize(14).fontColor(this.muted()) }
-          .alignItems(HorizontalAlign.Start).layoutWeight(1).onClick(() => this.host.navigate('repairs'))
+          .alignItems(HorizontalAlign.Start).layoutWeight(1).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => this.host.navigate('repairs'))
         Column({space: 6}) { Text(String(this.state.overview?.visitingCount ?? 0)).fontSize(28).fontColor(this.ink()).fontWeight(FontWeight.Medium); Text('当前在访').fontSize(14).fontColor(this.muted()) }
-          .alignItems(HorizontalAlign.Start).layoutWeight(1).padding({left: 20}).border({width: {left: 1}, color: this.line()}).onClick(() => this.host.navigate('visitors'))
+          .alignItems(HorizontalAlign.Start).layoutWeight(1).padding({left: 20}).border({width: {left: 1}, color: this.line()}).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.99 }).accessibilityDescription('双击查看详情').onClick(() => this.host.navigate('visitors'))
       }.width('100%').padding({top: 20, bottom: 20}).margin({top: 20, bottom: 18})
         .border({width: {top: 1, bottom: 1}, color: this.line()})
       Row({space: 12}) {
         Button('登记访客')
           .id('create-visitor').layoutWeight(1).height(48).fontSize(16).backgroundColor(this.surface()).fontColor(this.ink())
-          .border({width: 1, color: this.line()}).borderRadius(4).onClick(() => this.host.navigate('visitor-create'))
+          .border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.host.navigate('visitor-create'))
         Button('录入评分')
           .id('create-hygiene').layoutWeight(1).height(48).fontSize(16).backgroundColor(this.surface()).fontColor(this.ink())
-          .border({width: 1, color: this.line()}).borderRadius(4).onClick(() => this.host.navigate('hygiene-create'))
+          .border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.host.navigate('hygiene-create'))
       }.width('100%')
       Row({space: 12}) { serviceSecondary({label: '访客记录', click: () => this.host.navigate('visitors'), night: this.night, busy: false}); serviceSecondary({label: '卫生记录', click: () => this.host.navigate('hygiene'), night: this.night, busy: false}) }.margin({top: 12})
       Button('查看下一站').id('open-route').width('100%').height(52).fontSize(16).fontColor(this.onPrimary())

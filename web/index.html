@@ -3,7 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      try {
+        const night = localStorage.getItem("dormlink-theme") === "night";
+        document.documentElement.dataset.theme = night ? "night" : "day";
+        document.documentElement.style.colorScheme = night ? "dark" : "light";
+      } catch {}
+    </script>
+    <link
+      rel="preload"
+      href="/assets/fonts/dorm-plex.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="icon" href="data:," />
     <title>寓见 · 学生公寓综合服务管理平台</title>
   </head>
