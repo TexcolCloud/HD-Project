@@ -1,14 +1,24 @@
 <script setup lang="ts">
+import { clearTransientQuery } from "../composables/transientQuery";
+import { isRowClick } from "../utils/tableRow";
 import ModuleTabs from "../components/ModuleTabs.vue";
 import { computed, onMounted, onScopeDispose, reactive, ref, watch } from "vue";
-import { onBeforeRouteUpdate, useRoute } from "vue-router";
+import { onBeforeRouteUpdate, useRoute, useRouter } from "vue-router";
 import { get, patch, post } from "../api/client";
 import type { Model, Hygiene } from "../api/types";
-import { dateTime, errorText, isoTime, localDate, notify } from "../ui";
+import {
+  statusNames,
+  dateTime,
+  errorText,
+  isoTime,
+  localDate,
+  notify,
+} from "../ui";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import Drawer from "../components/Drawer.vue";
 import Pagination from "../components/Pagination.vue";
-const route = useRoute();
+const route = useRoute(),
+  router = useRouter();
 const listQuery = useLatestQuery(),
   detailQuery = useLatestQuery();
 const { busy, error } = listQuery;
@@ -353,6 +363,14 @@ onMounted(() => {
 onScopeDispose(() => {
   disposed = true;
 });
+watch(
+  modal,
+  (current, previous) => {
+    if (!current && previous)
+      void clearTransientQuery(route, router, ["taskId", "inspectionId"]);
+  },
+  { flush: "post" },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -379,7 +397,7 @@ onScopeDispose(() => {
       </label>
       <label>
         楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -388,7 +406,7 @@ onScopeDispose(() => {
       </label>
       <label>
         任务状态
-        <select v-model="filters.status">
+        <select v-model="filters.status" @change="search">
           <option value="">全部状态</option>
           <option
             v-for="(label, status) in labels"
@@ -401,7 +419,7 @@ onScopeDispose(() => {
       </label>
       <label>
         跟进范围
-        <select v-model="filters.overdueOnly">
+        <select v-model="filters.overdueOnly" @change="search">
           <option :value="false">全部期限</option>
           <option :value="true">仅看逾期</option>
         </select>
@@ -430,10 +448,17 @@ onScopeDispose(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="task in items" :key="task.id">
+          <tr
+            v-for="task in items"
+            :key="task.id"
+            class="open-row"
+            @click="isRowClick($event) && !saving && detail(task.id)"
+          >
             <td>
               <strong>{{ task.buildingName }} {{ task.roomNo }}</strong>
-              <small class="muted">{{ task.issueNote }}</small>
+              <small class="muted cell-clamp" :title="task.issueNote">
+                {{ task.issueNote }}
+              </small>
             </td>
             <td>{{ task.responsibleName }}</td>
             <td>
@@ -656,7 +681,7 @@ onScopeDispose(() => {
                 :value="check.id"
               >
                 {{ check.inspectionDate }} · {{ check.totalScore }}分 ·
-                {{ check.round }}
+                {{ statusNames[check.round] || check.round }}
               </option>
             </select>
           </label>

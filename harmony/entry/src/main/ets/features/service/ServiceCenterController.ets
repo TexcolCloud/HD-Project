@@ -35,38 +35,71 @@ export class ServiceCenterState {
 
 export class ServiceCenterController {
   state: ServiceCenterState = new ServiceCenterState();
+  private inboxReads: ReadScope = new ReadScope();
+  private readRevision: number = 0;
+  private pendingReads: Set<string> = new Set<string>();
   private view: number = 0;
   private reads: ReadScope = new ReadScope();
   private keys: SubmissionKeys = new SubmissionKeys((): string => util.generateRandomUUID());
   private host: WorkspaceHost;
   private photos: PhotoDraftController | null;
   constructor(host: WorkspaceHost, photos: PhotoDraftController | null = null) { this.host = host; this.photos = photos; }
-  suspend(): void { this.view++; this.reads.invalidate(); this.state.loading = false; this.state.busy = false; }
-  reset(): void { this.suspend(); this.keys.clear(); this.state = new ServiceCenterState(); }
+  suspend(): void { this.inboxReads.invalidate(); this.view++; this.reads.invalidate(); this.state.loading = false; this.state.busy = false; }
+  reset(): void { this.pendingReads = new Set<string>(); this.suspend(); this.keys.clear(); this.state = new ServiceCenterState(); }
   async loadMessages(): Promise<void> {
-    const ticket = this.reads.begin();
+    const ticket = this.inboxReads.begin();
+    const revision = this.readRevision;
     this.state.loading = true;
     try {
       const data = await Api.request<ServiceMessagePage>('/messages?pageSize=10&page=' + this.state.messagePage + '&unreadOnly=' + this.state.unreadOnly);
-      if (this.reads.current(ticket)) { this.state.messages = data.items; this.state.messageTotal = data.total; }
-    } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
-    finally { if (this.reads.current(ticket)) this.state.loading = false; }
+      if (!this.inboxReads.current(ticket)) return;
+      if (revision !== this.readRevision) {
+        await this.loadMessages();
+        return;
+      }
+      this.state.messages = data.items;
+      this.state.messageTotal = data.total;
+    } catch (error) { if (this.inboxReads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
+    finally { if (this.inboxReads.current(ticket)) this.state.loading = false; }
   }
   async readMessage(message: ServiceMessage): Promise<void> {
-    if (this.state.busy) return;
-    const view = this.view, state = this.state, epoch = Api.epoch;
-    this.state.busy = true;
+    const state = this.state, epoch = Api.epoch, view = this.view, pending = this.pendingReads;
+    if (message.readAt || pending.has(message.id)) return;
+    pending.add(message.id);
     try {
       const body: ServiceMessageReadRequest = {expectedVersion: message.version};
       const path = '/messages/' + message.id + '/read';
-      await Api.post<ServiceMessage>(path, body, this.keys.reserve(path, JSON.stringify(body)));
-      if (state !== this.state || epoch !== Api.epoch || view !== this.view) return;
+      const updated = await Api.post<ServiceMessage>(path, body, this.keys.reserve(path, JSON.stringify(body)));
+      if (state !== this.state || epoch !== Api.epoch) return;
       this.keys.complete(path);
-      await this.loadMessages();
-    } catch (error) { if ((state === this.state && epoch === Api.epoch && view === this.view) || isSessionExpiry(error as Error)) this.host.fail(error as Error); }
-    finally { if (state === this.state && view === this.view) this.state.busy = false; }
+      this.readRevision++;
+      this.host.messageRead?.();
+      if (state.unreadOnly) {
+        if (state.messages.some((item: ServiceMessage): boolean => item.id === message.id)) {
+          state.messageTotal = Math.max(0, state.messageTotal - 1);
+          state.messagePage = Math.min(state.messagePage, Math.max(1, Math.ceil(state.messageTotal / 10)));
+        }
+        state.messages = state.messages.filter((item: ServiceMessage): boolean => item.id !== message.id);
+        if (!state.busy && view === this.view) await this.loadMessages();
+      } else state.messages = state.messages.map((item: ServiceMessage): ServiceMessage => item.id === message.id ? updated : item);
+    } catch (error) {
+      if ((state === this.state && epoch === Api.epoch && view === this.view) || isSessionExpiry(error as Error)) this.host.fail(error as Error);
+    } finally { pending.delete(message.id); }
+  }
+  async readPage(): Promise<void> {
+    const state = this.state, view = this.view;
+    if (state.busy) return;
+    state.busy = true;
+    try {
+      for (const item of state.messages) {
+        if (view !== this.view) return;
+        if (!item.readAt) await this.readMessage(item);
+      }
+      if (view === this.view) await this.loadMessages();
+    } finally { if (view === this.view) state.busy = false; }
   }
   async openMessage(message: ServiceMessage): Promise<void> {
+    if (!message.readAt) this.readMessage(message);
     const ticket = this.reads.begin();
     try {
       if (message.businessType === 'REPAIR') {
@@ -74,7 +107,7 @@ export class ServiceCenterController {
         if (this.reads.current(ticket)) await this.host.openRepair(repair);
       } else if (message.businessType === 'REMEDIATION') {
         await this.openRemediation(message.businessId);
-      } else this.host.navigate('visitors');
+      } else if (message.businessType === 'VISITOR' && message.businessId) this.host.openVisitor?.(message.businessId);
     } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
   }
   async loadRemediations(): Promise<void> {

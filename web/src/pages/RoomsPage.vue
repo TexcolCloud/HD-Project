@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { clearTransientQuery } from "../composables/transientQuery";
+import { isRowClick } from "../utils/tableRow";
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { get } from "../api/client";
 import type { Model, Building, Room } from "../api/types";
 import { notify } from "../ui";
@@ -10,7 +12,8 @@ import Pagination from "../components/Pagination.vue";
 import RoomEditor from "../components/housing/RoomEditor.vue";
 import BuildingEditor from "../components/housing/BuildingEditor.vue";
 import RoomDetail from "../components/housing/RoomDetail.vue";
-const route = useRoute();
+const route = useRoute(),
+  router = useRouter();
 const tab = ref<"rooms" | "buildings">("rooms");
 const buildings = ref<Building[]>([]),
   items = ref<Room[]>([]),
@@ -102,6 +105,14 @@ async function saved(buildingChanged = false, keepOpen = false) {
   await (buildingChanged ? refresh() : load());
 }
 onMounted(refresh);
+watch(
+  modal,
+  (current, previous) => {
+    if (!current && previous)
+      void clearTransientQuery(route, router, ["roomId"]);
+  },
+  { flush: "post" },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -139,7 +150,7 @@ onMounted(refresh);
       </label>
       <label>
         楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -148,7 +159,7 @@ onMounted(refresh);
       </label>
       <label>
         状态
-        <select v-model="filters.status">
+        <select v-model="filters.status" @change="search">
           <option value="">全部状态</option>
           <option value="ENABLED">启用</option>
           <option value="DISABLED">停用</option>
@@ -180,7 +191,12 @@ onMounted(refresh);
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in items" :key="r.id">
+          <tr
+            v-for="r in items"
+            :key="r.id"
+            class="open-row"
+            @click="isRowClick($event) && detail(r)"
+          >
             <td>
               <strong>
                 {{ r.buildingName }}
@@ -197,7 +213,11 @@ onMounted(refresh);
                 {{ r.enabled ? "启用" : "停用" }}
               </span>
             </td>
-            <td>{{ r.remark || "—" }}</td>
+            <td>
+              <span class="cell-clamp" :title="r.remark">
+                {{ r.remark || "—" }}
+              </span>
+            </td>
             <td>
               <div class="cell-actions">
                 <button class="text-link" @click="detail(r)">查看</button>

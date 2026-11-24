@@ -112,7 +112,7 @@ test('a native callback after lease expiry stops capture without uploading anoth
     const f = fixture(); await attach(f); await f.controller.start(false);
     const before = f.calls.length; clock += 130000; f.devices[0].emit(); await settle();
     assert.equal(f.calls.length, before); assert.equal(f.controller.snapshot().collecting, false);
-    assert.match(f.controller.snapshot().error, /租约/); f.controller.detach();
+    assert.match(f.controller.snapshot().error, /定位辅助已超时/); f.controller.detach();
   } finally { Date.now = realNow; }
 });
 test('manual anchor confirmation refreshes the server lease past the original native deadline', async () => {
@@ -135,6 +135,6 @@ test('manual anchor confirmation refreshes the server lease past the original na
     assert.equal(Date.parse(f.controller.snapshot().view.session.leaseExpiresAt), start + 180000);
     clock = start + 181000;
     for (const [key, timer] of [...timers]) if (timer.deadline <= clock) { timers.delete(key); timer.callback(); }
-    assert.match(f.controller.snapshot().error, /租约/); f.controller.detach();
+    assert.match(f.controller.snapshot().error, /定位辅助已超时/); f.controller.detach();
   } finally { Date.now = realNow; }
 });

@@ -6,6 +6,9 @@ export interface WorkspaceHost {
   fail: (error: Error) => void;
   flash: (message: string) => void;
   navigate: (page: string) => void;
+  scrollTop?: () => void;
+  openVisitor?: (id: string) => void;
+  messageRead?: () => void;
   openRepair: (repair: Repair) => Promise<void>;
   confirm: (
     title: string,

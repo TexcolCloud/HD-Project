@@ -30,6 +30,10 @@ const phone = ref(""),
   busy = ref(false),
   phoneError = ref(""),
   error = ref("");
+import { useResendWait } from "../composables/useResendWait";
+import { copyText } from "../utils/copyText";
+const { seconds: oldWait, start: startOldWait } = useResendWait(),
+  { seconds: nextWait, start: startNextWait } = useResendWait();
 const old = reactive({ id: "", code: "" });
 const next = reactive({ id: "", code: "" });
 const needsPhone = computed(
@@ -48,9 +52,13 @@ const purpose = computed<Model<"PhoneChallengeRequest">["purpose"]>(() =>
 watch(phone, () => {
   next.id = next.code = phoneError.value = "";
 });
-watch(currentPassword, () => {
-  old.id = old.code = next.id = next.code = "";
-});
+watch(
+  currentPassword,
+  () => {
+    error.value = "";
+  },
+  { flush: "sync" },
+);
 watch(
   () => session.user?.id,
   (id) => {
@@ -100,6 +108,7 @@ async function act(operation: () => Promise<void>) {
 }
 
 function sendCode(forOld = false) {
+  if (forOld ? oldWait.value : nextWait.value) return;
   return act(async () => {
     if (mode.value !== "activate" && !currentPassword.value) {
       error.value = "请输入当前密码后获取验证码";
@@ -120,6 +129,8 @@ function sendCode(forOld = false) {
           mode.value === "activate" ? undefined : currentPassword.value,
       } satisfies Model<"PhoneChallengeRequest">,
     );
+    if (forOld) startOldWait();
+    else startNextWait();
     challenge.id = result.challengeId;
     challenge.code = "";
   });
@@ -223,6 +234,13 @@ async function acknowledge() {
             恢复码仅展示此次。请离线妥善保存，找回密码时需同时提供短信验证码和恢复码。
           </p>
           <code class="recovery-code">{{ recoveryCode }}</code>
+          <button
+            type="button"
+            class="btn"
+            @click="copyText(recoveryCode, '恢复码已复制')"
+          >
+            复制恢复码
+          </button>
         </template>
         <p v-if="signedOut" class="form-note">请使用更新后的凭据重新登录。</p>
         <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
@@ -303,10 +321,16 @@ async function acknowledge() {
           <button
             type="button"
             class="btn"
-            :disabled="busy"
+            :disabled="busy || oldWait > 0"
             @click="sendCode(true)"
           >
-            {{ old.id ? "重新发送旧号验证码" : "向旧号发送验证码" }}
+            {{
+              oldWait
+                ? oldWait + "秒后可重发"
+                : old.id
+                  ? "重新发送旧号验证码"
+                  : "向旧号发送验证码"
+            }}
           </button>
           <label v-if="old.id">
             旧号验证码
@@ -343,15 +367,17 @@ async function acknowledge() {
           v-if="mode !== 'password'"
           type="button"
           class="btn"
-          :disabled="busy"
+          :disabled="busy || nextWait > 0"
           @click="sendCode()"
         >
           {{
-            next.id
-              ? "重新发送验证码"
-              : mode === "change"
-                ? "向新号发送验证码"
-                : "发送验证码"
+            nextWait
+              ? nextWait + "秒后可重发"
+              : next.id
+                ? "重新发送验证码"
+                : mode === "change"
+                  ? "向新号发送验证码"
+                  : "发送验证码"
           }}
         </button>
         <p v-if="old.id || next.id" class="form-note" role="status">
@@ -379,7 +405,7 @@ async function acknowledge() {
               autocomplete="new-password"
               :disabled="busy"
             />
-            <small>至少10位，UTF-8长度不超过72字节。</small>
+            <small>至少10位字符，建议包含字母、数字或符号。</small>
           </label>
           <label>
             确认新密码 *

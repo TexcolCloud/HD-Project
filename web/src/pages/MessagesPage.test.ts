@@ -56,7 +56,6 @@ it("消息已读操作使用当前版本，并展示后端确认结果", async (
   await vi.waitFor(() => expect(button("查看消息")).toBeDefined());
   (button("查看消息")!.props.onClick as () => void)();
   await nextTick();
-  (button("标记已读")!.props.onClick as () => void)();
   await vi.waitFor(() =>
     expect(api.post).toHaveBeenCalledWith("/messages/1/read", {
       expectedVersion: 2,
@@ -64,4 +63,41 @@ it("消息已读操作使用当前版本，并展示后端确认结果", async (
   );
   await vi.waitFor(() => expect(text(root)).toContain("已读于"));
   expect(button("标记已读")).toBeUndefined();
+});
+
+it("本页批量已读跳过已读记录，按版本写入后仅刷新一次", async () => {
+  const items = [
+    { id: "a", title: "一", body: "正文", readAt: null, version: 1 },
+    {
+      id: "b",
+      title: "二",
+      body: "正文",
+      readAt: "2026-11-12T01:00Z",
+      version: 3,
+    },
+    { id: "c", title: "三", body: "正文", readAt: null, version: 2 },
+  ].map((m) => ({ ...m, createdAt: "2026-11-12T01:00Z" }));
+  api.get.mockImplementation(async (path) =>
+    path.endsWith("summary") ? { unreadCount: 2 } : { items, total: 3 },
+  );
+  api.post.mockImplementation(async (path) => ({
+    ...items.find((m) => path.includes("/" + m.id + "/")),
+    readAt: "2026-11-12T02:00Z",
+  }));
+  const root = node("root"),
+    app = renderer.createApp(MessagesPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  const batch = () =>
+    find(
+      root,
+      (n) => n.tag === "button" && text(n).trim() === "本页未读标为已读",
+    );
+  await vi.waitFor(() => expect(batch()?.props.disabled).toBe(false));
+  await (batch()!.props.onClick as () => Promise<void>)();
+  expect(api.post.mock.calls).toEqual([
+    ["/messages/a/read", { expectedVersion: 1 }],
+    ["/messages/c/read", { expectedVersion: 2 }],
+  ]);
+  expect(api.get.mock.calls.filter(([p]) => p === "/messages")).toHaveLength(2);
 });

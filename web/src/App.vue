@@ -14,6 +14,20 @@ const unreadMessages = useInboxBadge(() => session.user);
 const route = useRoute(),
   router = useRouter();
 const scopeQuery = useLatestQuery();
+const sideNav = ref<HTMLElement>();
+watch(
+  () => [route.path, sideNav.value],
+  () => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(max-width: 700px)")?.matches
+    )
+      sideNav.value
+        ?.querySelector?.(".active")
+        ?.scrollIntoView?.({ inline: "center", block: "nearest" });
+  },
+  { flush: "post" },
+);
 const noticeStack = ref<HTMLElement>();
 watch(
   () => [noticeStack.value, notices.length],
@@ -116,7 +130,7 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
     <aside class="sidebar">
       <RouterLink class="brand" to="/dashboard">寓见</RouterLink>
       <p class="sidebar-note">学生公寓管理</p>
-      <nav aria-label="管理功能">
+      <nav ref="sideNav" aria-label="管理功能">
         <template v-for="group in groups" :key="group.title">
           <span class="nav-group">{{ group.title }}</span>
           <RouterLink

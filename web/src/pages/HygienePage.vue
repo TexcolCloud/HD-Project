@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { clearTransientQuery } from "../composables/transientQuery";
+import { isRowClick } from "../utils/tableRow";
 import ModuleTabs from "../components/ModuleTabs.vue";
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -13,6 +15,7 @@ import {
   statusNames,
 } from "../ui";
 import { allPages } from "../api/allPages";
+import { inspectionChanges } from "../utils/inspectionChanges";
 import Drawer from "../components/Drawer.vue";
 import Pagination from "../components/Pagination.vue";
 import LookupSelect from "../components/LookupSelect.vue";
@@ -33,11 +36,11 @@ const items = ref<Hygiene[]>([]),
   page = ref(1),
   total = ref(0),
   filters = reactive({
-    q: "",
-    buildingId: "",
-    grade: "",
-    startDate: "",
-    endDate: "",
+    q: String(route.query.q || ""),
+    buildingId: String(route.query.buildingId || ""),
+    grade: String(route.query.grade || ""),
+    startDate: String(route.query.startDate || ""),
+    endDate: String(route.query.endDate || ""),
   });
 const selected = ref<Hygiene>(),
   modal = ref<"form" | "detail" | null>(null),
@@ -330,6 +333,7 @@ function fullScore() {
   dirty.value = true;
 }
 async function save(event?: SubmitEvent) {
+  const returnTask = route.query.returnTask;
   const continueNext =
     mode.value === "create" &&
     form.round === "ROUTINE" &&
@@ -393,13 +397,10 @@ async function save(event?: SubmitEvent) {
         : "卫生评分已保存",
     );
     await load();
-    if (
-      mode.value === "recheck" &&
-      typeof route.query.returnTask === "string"
-    ) {
+    if (mode.value === "recheck" && typeof returnTask === "string") {
       await router.push({
         path: "/remediations",
-        query: { taskId: route.query.returnTask },
+        query: { taskId: returnTask },
       });
     }
   } catch (e) {
@@ -486,6 +487,18 @@ watch(
   },
   { immediate: true },
 );
+watch(
+  modal,
+  (current, previous) => {
+    if (!current && previous)
+      void clearTransientQuery(route, router, [
+        "inspectionId",
+        "recheckOf",
+        "returnTask",
+      ]);
+  },
+  { flush: "post" },
+);
 </script>
 <template>
   <div class="page-heading">
@@ -525,7 +538,7 @@ watch(
       </label>
       <label>
         楼栋
-        <select v-model="filters.buildingId">
+        <select v-model="filters.buildingId" @change="search">
           <option value="">全部负责楼栋</option>
           <option v-for="b in buildings" :key="b.id" :value="b.id">
             {{ b.name }}
@@ -534,7 +547,7 @@ watch(
       </label>
       <label>
         评分等级
-        <select v-model="filters.grade">
+        <select v-model="filters.grade" @change="search">
           <option value="">全部</option>
           <option
             v-for="g in ['EXCELLENT', 'GOOD', 'PASS', 'RECTIFY']"
@@ -586,7 +599,12 @@ watch(
           </tr>
         </thead>
         <tbody>
-          <tr v-for="h in items" :key="h.id">
+          <tr
+            v-for="h in items"
+            :key="h.id"
+            class="open-row"
+            @click="isRowClick($event) && detail(h)"
+          >
             <td>{{ h.buildingName }} {{ h.roomNo }}</td>
             <td>
               {{ h.inspectionDate }}
@@ -595,7 +613,11 @@ watch(
             <td class="num">{{ h.totalScore }} / 100</td>
             <td><StatusBadge :status="h.grade" /></td>
             <td>{{ h.inspectorName }}</td>
-            <td>{{ h.issueNote || "—" }}</td>
+            <td>
+              <span class="cell-clamp" :title="h.issueNote">
+                {{ h.issueNote || "—" }}
+              </span>
+            </td>
             <td>
               <button class="text-link" @click="detail(h)">查看与更正</button>
             </td>
@@ -697,7 +719,9 @@ watch(
             {{ comparison.record.buildingName }}
             {{ comparison.record.roomNo }} ·
             {{ comparison.record.inspectionDate }} ·
-            {{ statusNames[comparison.record.round] }}
+            {{
+              statusNames[comparison.record.round] || comparison.record.round
+            }}
           </p>
           <p class="form-note">
             检查时刻 {{ dateTime(comparison.record.inspectedAt) }}
@@ -951,7 +975,18 @@ watch(
           <small>{{ dateTime(h.createdAt) }} · {{ h.operatorName }}</small>
           <details v-if="h.changes">
             <summary>查看变更明细</summary>
-            <pre class="changes-json">{{ h.changes }}</pre>
+            <dl class="details">
+              <div v-for="(change, i) in inspectionChanges(h.changes)" :key="i">
+                <dt>{{ change.label }}</dt>
+                <dd>
+                  <template v-if="change.before !== undefined">
+                    <del>{{ change.before }}</del>
+                    →
+                  </template>
+                  {{ change.after }}
+                </dd>
+              </div>
+            </dl>
           </details>
         </li>
       </ol>

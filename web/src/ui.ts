@@ -57,6 +57,8 @@ export const statusNames: Record<string, string> = {
   ACTIVE: "在校",
   INACTIVE: "停用",
   ROUTINE: "日常巡检",
+  RECHECK2: "第二次复查",
+  RECHECK3: "第三次复查",
   RECHECK: "整改复查",
 };
 export const categoryNames: Record<string, string> = {

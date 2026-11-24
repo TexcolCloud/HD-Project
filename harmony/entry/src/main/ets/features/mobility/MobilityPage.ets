@@ -69,7 +69,7 @@ export struct MobilityPage {
   }
   private sourceText(): string {
     const context = this.snapshot.view?.context;
-    if (!context?.observedAt) return '还没有有效观测，可先确认人工锚点';
+    if (!context?.observedAt) return '尚未确认位置，可扫码或手动选择楼栋位置';
     const age = Math.max(0, Math.floor((this.clock - Date.parse(context.observedAt)) / 1000));
     const source = context.source === 'QR' ? '扫码确认' : context.source === 'MANUAL' ? '人工确认' : context.source === 'GPS' ? '设备位置' : '未知来源';
     return source + ' · ' + age + '秒前 · ' + (this.fresh() ? '有效' : '已过期') + (context.accuracyMeters !== null ? '\n定位误差约 ' + Math.round(context.accuracyMeters) + ' 米' : '');
@@ -114,9 +114,9 @@ export struct MobilityPage {
         Text(this.sourceText()).id('mobility-freshness').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%')
         Text(this.snapshot.collecting ? (this.snapshot.background ? '设备采集中 · 后台持续任务已开启' : '设备采集中 · 仅前台') : '设备未采集 · 手工办理可用')
           .id('mobility-capture-state').fontSize(14).fontColor(palette(this.night).accent).width('100%')
-        Text(this.snapshot.estimate?.speedMps !== undefined && this.clock - this.snapshot.estimate.position.observedMs <= 60000 ? '步行估计 ' + this.snapshot.estimate.speedMps.toFixed(1) + ' m/s · 参考质量 ' + (this.snapshot.estimate.quality === 'MEDIUM' ? '中' : '低') : '速度未知 · 不按0速度计算')
+        Text(this.snapshot.estimate?.speedMps !== undefined && this.clock - this.snapshot.estimate.position.observedMs <= 60000 ? '步行估计 ' + this.snapshot.estimate.speedMps.toFixed(1) + ' m/s · 参考质量 ' + (this.snapshot.estimate.quality === 'MEDIUM' ? '中' : '低') : '当前未测得步行速度')
           .id('mobility-speed').fontSize(14).fontColor(palette(this.night).ink).width('100%')
-        Text(this.snapshot.view?.context?.explanation || '未配置校园地图时不推算楼栋、楼层或房间；通行时间沿用基线。')
+        Text(this.snapshot.view?.context?.explanation || '尚未配置校园地图，请手动确认位置。路线使用默认通行时间。')
           .fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
       }.width('100%').padding(16).backgroundColor(palette(this.night).surface).borderRadius(4).border({width: 1, color: palette(this.night).line})
       if (this.possibleArrival()) {
@@ -127,13 +127,13 @@ export struct MobilityPage {
       if (!this.snapshot.collecting) {
         Row({space: 10}) {
           Checkbox().select(this.consent).selectedColor(palette(this.night).accent).onChange((value: boolean) => this.consent = value)
-          Text('仅在本次工作会话中使用位置、计步与运动摘要。退出或结束即停止；照片不携带EXIF。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1)
+          Text('仅在本次工作期间使用位置与运动信息辅助规划路线，结束或退出后立即停止。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.consent = !this.consent)
         }.width('100%')
         Row() {
           Text('允许熄屏／后台出行').fontSize(14).fontColor(palette(this.night).ink).layoutWeight(1)
           Toggle({type: ToggleType.Switch, isOn: this.backgroundRequested}).selectedColor(palette(this.night).accent).onChange((value: boolean) => this.backgroundRequested = value)
         }.width('100%')
-        Text('后台模式会显示系统持续任务通知，可返回本页暂停或结束。系统仍可能限制任务；模拟器不能验证真实精度与耗电。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
+        Text('后台模式会显示系统持续任务通知，可返回本页暂停或结束。系统仍可能限制后台任务。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
         if (!this.snapshot.view?.session || this.snapshot.ownsSource || this.snapshot.view.session.state !== 'ACTIVE') {
         Button(this.canResume() ? '继续本次出行' : this.snapshot.ownsSource ? '重新开启本次出行' : '开始本次出行')
           .id('mobility-start').width('100%').height(52).fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4)
@@ -151,7 +151,7 @@ export struct MobilityPage {
           .enabled(this.consent && !this.snapshot.busy).onClick(() => this.controller.start(this.backgroundRequested, true))
       }
       Text('确认当前位置').fontSize(18).fontColor(palette(this.night).ink).width('100%').margin({top: 12})
-      Text('锚点只用于规划参考，二维码可被复制，不代表考勤或房间权限。请先开启工作会话。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
+      Text('请先开始本次工作，再扫码或选择地点。二维码仅用于路线规划，不能作为考勤或进房凭证。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
       this.Action({label: this.scanning ? '正在扫码…' : '扫描地点二维码', id: 'mobility-scan', run: () => { if (!this.scanning) this.scan(); }})
       if (this.scanError) { Text(this.scanError).fontSize(14).fontColor(palette(this.night).danger).width('100%') }
       ForEach(this.snapshot.view?.anchors || [], (anchor: CampusAnchor) => {
@@ -159,7 +159,7 @@ export struct MobilityPage {
           .width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4)
           .enabled(this.snapshot.ownsSource).onClick(() => { this.preview = anchor; this.source = 'MANUAL'; })
       }, (anchor: CampusAnchor) => anchor.id + ':' + anchor.version)
-      if (!this.snapshot.view?.anchors.length) { Text('暂无已登记锚点，请在Web现场位置页配置楼栋入口或楼层。').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%') }
+      if (!this.snapshot.view?.anchors.length) { Text('暂无已登记地点，请在网页端的现场位置页添加楼栋入口或楼层。').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%') }
       if (this.preview) {
         Column({space: 10}) {
           Text('请现场核对：' + this.preview.buildingName + ' · ' + this.preview.name).fontSize(16).fontColor(palette(this.night).ink).width('100%')

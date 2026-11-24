@@ -93,3 +93,48 @@ test('leaving a remediation retires a pending source-inspection lookup', async (
   await pending;
   assert.equal(opened,false);
 });
+
+test('opening a visitor message still opens its record when the versioned read fails', async () => {
+  const writes = [], opened = [], errors = [];
+  const Api = {
+    epoch: 1,
+    post: async (path, body, key) => {
+      writes.push([path, body, key]);
+      throw new Error('read failed');
+    },
+  };
+  const { ReadScope } = await load('features/ReadScope.ets', { Api });
+  const { ServiceCenterController } = await load('features/service/ServiceCenterController.ets', { Api, ReadScope });
+  const center = new ServiceCenterController({ openVisitor: id => opened.push(id), fail: e => errors.push(e.message) });
+  await center.openMessage({ id: 'm', version: 2, readAt: null, businessType: 'VISITOR', businessId: 'v3' });
+  assert.deepEqual(opened, ['v3']);
+  assert.deepEqual(writes, [['/messages/m/read', { expectedVersion: 2 }, 'generated-key']]);
+  assert.deepEqual(errors, ['read failed']);
+});
+
+test('batch read skips previously read messages and returns to the last valid unread page', async () => {
+  const writes = [], gets = [];
+  const Api = {
+    epoch: 2,
+    post: async path => {
+      writes.push(path);
+      return { id: path.split('/')[2], readAt: 'today', version: 4 };
+    },
+    request: async path => {
+      gets.push(path);
+      return { items: [], total: 10 };
+    },
+  };
+  const { ReadScope } = await load('features/ReadScope.ets', { Api });
+  const { ServiceCenterController } = await load('features/service/ServiceCenterController.ets', { Api, ReadScope });
+  let decrements = 0;
+  const center = new ServiceCenterController({ messageRead: () => decrements++, fail: e => { throw e; } });
+  Object.assign(center.state, {
+    messages: [{ id: '1', readAt: null, version: 3 }, { id: '2', readAt: 'already', version: 2 }, { id: '3', readAt: null, version: 1 }],
+    messagePage: 2, unreadOnly: true, messageTotal: 12,
+  });
+  await center.readPage();
+  assert.equal(decrements, 2);
+  assert.deepEqual(writes, ['/messages/1/read', '/messages/3/read']);
+  assert.deepEqual(gets, ['/messages?pageSize=10&page=1&unreadOnly=true']);
+});

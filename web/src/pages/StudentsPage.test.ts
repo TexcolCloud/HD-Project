@@ -8,6 +8,7 @@ const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
 vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
   onBeforeRouteLeave: vi.fn(),
+  useRouter: () => ({ replace: vi.fn() }),
   useRoute: () => ({ query: {} }),
 }));
 vi.mock("vue", async (original) => ({

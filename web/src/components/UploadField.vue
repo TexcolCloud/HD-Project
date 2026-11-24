@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount } from "vue";
+import { ref, nextTick, onBeforeUnmount } from "vue";
 import { post, request } from "../api/client";
 import type { FileAsset } from "../api/types";
 import { errorText, notify } from "../ui";
@@ -25,6 +25,9 @@ type Pending = {
 };
 const pending = ref<Pending[]>([]);
 const newlyUploaded = new Set<string>();
+const dragging = ref(false);
+let draining = false,
+  disposed = false;
 function report() {
   emit("blocked", pending.value.length > 0);
 }
@@ -66,6 +69,7 @@ async function upload(item: Pending) {
     body.append("file", file);
     body.append("usage", props.usage);
     const asset = await post<FileAsset>("/files", body);
+    if (disposed) return;
     newlyUploaded.add(asset.id);
     emit("update:modelValue", [...props.modelValue, asset]);
     URL.revokeObjectURL(item.url);
@@ -81,11 +85,16 @@ async function choose(event: Event) {
   const input = event.target as HTMLInputElement;
   const files = Array.from(input.files || []);
   input.value = "";
-  if (
-    files.length + props.modelValue.length + pending.value.length >
-    props.limit
-  ) {
-    notify(`最多还可补充${props.limit}张图片，请减少选择数量`, "error");
+  enqueue(files);
+}
+function enqueue(files: File[]) {
+  if (props.disabled || disposed) return;
+  const remaining = Math.max(
+    0,
+    props.limit - props.modelValue.length - pending.value.length,
+  );
+  if (files.length > remaining) {
+    notify(`最多还可补充${remaining}张图片，请减少选择数量`, "error");
     return;
   }
   if (
@@ -107,9 +116,36 @@ async function choose(event: Event) {
       error: "",
     };
     pending.value.push(item);
-    report();
-    await upload(pending.value[pending.value.length - 1]!);
   }
+  report();
+  void drain();
+}
+async function drain() {
+  if (draining) return;
+  draining = true;
+  try {
+    let item;
+    while (
+      !disposed &&
+      (item = pending.value.find((p) => p.status === "waiting"))
+    ) {
+      await upload(item);
+      await nextTick();
+    }
+  } finally {
+    draining = false;
+  }
+}
+function retry(item: Pending) {
+  if (!props.disabled) {
+    item.status = "waiting";
+    void drain();
+  }
+}
+function leaveDrag(event: DragEvent) {
+  const area = event.currentTarget as HTMLElement;
+  if (!area.contains(event.relatedTarget as Node | null))
+    dragging.value = false;
 }
 function removePending(item: Pending) {
   URL.revokeObjectURL(item.url);
@@ -128,14 +164,26 @@ async function remove(asset: FileAsset) {
     notify(errorText(e), "error");
   }
 }
-onBeforeUnmount(() => pending.value.forEach((p) => URL.revokeObjectURL(p.url)));
+onBeforeUnmount(() => {
+  disposed = true;
+  pending.value.forEach((p) => URL.revokeObjectURL(p.url));
+});
 </script>
 <template>
   <div>
     <p style="margin-bottom: 7px">
       {{ usage === "RESULT" ? "处理结果图片" : "现场图片" }}
     </p>
-    <div class="upload-area">
+    <div
+      class="upload-area"
+      :class="{ dragging }"
+      @dragover.prevent="dragging = !disabled"
+      @dragleave="leaveDrag"
+      @drop.prevent="
+        dragging = false;
+        enqueue(Array.from($event.dataTransfer?.files || []));
+      "
+    >
       <input
         type="file"
         aria-label="选择图片"
@@ -145,9 +193,7 @@ onBeforeUnmount(() => pending.value.forEach((p) => URL.revokeObjectURL(p.url)));
         @change="choose"
       />
       <p class="form-note" style="margin-bottom: 0">
-        JPG / PNG / WebP · 最多{{
-          limit
-        }}张，每张≤10MB。上传前缩放并去除元数据。
+        JPG / PNG / WebP · 最多{{ limit }}张，每张≤10MB。上传时自动压缩优化。
       </p>
     </div>
     <div class="upload-items">
@@ -180,13 +226,14 @@ onBeforeUnmount(() => pending.value.forEach((p) => URL.revokeObjectURL(p.url)));
         <button
           v-if="item.status === 'failed'"
           type="button"
-          @click="upload(item)"
+          @click="retry(item)"
+          :disabled="disabled"
         >
           重试
         </button>
         <button
           type="button"
-          :disabled="item.status === 'uploading'"
+          :disabled="disabled || item.status === 'uploading'"
           @click="removePending(item)"
         >
           移除

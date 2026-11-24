@@ -10,7 +10,11 @@ vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
 vi.mock("vue-router", async () => {
   const { reactive } = await import("vue");
   const route = reactive({ query: {} });
-  return { onBeforeRouteLeave: vi.fn(), useRoute: () => route };
+  return {
+    onBeforeRouteLeave: vi.fn(),
+    useRouter: () => ({ replace: vi.fn() }),
+    useRoute: () => route,
+  };
 });
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),

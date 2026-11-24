@@ -82,6 +82,7 @@ struct Index {
   private navigation: NavigationStack = new NavigationStack();
   @Provide backPanels: BackPanels = new BackPanels();
   private navigationVersion: number = 0;
+  @State refreshing: boolean = false;
   private scroller: Scroller = new Scroller();
   private submissionKeys: SubmissionKeys = new SubmissionKeys((): string =>
     util.generateRandomUUID(),
@@ -99,6 +100,17 @@ struct Index {
     fail: (error: Error): void => this.fail(error),
     flash: (message: string): void => this.flash(message),
     navigate: (page: string): void => this.go(page),
+    scrollTop: (): void => this.scroller.scrollTo({ xOffset: 0, yOffset: 0 }),
+    messageRead: (): void => {
+      this.inbox.markRead();
+      this.unreadCount = Math.max(0, this.unreadCount - 1);
+    },
+    openVisitor: (id: string): void => {
+      if (!this.manager()) return;
+      this.visitors.state.detailId = id;
+      this.visitors.state.selected = null;
+      this.go('visitor-detail');
+    },
     openRepair: (repair: Repair): Promise<void> => this.openRepair(repair),
     confirm: async (
       title: string,
@@ -175,7 +187,6 @@ struct Index {
     this.hygiene.bindDrafts(null);
     this.inbox.stop();
     this.unreadCount = 0;
-    this.messageNotifications = false;
     this.mobility.detach();
     this.photoDrafts.reset();
     this.dispatch.stopSession();
@@ -216,6 +227,7 @@ struct Index {
       return this.repairState.detailLoading;
     if (this.page === "visitors" || this.page === "visitor-detail") return this.visitorState.loading;
     if (this.page === "hygiene") return this.hygieneState.loading;
+    if (this.page === "messages" || this.page === "remediations") return this.serviceState.loading;
     return false;
   }
   private switchTab(page: string): void {
@@ -291,17 +303,20 @@ struct Index {
     } else if (page === "room") this.home.loadResidences();
   }
   private canRefreshWorkspace(): boolean {
-    return ['visitors', 'visitor-detail', 'repairs', 'detail', 'hygiene', 'hygiene-create'].includes(this.page);
+    return !this.user?.mustChangePassword && !this.displayedRecoveryCode && ['home','messages','remediations','visitors', 'visitor-detail', 'repairs', 'detail', 'hygiene', 'hygiene-create'].includes(this.page);
   }
-  private refreshWorkspace(): void {
-    if (!this.user || this.currentLoading() || this.visitorState.busy || this.hygieneState.busy || this.repairState.busy) return;
+  private async refreshWorkspace(): Promise<void> {
+    if (!this.user || this.currentLoading() || this.visitorState.busy || this.serviceState.busy || this.hygieneState.busy || this.repairState.busy) return;
     this.error = "";
-    if (this.page === 'visitors') { this.visitors.loadVisitors(); this.visitors.loadBuildings(); }
-    else if (this.page === 'visitor-detail') this.visitors.loadDetail();
-    else if (this.page === 'repairs') this.repairs.loadRepairs();
-    else if (this.page === 'detail' && this.repairState.selected) this.repairs.loadDetail(this.repairState.selected);
-    else if (this.page === 'hygiene') this.hygiene.loadHygiene();
-    else if (this.page === 'hygiene-create') this.hygiene.loadRooms();
+    if (this.page === 'home') await this.home.loadHome();
+    else if (this.page === 'messages') await this.serviceCenter.loadMessages();
+    else if (this.page === 'remediations') await this.serviceCenter.loadRemediations();
+    else if (this.page === 'visitors') await Promise.all([this.visitors.loadVisitors(),this.visitors.loadBuildings()]);
+    else if (this.page === 'visitor-detail') await this.visitors.loadDetail();
+    else if (this.page === 'repairs') await this.repairs.loadRepairs();
+    else if (this.page === 'detail' && this.repairState.selected) await this.repairs.loadDetail(this.repairState.selected);
+    else if (this.page === 'hygiene') await this.hygiene.loadHygiene();
+    else if (this.page === 'hygiene-create') await this.hygiene.loadRooms();
   }
   private async openRepair(order: Repair): Promise<void> {
     if (this.page === 'action' && this.navigation.previous() === 'route') { this.popPage(); return; }
@@ -427,6 +442,7 @@ struct Index {
       );
       this.server = (await prefs.get("server", Api.base)) as string;
       this.night = (await prefs.get("night", false)) as boolean;
+      this.messageNotifications = (await prefs.get("messageNotifications",false)) as boolean;
       Api.base = Api.normalizeBase(this.server);
     } catch (_) {
       /* Defaults remain usable when settings have not been stored. */
@@ -442,6 +458,7 @@ struct Index {
     );
     await prefs.put("server", Api.base);
     await prefs.put("night", this.night);
+    await prefs.put("messageNotifications",this.messageNotifications);
     await prefs.flush();
   }
 
@@ -474,10 +491,9 @@ struct Index {
 
   private setLoginMode(identifier: string, activate: boolean): void {
     if (this.busy) return;
-    if (identifier !== this.loginIdentifier) this.username = "";
+    if (this.activationSignIn !== activate) this.password = "";
     this.loginIdentifier = identifier;
     this.activationSignIn = activate;
-    this.password = "";
     this.error = "";
   }
 
@@ -749,8 +765,8 @@ struct Index {
       serviceSecondary({label: '卫生整改任务', click: () => this.go('remediations'), night: this.night, busy: this.busy})
       Blank().height(8)
       serviceSecondary({label: this.messageNotifications ? '关闭前台新消息系统提醒' : '开启前台新消息系统提醒', click: async () => {
-        if (this.messageNotifications) { this.messageNotifications = false; return; }
-        try { await DeviceActions.notify(this.getUIContext().getHostContext() as common.UIAbilityContext); this.messageNotifications = true; }
+        if (this.messageNotifications) { this.messageNotifications = false; await this.saveSettings(); return; }
+        try { await DeviceActions.notify(this.getUIContext().getHostContext() as common.UIAbilityContext); this.messageNotifications = true; await this.saveSettings(); }
         catch (error) { this.fail(error as Error); }
       }, night: this.night, busy: this.busy})
       Blank().height(16)
@@ -804,7 +820,7 @@ struct Index {
   private Header() {
     Row({space: 12}) {
       if (this.hasPrevious || this.user?.mustChangePassword) {
-        Button('‹').id('page-back').fontSize(28).fontColor(this.ink()).backgroundColor(Color.Transparent).width(40).height(48)
+        Button('‹').id('page-back').fontSize(28).fontColor(this.ink()).backgroundColor(Color.Transparent).width(48).height(48)
           .onClick(() => this.onBackPress())
       }
       Text(this.pageTitle()).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
@@ -815,9 +831,6 @@ struct Index {
       if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
       if (this.manager() && !this.user?.mustChangePassword && !this.displayedRecoveryCode) {
         Button('我的').id('open-profile').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.page === 'profile' ? this.accent() : this.ink()).onClick(() => this.switchTab('profile'))
-      } else {
-        Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(14).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
-        .onClick(() => { this.night = !this.night; this.saveSettings(); })
       }
     }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
   }
@@ -853,13 +866,26 @@ struct Index {
       if (this.error) {
         Row({space: 8}) {
           Text(this.error).id('error-message').fontSize(14).lineHeight(22).fontColor(this.night ? '#F1A99C' : '#A13E37').layoutWeight(1)
-          Button('×').width(40).height(48).fontColor(this.ink()).backgroundColor(Color.Transparent).onClick(() => this.error = '')
+          Button('×').width(48).height(48).fontColor(this.ink()).backgroundColor(Color.Transparent).onClick(() => this.error = '')
         }.width('100%').padding({left: 16, right: 8, top: 8, bottom: 8}).backgroundColor(this.night ? '#442E2B' : '#F7EAE6')
       }
       if (this.currentLoading()) {
         Row({space: 8}) { LoadingProgress().width(20).height(20).color(this.accent()); Text('正在更新…').fontSize(14).fontColor(this.muted()) }
           .width('100%').padding(8).justifyContent(FlexAlign.Center)
       }
+      if (this.user && this.canRefreshWorkspace()) {
+        Refresh({refreshing: $$this.refreshing}) { this.WorkspaceScroll() }
+          .layoutWeight(1).width('100%').onRefreshing(async () => {
+            try { await this.refreshWorkspace(); } finally { this.refreshing = false; }
+          })
+      } else {
+        Column(){ this.WorkspaceScroll() }.layoutWeight(1).width('100%')
+      }
+      if (this.user && rootTab(this.page, this.manager()) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
+    }.width('100%').height('100%').backgroundColor(this.bg())
+  }
+  @Builder
+  private WorkspaceScroll() {
       Scroll(this.scroller) {
         Column() {
           if (this.displayedRecoveryCode) {
@@ -869,9 +895,7 @@ struct Index {
           else if (this.recoverEntry) { this.AccountArea('recover') }
           else { this.Login() }
         }.width('100%').constraintSize({maxWidth: 720}).padding({left: this.user ? 16 : 0, right: this.user ? 16 : 0, top: this.user ? 16 : 0, bottom: 28}).alignItems(HorizontalAlign.Start)
-      }.id('page-scroll').layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
-      if (this.user && rootTab(this.page, this.manager()) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
-    }.width('100%').height('100%').backgroundColor(this.bg())
+      }.id('page-scroll').height('100%').width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
   }
   @Builder
   private AccountArea(mode: string) {
@@ -903,7 +927,7 @@ struct Index {
     } else if (['hygiene', 'hygiene-create'].includes(this.page)) {
       HygieneWorkspace({state: this.hygieneState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.hygiene, photoDrafts: this.photoDrafts, onRemediate: (item: Hygiene): void => { this.serviceCenter.prepare(item); }})
     } else if (this.page === 'route' && this.manager()) {
-      RoutePage({controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => this.openRepair(repair), onFinish: (repair: Repair) => { this.repairState.selected = repair; this.repairs.beginAction('finish'); }})
+      RoutePage({onCalibrate: () => this.go('mobility'), controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => this.openRepair(repair), onFinish: (repair: Repair) => { this.repairState.selected = repair; this.repairs.beginAction('finish'); }})
     } else if (this.page === 'mobility' && this.manager()) {
       MobilityPage({controller: this.mobility, dispatch: this.dispatch, night: this.night, onOpenRoute: () => this.go('route')})
     } else if (this.page === 'password') { this.Password() }

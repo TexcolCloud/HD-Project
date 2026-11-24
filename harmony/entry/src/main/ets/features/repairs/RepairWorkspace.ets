@@ -83,7 +83,7 @@ export struct RepairWorkspace {
         Text('根据本次描述和最多3张所选图片整理建议，核对后再采纳。').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%')
         Row({space: 8}) {
           Checkbox({name: 'analysis-consent'}).select(this.state.aiConsent).selectedColor(this.accent()).onChange((v: boolean) => this.state.aiConsent = v)
-          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22)
+          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22).constraintSize({minHeight:48}).onClick(() => this.state.aiConsent = !this.state.aiConsent)
         }.width('100%')
         Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(16)
           .backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).enabled(!this.state.aiBusy && !this.state.aiAdopted && !this.state.uploading && !this.state.busy).onClick(() => this.controller.suggest())
@@ -102,11 +102,11 @@ export struct RepairWorkspace {
       Select([{value: '其他'}, {value: '水电'}, {value: '门窗家具'}, {value: '网络'}])
         .selected(['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'].indexOf(this.state.repairCategory)).value(categoryLabel(this.state.repairCategory)).width('100%').height(50)
         .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
-        .onSelect((index: number) => { this.state.repairCategory = ['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'][index]; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
+        .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.repairCategory = ['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'][index]; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
       serviceLabel({text: '紧急程度', night: this.night})
       Select([{value: '一般'}, {value: '较急'}]).selected(this.state.repairPriority === 'URGENT' ? 1 : 0).value(this.state.repairPriority === 'URGENT' ? '较急' : '一般').width('100%').height(50)
         .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
-        .onSelect((index: number) => { this.state.repairPriority = index === 1 ? 'URGENT' : 'NORMAL'; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
+        .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => { this.state.repairPriority = index === 1 ? 'URGENT' : 'NORMAL'; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
       if (this.state.repairPriority === 'URGENT') { serviceField({label: '较急原因 *', value: this.state.repairUrgentReason, change: (v: string)  => { this.state.repairUrgentReason = v; this.controller.saveDraft(); }, placeholder: '说明需要优先处理的情况', multiline: true, night: this.night, page: this.page}) }
       serviceField({label: '联系人 *', value: this.state.contactName, change: (v: string)  => { this.state.contactName = v; this.controller.saveDraft(); }, placeholder: '方便宿管联系的姓名', night: this.night, page: this.page})
       serviceField({label: '联系电话 *', value: this.state.contactPhone, change: (v: string) => {
@@ -135,7 +135,7 @@ export struct RepairWorkspace {
       Select([{value: '全部状态'}, {value: '待受理'}, {value: '已接单'}, {value: '处理中'}, {value: '待确认'}, {value: '已完成'}, {value: '已取消'}, {value: '已驳回'}])
         .selected(['', 'SUBMITTED', 'ACCEPTED', 'PROCESSING', 'PENDING_CONFIRMATION', 'COMPLETED', 'CANCELLED', 'REJECTED'].indexOf(this.state.repairFilter))
         .value(this.state.repairFilter ? statusLabel(this.state.repairFilter) : '全部状态').height(48).width('100%').backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-        .onSelect((index: number) => {
+        .optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => {
           this.state.repairFilter = ['', 'SUBMITTED', 'ACCEPTED', 'PROCESSING', 'PENDING_CONFIRMATION', 'COMPLETED', 'CANCELLED', 'REJECTED'][index];
           this.state.repairPage = 1; this.controller.loadRepairs();
         }).margin({bottom: 18})
@@ -145,10 +145,10 @@ export struct RepairWorkspace {
       ForEach(this.state.repairs, (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
       Row({space: 12}) {
         Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.repairPage > 1 && !this.state.listLoading).onClick(() => { this.state.repairPage--; this.controller.loadRepairs(); })
+          .enabled(this.state.repairPage > 1 && !this.state.listLoading).onClick(() => { this.state.repairPage--; this.host.scrollTop?.(); this.controller.loadRepairs(); })
         Text(String(this.state.repairPage)).fontSize(14).fontColor(this.muted())
         Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-          .enabled(this.state.repairPage * 10 < this.state.repairTotal && !this.state.listLoading).onClick(() => { this.state.repairPage++; this.controller.loadRepairs(); })
+          .enabled(this.state.repairPage * 10 < this.state.repairTotal && !this.state.listLoading).onClick(() => { this.state.repairPage++; this.host.scrollTop?.(); this.controller.loadRepairs(); })
       }.width('100%').margin({top: 12})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
@@ -187,14 +187,14 @@ export struct RepairWorkspace {
       Text(this.state.selected.description).fontSize(16).fontColor(this.ink()).lineHeight(27).width('100%').copyOption(CopyOptions.InApp)
       if (this.state.selected.reportImages.length) {
         serviceSection({title: '故障图片', night: this.night})
-        ForEach(this.state.selected.reportImages, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}).margin({bottom: 10}) }, (asset: FileAsset) => asset.id)
+        ForEach(this.state.selected.reportImages, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}).margin({bottom: 10}) }, (asset: FileAsset) => asset.id)
       }
       if (this.state.selected.latestResult) {
         serviceSection({title: '处理结果', night: this.night})
         Text(this.state.selected.latestResult).fontSize(16).fontColor(this.ink()).lineHeight(27).width('100%')
       }
       if (this.state.selected.resultImages.length) {
-        ForEach(this.state.selected.resultImages, (asset: FileAsset) => { SecureImage({url: asset.url, night: this.night}).margin({bottom: 10, top: 10}) }, (asset: FileAsset) => asset.id)
+        ForEach(this.state.selected.resultImages, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}).margin({bottom: 10, top: 10}) }, (asset: FileAsset) => asset.id)
       }
       serviceSection({title: '处理进度', night: this.night})
       ForEach(this.state.events, (event: RepairEvent) => {

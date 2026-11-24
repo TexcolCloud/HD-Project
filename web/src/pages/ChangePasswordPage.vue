@@ -86,7 +86,7 @@ async function leave() {
             maxlength="72"
             autocomplete="new-password"
           />
-          <small>至少10位，UTF-8长度不超过72字节。</small>
+          <small>至少10位字符，建议包含字母、数字或符号。</small>
         </label>
         <label>
           确认新密码

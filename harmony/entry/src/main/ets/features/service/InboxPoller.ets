@@ -3,13 +3,15 @@ import { ServiceMessage, ServiceMessagePage, ServiceMessageSummary } from '../..
 import { AppVisibility } from '../dispatch/AppVisibility';
 import { ForegroundPoll } from '../dispatch/ForegroundPoll';
 
-interface InboxSnapshot { summary: ServiceMessageSummary; page: ServiceMessagePage; }
+interface InboxSnapshot { revision: number; summary: ServiceMessageSummary; page: ServiceMessagePage; }
 
 // Foreground delivery bridge; the server inbox remains the durable source of truth.
 export class InboxPoller {
   private poll: ForegroundPoll<InboxSnapshot> | null = null;
   private unsubscribe: () => void = () => {};
   private highestId: string = '';
+  private revision: number = 0;
+  markRead(): void { this.revision++; }
   private initialized: boolean = false;
   stop(): void {
     this.poll?.stop(); this.poll = null;
@@ -19,10 +21,12 @@ export class InboxPoller {
   start(onCount: (count: number) => void, onNew: () => Promise<void>, onError: (error: Error) => void): void {
     this.stop();
     this.poll = new ForegroundPoll<InboxSnapshot>(async (): Promise<InboxSnapshot> => {
+      const revision = this.revision;
       const summary = await Api.request<ServiceMessageSummary>('/messages/summary');
       const page = await Api.request<ServiceMessagePage>('/messages?unreadOnly=true&pageSize=20');
-      return {summary: summary, page: page};
+      return { revision: revision, summary: summary, page: page };
     }, (snapshot: InboxSnapshot): void => {
+      if (snapshot.revision !== this.revision) return;
       onCount(snapshot.summary.unreadCount);
       let fresh: boolean = false;
       for (const item of snapshot.page.items) {
