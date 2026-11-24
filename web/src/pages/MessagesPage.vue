@@ -7,6 +7,7 @@ import { messageDestination } from "../composables/serviceLinks";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import Pagination from "../components/Pagination.vue";
 import Drawer from "../components/Drawer.vue";
+import { syncInboxBadge } from "../composables/useInboxBadge";
 const query = useLatestQuery();
 const { busy, error } = query;
 const items = ref<Model<"ServiceMessage">[]>([]),
@@ -38,6 +39,7 @@ async function load() {
       items.value = list.items;
       total.value = list.total;
       summary.value = counts;
+      syncInboxBadge(counts.unreadCount);
     },
   );
 }
@@ -64,6 +66,7 @@ async function read() {
     );
     if (disposed) return;
     selected.value = updated;
+    syncInboxBadge();
     await load();
   } catch (cause) {
     if (!disposed) actionError.value = errorText(cause);

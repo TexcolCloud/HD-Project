@@ -19,6 +19,7 @@ interface RepairCardArgs { order: Repair; }
 
 @Component
 export struct RepairWorkspace {
+  @State private showPlace: boolean = false;
   @ObjectLink state: RepairState;
   @Prop page: string = 'home';
   @Prop night: boolean = false;
@@ -75,15 +76,38 @@ export struct RepairWorkspace {
     Column({space: 0}) {
       DraftNotice({restored: this.state.draftRestored, blocked: this.state.draftBlocked, night: this.night, onDiscard: () => this.controller.discardDraft()})
       serviceDetail({label: '报修宿舍', value: this.room ? this.room.buildingName + ' ' + this.room.roomNo : '尚未关联宿舍', night: this.night})
-      StudentPlaceCheck({room: this.room, night: this.night, onUnauthorized: (error: Error) => this.host.fail(error)})
-      Blank().height(20)
-      serviceField({label: '报修标题 *', value: this.state.repairTitle, change: (v: string)  => { this.state.repairTitle = v; this.controller.saveDraft(); }, placeholder: '例如：洗手池排水缓慢', night: this.night, page: this.page})
       serviceField({label: '故障描述 *', value: this.state.repairDescription, change: (v: string)  => { this.state.repairDescription = v; this.controller.saveDraft(); }, placeholder: '说明发生位置、现象和持续时间', multiline: true, night: this.night, page: this.page})
+      this.Uploads('REPORT')
+      Column({space: 12}) {
+        Text('报修填写助手（AI）').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
+        Text('根据本次描述和最多3张所选图片整理建议，核对后再采纳。').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%')
+        Row({space: 8}) {
+          Checkbox({name: 'analysis-consent'}).select(this.state.aiConsent).selectedColor(this.accent()).onChange((v: boolean) => this.state.aiConsent = v)
+          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22)
+        }.width('100%')
+        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(16)
+          .backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).enabled(!this.state.aiBusy && !this.state.aiAdopted && !this.state.uploading && !this.state.busy).onClick(() => this.controller.suggest())
+        if (this.state.aiError) { Text(this.state.aiError).fontSize(14).fontColor(this.night ? '#F1A99C' : '#A13E37').lineHeight(22).width('100%') }
+        if (this.state.ai) {
+          Text('AI建议，请核对').fontSize(14).fontColor(this.accent()).width('100%')
+          Text(this.state.ai.title + '\n' + categoryLabel(this.state.ai.category) + '\n' + this.state.ai.summary).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%')
+          if (this.state.ai.uncertainty) { Text(this.state.ai.uncertainty).fontSize(14).fontColor(this.muted()).width('100%') }
+          ForEach(this.state.ai.questions, (question: string) => { Text('待补充：' + question).fontSize(14).fontColor(this.muted()).width('100%') })
+          Button(this.state.aiAdopted ? '撤销采纳，恢复原文' : '采纳建议').height(48).width('100%').fontSize(16).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+            .onClick(() => { if (this.state.aiAdopted) this.controller.undoSuggestion(); else this.controller.adoptSuggestion(); })
+        }
+      }.padding({top: 16, bottom: 16}).width('100%').alignItems(HorizontalAlign.Start).border({width: {top: 1}, color: this.line()}).margin({bottom: 24})
+      serviceField({label: '报修标题 *', value: this.state.repairTitle, change: (v: string)  => { this.state.repairTitle = v; this.controller.saveDraft(); }, placeholder: '例如：洗手池排水缓慢', night: this.night, page: this.page})
       serviceLabel({text: '故障分类', night: this.night})
       Select([{value: '其他'}, {value: '水电'}, {value: '门窗家具'}, {value: '网络'}])
         .selected(['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'].indexOf(this.state.repairCategory)).value(categoryLabel(this.state.repairCategory)).width('100%').height(50)
         .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
         .onSelect((index: number) => { this.state.repairCategory = ['OTHER', 'UTILITIES', 'FURNITURE', 'NETWORK'][index]; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
+      serviceLabel({text: '紧急程度', night: this.night})
+      Select([{value: '一般'}, {value: '较急'}]).selected(this.state.repairPriority === 'URGENT' ? 1 : 0).value(this.state.repairPriority === 'URGENT' ? '较急' : '一般').width('100%').height(50)
+        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
+        .onSelect((index: number) => { this.state.repairPriority = index === 1 ? 'URGENT' : 'NORMAL'; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
+      if (this.state.repairPriority === 'URGENT') { serviceField({label: '较急原因 *', value: this.state.repairUrgentReason, change: (v: string)  => { this.state.repairUrgentReason = v; this.controller.saveDraft(); }, placeholder: '说明需要优先处理的情况', multiline: true, night: this.night, page: this.page}) }
       serviceField({label: '联系人 *', value: this.state.contactName, change: (v: string)  => { this.state.contactName = v; this.controller.saveDraft(); }, placeholder: '方便宿管联系的姓名', night: this.night, page: this.page})
       serviceField({label: '联系电话 *', value: this.state.contactPhone, change: (v: string) => {
         this.state.contactPhone = v; this.state.phoneError = ''; this.controller.saveDraft();
@@ -93,31 +117,8 @@ export struct RepairWorkspace {
         serviceField({label: '方便联系时段', value: this.state.contactTime, change: (v: string) => { this.state.contactTime = v; this.controller.saveDraft(); }, placeholder: '例如：工作日18:00后', night: this.night, page: this.page})
       }
       VisitWindowFields({draft: this.state.visitDraft, night: this.night, onChange: (draft: VisitWindowDraft) => { this.state.visitDraft = draft; this.controller.saveDraft(); }})
-      serviceLabel({text: '紧急程度', night: this.night})
-      Select([{value: '一般'}, {value: '较急'}]).selected(this.state.repairPriority === 'URGENT' ? 1 : 0).value(this.state.repairPriority === 'URGENT' ? '较急' : '一般').width('100%').height(50)
-        .fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4)
-        .onSelect((index: number) => { this.state.repairPriority = index === 1 ? 'URGENT' : 'NORMAL'; this.controller.saveDraft(); }).margin({top: 8, bottom: 20})
-      if (this.state.repairPriority === 'URGENT') { serviceField({label: '较急原因 *', value: this.state.repairUrgentReason, change: (v: string)  => { this.state.repairUrgentReason = v; this.controller.saveDraft(); }, placeholder: '说明需要优先处理的情况', multiline: true, night: this.night, page: this.page}) }
-      this.Uploads('REPORT')
-      Column({space: 12}) {
-        Text('报修填写助手').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).width('100%')
-        Text('根据本次描述和最多3张所选图片整理建议，核对后再采纳。').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%')
-        Row({space: 8}) {
-          Checkbox({name: 'analysis-consent'}).select(this.state.aiConsent).selectedColor(this.accent()).onChange((v: boolean) => this.state.aiConsent = v)
-          Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22)
-        }.width('100%')
-        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(16)
-          .backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).enabled(!this.state.aiBusy && !this.state.uploading && !this.state.busy).onClick(() => this.controller.suggest())
-        if (this.state.aiError) { Text(this.state.aiError).fontSize(14).fontColor(this.night ? '#F1A99C' : '#A13E37').lineHeight(22).width('100%') }
-        if (this.state.ai) {
-          Text('AI建议，请核对').fontSize(14).fontColor(this.accent()).width('100%')
-          Text(this.state.ai.title + '\n' + categoryLabel(this.state.ai.category) + '\n' + this.state.ai.summary).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%')
-          if (this.state.ai.uncertainty) { Text(this.state.ai.uncertainty).fontSize(14).fontColor(this.muted()).width('100%') }
-          ForEach(this.state.ai.questions, (question: string) => { Text('待补充：' + question).fontSize(14).fontColor(this.muted()).width('100%') })
-          Button(this.state.aiAdopted ? '已采纳，可继续修改' : '采纳建议').height(48).width('100%').fontSize(16).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
-            .onClick(() => { if (this.state.ai) { this.state.repairTitle = this.state.ai.title; this.state.repairDescription = this.state.ai.summary; this.state.repairCategory = this.state.ai.category; this.state.aiAdopted = true; } })
-        }
-      }.padding({top: 16, bottom: 16}).width('100%').alignItems(HorizontalAlign.Start).border({width: {top: 1}, color: this.line()}).margin({bottom: 24})
+      serviceSecondary({label: this.showPlace ? '收起宿舍位置核对' : '核对宿舍位置', click: () => { this.showPlace = !this.showPlace; }, night: this.night, busy: this.state.busy})
+      if (this.showPlace) { StudentPlaceCheck({room: this.room, night: this.night, onUnauthorized: (error: Error) => this.host.fail(error)}) }
       servicePrimary({label: '提交报修', click: () => this.controller.submitRepair(), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading, enabled: !!this.room})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }

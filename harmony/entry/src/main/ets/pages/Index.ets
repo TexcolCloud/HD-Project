@@ -54,7 +54,7 @@ import {
 import { HygieneWorkspace } from "../features/hygiene/HygieneWorkspace";
 import { HomeController, HomeState } from "../features/home/HomeController";
 import { HomeWorkspace } from "../features/home/HomeWorkspace";
-import { NavigationStack, BackPanels, rootTab, requiresLogoutOnBack } from "../features/NavigationStack";
+import { NavigationStack, BackPanels, TabLink, bottomTabs, activeTab, rootTab, requiresLogoutOnBack } from "../features/NavigationStack";
 import { WorkspaceHost } from "../features/WorkspaceHost";
 interface EmptyRequest {}
 
@@ -568,7 +568,7 @@ struct Index {
         this.getUIContext().getHostContext() as common.UIAbilityContext,
         (error: Error) => this.fail(error),
       );
-      this.repairs.state.contactName = result.user.displayName;
+      this.repairs.initializeContact(result.user.displayName);
       this.bindDrafts();
       this.inbox.start((count: number): void => { this.unreadCount = count; }, async (): Promise<void> => {
         if (this.messageNotifications) await DeviceActions.serviceMessage();
@@ -813,23 +813,37 @@ struct Index {
           .onClick(() => this.refreshWorkspace())
       }
       if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
-      Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(14).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
+      if (this.manager() && !this.user?.mustChangePassword && !this.displayedRecoveryCode) {
+        Button('我的').id('open-profile').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.page === 'profile' ? this.accent() : this.ink()).onClick(() => this.switchTab('profile'))
+      } else {
+        Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(14).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
         .onClick(() => { this.night = !this.night; this.saveSettings(); })
+      }
     }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
+  }
+
+  private tabSymbol(page: string): Resource {
+    switch (page) {
+      case 'home': return $r('sys.symbol.house');
+      case 'route': return $r('sys.symbol.route_plan');
+      case 'repairs': return $r('sys.symbol.doc_text');
+      case 'hygiene': return $r('sys.symbol.checkmark');
+      default: return $r('sys.symbol.person');
+    }
   }
 
   @Builder
   private BottomTabs() {
     Row() {
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.house')).fontSize(18).fontColor([this.page === 'home' ? this.accent() : this.muted()]); Text('首页').fontSize(14).fontColor(this.page === 'home' ? this.accent() : this.muted()) } }
-        .id('tab-home').layoutWeight(1).height(58).fontColor(this.page === 'home' ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('home'))
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.doc_text')).fontSize(18).fontColor([['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()]); Text(this.manager() ? '工单' : '我的报修').fontSize(14).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()) } }
-        .id('tab-repairs').layoutWeight(1).height(58).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('repairs'))
-      Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.person')).fontSize(18).fontColor([this.page === 'profile' ? this.accent() : this.muted()]); Text('我的').fontSize(14).fontColor(this.page === 'profile' ? this.accent() : this.muted()) } }
-        .id('tab-profile').layoutWeight(1).height(58).fontColor(this.page === 'profile' ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('profile'))
+      ForEach(bottomTabs(this.manager()), (tab: TabLink) => {
+        Button() {
+          Column({space: 2}) {
+            SymbolGlyph(this.tabSymbol(tab.page)).fontSize(18).fontColor([activeTab(this.page) === tab.page ? this.accent() : this.muted()])
+            Text(tab.label).fontSize(14).fontColor(activeTab(this.page) === tab.page ? this.accent() : this.muted())
+          }
+        }.id(tab.id).layoutWeight(1).height(58).backgroundColor(Color.Transparent).borderRadius(0)
+          .onClick(() => this.switchTab(tab.page))
+      }, (tab: TabLink) => tab.id + tab.label)
     }.width('100%').backgroundColor(this.surface()).border({width: {top: 1}, color: this.line()})
   }
 
@@ -856,7 +870,7 @@ struct Index {
           else { this.Login() }
         }.width('100%').constraintSize({maxWidth: 720}).padding({left: this.user ? 16 : 0, right: this.user ? 16 : 0, top: this.user ? 16 : 0, bottom: 28}).alignItems(HorizontalAlign.Start)
       }.id('page-scroll').layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
-      if (this.user && rootTab(this.page) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
+      if (this.user && rootTab(this.page, this.manager()) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
     }.width('100%').height('100%').backgroundColor(this.bg())
   }
   @Builder
@@ -868,11 +882,20 @@ struct Index {
   }
   @Builder
   private Content() {
+    if (this.manager() && ['hygiene','remediations','visitors'].includes(this.page)) {
+      Row() {
+        ForEach(['hygiene','remediations','visitors'], (name: string, index: number) => {
+          Button(['卫生巡检','卫生整改','访客登记'][index]).layoutWeight(1).height(48).borderRadius(4)
+            .fontColor(this.page === name ? this.onPrimary() : this.ink()).backgroundColor(this.page === name ? this.ink() : this.surface())
+            .onClick(() => this.switchTab(name))
+        })
+      }.width('100%').margin({bottom: 16})
+    }
     if (['messages', 'remediations', 'remediation-create', 'remediation-detail', 'remediation-assignment'].includes(this.page)) {
       ServiceCenterWorkspace({state: this.serviceState, page: this.page, night: this.night, manager: this.manager(), host: this.host, controller: this.serviceCenter, photos: this.photoDrafts, onRecheck: (source: Hygiene, taskId: string) => this.hygiene.recheck(source, taskId)})
     } else if (this.page === 'home' || this.page === 'room') {
       HomeWorkspace({state: this.homeState, page: this.page, night: this.night, user: this.user, host: this.host,
-        onRepairListReset: () => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; }, onHygieneListReset: () => { this.hygieneState.hygienePage = 1; }})
+        onRemediation: (id: string) => this.serviceCenter.openRemediation(id), onRepairListReset: () => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; }, onHygieneListReset: () => { this.hygieneState.hygienePage = 1; }})
     } else if (['repairs', 'repair-create', 'detail', 'action'].includes(this.page)) {
       RepairWorkspace({state: this.repairState, page: this.page, night: this.night, user: this.user, room: this.homeState.room, host: this.host, controller: this.repairs, photoDrafts: this.photoDrafts, dispatch: this.dispatch})
     } else if (['visitors', 'visitor-detail', 'visitor-create'].includes(this.page) && this.manager()) {

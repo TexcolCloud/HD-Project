@@ -99,3 +99,8 @@ router.beforeEach(async (to) => {
   if (destination) return destination;
   return true;
 });
+
+router.afterEach((to, _from, failure) => {
+  if (!failure && typeof document !== "undefined")
+    document.title = to.meta.title ? `${String(to.meta.title)} · 寓见` : "寓见";
+});

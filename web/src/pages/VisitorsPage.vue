@@ -40,6 +40,7 @@ const selected = ref<Visitor>(),
   correctionReason = ref(""),
   clearPhone = ref("");
 const leaveCandidate = ref<Visitor>();
+const departureTime = ref("");
 const leaveDialog = ref<HTMLDialogElement>();
 const form = reactive<Model<"VisitorRequest">>({
   visitorName: "",
@@ -167,8 +168,10 @@ async function save() {
   }
 }
 function requestLeave(visitor: Visitor) {
-  if (!saving.value && visitor.status === "VISITING" && !leaveCandidate.value)
+  if (!saving.value && visitor.status === "VISITING" && !leaveCandidate.value) {
+    departureTime.value = "";
     leaveCandidate.value = visitor;
+  }
 }
 function cancelLeave() {
   if (!leaveCandidate.value) return;
@@ -213,6 +216,7 @@ async function confirmLeave() {
   try {
     const updated = await post<Visitor>(`/visitors/${v.id}/leave`, {
       expectedVersion: v.version,
+      ...(departureTime.value ? { leftAt: isoTime(departureTime.value) } : {}),
     });
     if (selected.value?.id === v.id) selected.value = updated;
     notify("离访时间已记录");
@@ -300,8 +304,9 @@ onUnmounted(() => {
     document.removeEventListener("visibilitychange", returnedToPage);
 });
 watch(
-  () => route.query.visitorId,
-  (id) => {
+  () => [route.query.visitorId, route.query.action],
+  ([id, action]) => {
+    if (!id && action === "create") create();
     if (typeof id === "string" && id) void detail(id);
   },
   { immediate: true },
@@ -484,6 +489,20 @@ watch(
         来访事由 *
         <input v-model.trim="form.purpose" required maxlength="200" />
       </label>
+      <div class="button-row">
+        <button
+          v-for="purpose in ['家属探访', '同学来访', '搬运物品', '公务联系']"
+          :key="purpose"
+          class="btn"
+          type="button"
+          @click="
+            form.purpose = purpose;
+            dirty = true;
+          "
+        >
+          {{ purpose }}
+        </button>
+      </div>
       <label>
         入访时间
         <input v-model="arrivedLocal" type="datetime-local" />
@@ -597,13 +616,21 @@ watch(
       <p id="visitor-leave-description">
         确认 {{ leaveCandidate.visitorName }} 已离开
         {{ leaveCandidate.buildingName }}
-        {{ leaveCandidate.roomNo }}？确认后将以当前时间登记离访。
+        {{ leaveCandidate.roomNo }}？
       </p>
+      <label>
+        实际离访时间
+        <input v-model="departureTime" type="datetime-local" />
+        <small>留空按当前时间记录；补登可选择实际离开时刻</small>
+      </label>
       <div class="button-row">
-        <button class="btn" type="button" autofocus @click="cancelLeave">
-          返回
-        </button>
-        <button class="btn primary" type="button" @click="confirmLeave">
+        <button class="btn" type="button" @click="cancelLeave">返回</button>
+        <button
+          class="btn primary"
+          type="button"
+          autofocus
+          @click="confirmLeave"
+        >
           确认离访
         </button>
       </div>

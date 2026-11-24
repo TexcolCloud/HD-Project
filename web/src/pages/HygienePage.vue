@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModuleTabs from "../components/ModuleTabs.vue";
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ApiError, get, post, patch } from "../api/client";
@@ -11,6 +12,7 @@ import {
   isoTime,
   statusNames,
 } from "../ui";
+import { allPages } from "../api/allPages";
 import Drawer from "../components/Drawer.vue";
 import Pagination from "../components/Pagination.vue";
 import LookupSelect from "../components/LookupSelect.vue";
@@ -59,6 +61,9 @@ const form = reactive<Model<"HygieneRequest">>({
   remediationNote: "",
   imageIds: [],
 });
+const nextRoomQuery = useLatestQuery();
+const voiding = ref(false),
+  voidReason = ref("");
 const correctionReason = ref("");
 const scores = [
   ["floorScore", "地面"],
@@ -244,6 +249,8 @@ async function detail(h: Hygiene | string) {
   const id = typeof h === "string" ? h : h.id;
   selected.value = typeof h === "string" ? undefined : h;
   history.value = [];
+  voiding.value = false;
+  voidReason.value = "";
   modal.value = "detail";
   formError.value = "";
   await detailQuery.run(
@@ -268,11 +275,69 @@ async function detail(h: Hygiene | string) {
   if (modal.value === "detail" && selected.value?.id === id)
     formError.value = detailQuery.error.value;
 }
-async function save() {
+async function advanceRoom(roomId: string) {
+  const date = form.inspectionDate,
+    inspected = inspectedLocal.value;
+  edit();
+  createRemediation.value = false;
+  responsibleStudentId.value = dueLocal.value = "";
+  form.inspectionDate = date;
+  inspectedLocal.value = inspected;
+  await nextRoomQuery.run(
+    async (signal) => {
+      const room = await get<Model<"Room">>(
+        "/rooms/" + encodeURIComponent(roomId),
+        {},
+        signal,
+      );
+      const rooms = await allPages(
+        (page) =>
+          get<Model<"RoomPage">>(
+            "/rooms",
+            {
+              buildingId: room.buildingId,
+              floorNo: room.floorNo,
+              status: "ENABLED",
+              page,
+              pageSize: 100,
+            },
+            signal,
+          ),
+        signal,
+      );
+      const order = new Intl.Collator("zh-CN", { numeric: true });
+      return rooms
+        .filter(
+          (r) =>
+            r.enabled &&
+            r.buildingId === room.buildingId &&
+            r.floorNo === room.floorNo,
+        )
+        .sort((a, b) => order.compare(a.roomNo, b.roomNo))
+        .find((r) => order.compare(r.roomNo, room.roomNo) > 0);
+    },
+    (next) => {
+      form.roomId = next?.id || "";
+      if (!next) notify("本楼层已录至末尾，请选择下一宿舍");
+    },
+  );
+  if (nextRoomQuery.error.value)
+    formError.value =
+      "评分已保存，请手动选择下一宿舍。" + nextRoomQuery.error.value;
+}
+function fullScore() {
+  for (const [key] of scores) form[key] = 25;
+  dirty.value = true;
+}
+async function save(event?: SubmitEvent) {
+  const continueNext =
+    mode.value === "create" &&
+    form.round === "ROUTINE" &&
+    event?.submitter?.getAttribute("value") === "next";
   if (
     saving.value ||
+    !form.roomId ||
     uploadBlocked.value ||
-    comparing.value ||
     assignmentBlocked.value ||
     comparison.value?.sameRound
   )
@@ -320,7 +385,8 @@ async function save() {
       }
     }
     dirty.value = false;
-    modal.value = null;
+    if (continueNext) await advanceRoom(body.roomId);
+    else modal.value = null;
     notify(
       mode.value === "correction"
         ? "评分已修正，原成绩与原因已留痕"
@@ -349,9 +415,14 @@ async function save() {
   }
 }
 async function voidRecord() {
-  if (!selected.value) return;
-  const reason = window.prompt("请填写作废原因（保留原记录与审计）");
-  if (!reason?.trim()) return;
+  const reason = voidReason.value.trim();
+  if (
+    !selected.value ||
+    saving.value ||
+    reason.length < 2 ||
+    reason.length > 500
+  )
+    return;
   saving.value = true;
   try {
     await post(`/hygiene-inspections/${selected.value.id}/void`, {
@@ -393,8 +464,15 @@ onMounted(async () => {
   await load();
 });
 watch(
-  () => [route.query.inspectionId, route.query.recheckOf],
-  async ([id, recheckOf]) => {
+  () => [route.query.inspectionId, route.query.recheckOf, route.query.action],
+  async ([id, recheckOf, action]) => {
+    if (action === "create" && !id && !recheckOf) {
+      edit();
+      const query = { ...route.query };
+      delete query.action;
+      await router.replace({ path: route.path, query });
+      return;
+    }
     if (typeof id === "string" && id) await detail(id);
     else if (typeof recheckOf === "string" && recheckOf) {
       await detail(recheckOf);
@@ -419,6 +497,7 @@ watch(
       录入卫生评分
     </button>
   </div>
+  <ModuleTabs domain="hygiene" />
   <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
   <p
     v-if="detailQuery.error.value && !selected"
@@ -427,7 +506,7 @@ watch(
   >
     {{ detailQuery.error.value }}
   </p>
-  <p v-if="incomplete" class="error-banner" role="alert">
+  <p v-if="incomplete && modal !== 'form'" class="error-banner" role="alert">
     {{ incomplete.message }}
     <RouterLink
       :to="{
@@ -550,222 +629,272 @@ watch(
     :dirty="dirty"
     @close="modal = null"
   >
+    <p v-if="incomplete" class="error-banner" role="alert">
+      {{ incomplete.message }}
+      <RouterLink
+        :to="{
+          path: '/remediations',
+          query: { inspectionId: incomplete.inspectionId },
+        }"
+      >
+        查看或补建整改任务
+      </RouterLink>
+    </p>
     <form class="form" @input="dirty = true" @submit.prevent="save">
-      <div class="score-total">
-        <span>本次总分 / {{ grade }}</span>
-        <strong>{{ score }}</strong>
-      </div>
-      <label v-if="selected && mode !== 'create'">
-        检查房间
-        <span>{{ selected.buildingName }} {{ selected.roomNo }}</span>
-      </label>
-      <LookupSelect
-        v-else
-        v-model="form.roomId"
-        kind="room"
-        label="检查房间 *"
-        @update:model-value="dirty = true"
-      />
-      <div class="form-row">
-        <label>
-          检查日期 *
-          <input
-            v-model="form.inspectionDate"
-            type="date"
-            required
-            :max="localDate()"
-          />
+      <fieldset class="form-fields" :disabled="saving">
+        <div class="score-total">
+          <span>本次总分 / {{ grade }}</span>
+          <strong>{{ score }}</strong>
+          <button type="button" class="btn" @click="fullScore">一键满分</button>
+        </div>
+        <label v-if="selected && mode !== 'create'">
+          检查房间
+          <span>{{ selected.buildingName }} {{ selected.roomNo }}</span>
         </label>
-        <label>
-          巡检轮次
-          <select v-model="form.round">
-            <option value="ROUTINE">日常巡检</option>
-            <option value="RECHECK">整改复查</option>
-            <option value="RECHECK2">第二次复查</option>
-            <option value="RECHECK3">第三次复查</option>
-          </select>
-        </label>
-      </div>
-      <label>
-        实际检查时刻
-        <input
-          v-model="inspectedLocal"
-          type="datetime-local"
-          :required="mode !== 'correction' && form.inspectionDate < localDate()"
+        <LookupSelect
+          v-else
+          v-model="form.roomId"
+          kind="room"
+          label="检查房间 *"
+          @update:model-value="dirty = true"
         />
-        <small>
-          补录时请填写实际检查时刻；留空使用当前时间，更正则保留原检查时间。
-        </small>
-      </label>
-      <section v-if="comparison" class="inspection-comparison">
-        <h3>{{ comparison.sameRound ? "已有同轮评分" : "最近一次巡检" }}</h3>
-        <p class="form-note">
-          {{ comparison.record.buildingName }} {{ comparison.record.roomNo }} ·
-          {{ comparison.record.inspectionDate }} ·
-          {{ statusNames[comparison.record.round] }}
-        </p>
-        <p class="form-note">
-          检查时刻 {{ dateTime(comparison.record.inspectedAt) }}
-        </p>
-        <dl class="details comparison-scores">
-          <div v-for="[key, label] in scores" :key="key">
-            <dt>{{ label }}</dt>
-            <dd class="num">{{ comparison.record[key] }} / 25</dd>
+        <div class="form-row">
+          <label>
+            检查日期 *
+            <input
+              v-model="form.inspectionDate"
+              type="date"
+              required
+              :max="localDate()"
+            />
+          </label>
+          <label>
+            巡检轮次
+            <select v-model="form.round">
+              <option value="ROUTINE">日常巡检</option>
+              <option value="RECHECK">整改复查</option>
+              <option value="RECHECK2">第二次复查</option>
+              <option value="RECHECK3">第三次复查</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          实际检查时刻
+          <input
+            v-model="inspectedLocal"
+            type="datetime-local"
+            :required="
+              mode !== 'correction' && form.inspectionDate < localDate()
+            "
+          />
+          <small>
+            补录时请填写实际检查时刻；留空使用当前时间，更正则保留原检查时间。
+          </small>
+        </label>
+        <section v-if="comparison" class="inspection-comparison">
+          <h3>{{ comparison.sameRound ? "已有同轮评分" : "最近一次巡检" }}</h3>
+          <p class="form-note">
+            {{ comparison.record.buildingName }}
+            {{ comparison.record.roomNo }} ·
+            {{ comparison.record.inspectionDate }} ·
+            {{ statusNames[comparison.record.round] }}
+          </p>
+          <p class="form-note">
+            检查时刻 {{ dateTime(comparison.record.inspectedAt) }}
+          </p>
+          <dl class="details comparison-scores">
+            <div v-for="[key, label] in scores" :key="key">
+              <dt>{{ label }}</dt>
+              <dd class="num">{{ comparison.record[key] }} / 25</dd>
+            </div>
+          </dl>
+          <div class="comparison-action">
+            <span>
+              总分
+              <strong class="num">{{ comparison.record.totalScore }}</strong>
+              / 100
+            </span>
+            <button
+              class="btn"
+              type="button"
+              :disabled="saving"
+              @click="useComparison"
+            >
+              {{ comparison.sameRound ? "更正评分" : "带入四项分数" }}
+            </button>
           </div>
-        </dl>
-        <div class="comparison-action">
-          <span>
-            总分
-            <strong class="num">{{ comparison.record.totalScore }}</strong>
-            / 100
-          </span>
-          <button
-            class="btn"
-            type="button"
-            :disabled="saving"
-            @click="useComparison"
-          >
-            {{ comparison.sameRound ? "更正评分" : "带入四项分数" }}
+        </section>
+        <p v-else-if="comparing" class="form-note" role="status">
+          正在查询该房间的历史评分…
+        </p>
+        <div v-else-if="comparisonError" class="error-banner" role="alert">
+          未能查询历史评分。{{ comparisonError }}
+          <button type="button" class="text-link" @click="loadComparison">
+            重新查询
           </button>
         </div>
-      </section>
-      <p v-else-if="comparing" class="form-note" role="status">
-        正在查询该房间的历史评分…
-      </p>
-      <div v-else-if="comparisonError" class="error-banner" role="alert">
-        未能查询历史评分。{{ comparisonError }}
-        <button type="button" class="text-link" @click="loadComparison">
-          重新查询
-        </button>
-      </div>
-      <div>
-        <div v-for="[key, label] in scores" :key="key" class="score-row">
-          <label :for="key">
-            {{ label }}
-            <small>满分25分</small>
-          </label>
-          <input
-            :id="key"
-            v-model.number="form[key]"
-            type="number"
-            min="0"
-            max="25"
-            step="1"
-            required
-          />
-        </div>
-      </div>
-      <label>
-        问题与扣分说明 {{ score < 60 ? "*" : "" }}
-        <textarea
-          v-model.trim="form.issueNote"
-          :required="score < 60"
-          maxlength="1000"
-        />
-      </label>
-      <label>
-        整改建议
-        <textarea v-model.trim="form.remediationNote" maxlength="1000" />
-      </label>
-      <section v-if="needsRemediation" class="detail-section">
-        <label class="checkbox">
-          <input v-model="createRemediation" type="checkbox" />
-          同步安排卫生整改
-        </label>
-        <template v-if="createRemediation && form.roomId">
-          <p v-if="residentQuery.busy.value" role="status">正在读取在住学生…</p>
-          <p v-else-if="residentQuery.error.value" class="field-error">
-            {{ residentQuery.error.value }}，可关闭同步安排后保存巡检。
-          </p>
-          <p v-else-if="!residents.length" class="form-note">
-            该宿舍暂无在住学生，无法指派整改。可仅保存巡检记录。
-          </p>
-          <template v-else>
-            <label>
-              责任学生 *
-              <select v-model="responsibleStudentId" required>
-                <option value="">请选择在住学生</option>
-                <option
-                  v-for="resident in residents"
-                  :key="resident.id"
-                  :value="resident.studentId"
-                >
-                  {{ resident.studentName }} · {{ resident.studentNo }}
-                </option>
-              </select>
+        <div>
+          <div v-for="[key, label] in scores" :key="key" class="score-row">
+            <label :for="key">
+              {{ label }}
+              <small>满分25分</small>
             </label>
-            <label>
-              整改截止时间 *
-              <input v-model="dueLocal" type="datetime-local" required />
-            </label>
+            <input
+              :id="key"
+              v-model.number="form[key]"
+              type="number"
+              min="0"
+              max="25"
+              step="1"
+              required
+            />
             <div class="button-row">
               <button
-                v-for="days in [2, 3, 7]"
-                :key="days"
+                v-for="n in [25, 22, 20, 15]"
+                :key="n"
                 type="button"
                 class="btn"
-                @click="setDue(days)"
+                :aria-label="label + n + '分'"
+                @click="
+                  form[key] = n;
+                  dirty = true;
+                "
               >
-                +{{ days }}天
+                {{ n }}
               </button>
             </div>
-          </template>
-        </template>
-      </section>
-      <label v-if="mode === 'correction'">
-        更正原因 *
-        <textarea
-          v-model.trim="correctionReason"
-          required
-          minlength="2"
-          maxlength="500"
-        />
-      </label>
-      <section v-if="retainedImages.length" class="detail-section">
-        <h3>已留存的现场图片</h3>
-        <div class="image-grid">
-          <a
-            v-for="image in retainedImages"
-            :key="image.id"
-            :href="image.url"
-            target="_blank"
-            rel="noopener"
-          >
-            <img :src="image.thumbnailUrl" :alt="image.originalName" />
-          </a>
+          </div>
         </div>
-      </section>
-      <UploadField
-        v-if="retainedImages.length < 6"
-        v-model="images"
-        usage="INSPECTION"
-        :limit="6 - retainedImages.length"
-        :disabled="saving"
-        @blocked="uploadBlocked = $event"
-      />
-      <p v-if="formError" class="error-banner" role="alert">{{ formError }}</p>
-      <button
-        class="btn primary"
-        :disabled="
-          saving ||
-          uploadBlocked ||
-          comparing ||
-          comparison?.sameRound ||
-          assignmentBlocked
-        "
-      >
-        {{
-          saving
-            ? "正在保存…"
-            : mode === "correction"
-              ? "保存更正并留痕"
-              : "保存卫生评分"
-        }}
-      </button>
+        <label>
+          问题与扣分说明 {{ score < 60 ? "*" : "" }}
+          <textarea
+            v-model.trim="form.issueNote"
+            :required="score < 60"
+            maxlength="1000"
+          />
+        </label>
+        <label>
+          整改建议
+          <textarea v-model.trim="form.remediationNote" maxlength="1000" />
+        </label>
+        <section v-if="needsRemediation" class="detail-section">
+          <label class="checkbox">
+            <input v-model="createRemediation" type="checkbox" />
+            同步安排卫生整改
+          </label>
+          <template v-if="createRemediation && form.roomId">
+            <p v-if="residentQuery.busy.value" role="status">
+              正在读取在住学生…
+            </p>
+            <p v-else-if="residentQuery.error.value" class="field-error">
+              {{ residentQuery.error.value }}，可关闭同步安排后保存巡检。
+            </p>
+            <p v-else-if="!residents.length" class="form-note">
+              该宿舍暂无在住学生，无法指派整改。可仅保存巡检记录。
+            </p>
+            <template v-else>
+              <label>
+                责任学生 *
+                <select v-model="responsibleStudentId" required>
+                  <option value="">请选择在住学生</option>
+                  <option
+                    v-for="resident in residents"
+                    :key="resident.id"
+                    :value="resident.studentId"
+                  >
+                    {{ resident.studentName }} · {{ resident.studentNo }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                整改截止时间 *
+                <input v-model="dueLocal" type="datetime-local" required />
+              </label>
+              <div class="button-row">
+                <button
+                  v-for="days in [2, 3, 7]"
+                  :key="days"
+                  type="button"
+                  class="btn"
+                  @click="setDue(days)"
+                >
+                  +{{ days }}天
+                </button>
+              </div>
+            </template>
+          </template>
+        </section>
+        <label v-if="mode === 'correction'">
+          更正原因 *
+          <textarea
+            v-model.trim="correctionReason"
+            required
+            minlength="2"
+            maxlength="500"
+          />
+        </label>
+        <section v-if="retainedImages.length" class="detail-section">
+          <h3>已留存的现场图片</h3>
+          <div class="image-grid">
+            <a
+              v-for="image in retainedImages"
+              :key="image.id"
+              :href="image.url"
+              target="_blank"
+              rel="noopener"
+            >
+              <img :src="image.thumbnailUrl" :alt="image.originalName" />
+            </a>
+          </div>
+        </section>
+        <UploadField
+          v-if="retainedImages.length < 6"
+          v-model="images"
+          usage="INSPECTION"
+          :limit="6 - retainedImages.length"
+          :disabled="saving"
+          @blocked="uploadBlocked = $event"
+        />
+        <p v-if="formError" class="error-banner" role="alert">
+          {{ formError }}
+        </p>
+        <button
+          class="btn primary"
+          :disabled="
+            saving ||
+            uploadBlocked ||
+            comparison?.sameRound ||
+            assignmentBlocked
+          "
+        >
+          {{
+            saving
+              ? "正在保存…"
+              : mode === "correction"
+                ? "保存更正并留痕"
+                : "保存卫生评分"
+          }}
+        </button>
+        <button
+          v-if="mode === 'create' && form.round === 'ROUTINE'"
+          type="submit"
+          value="next"
+          class="btn"
+          :disabled="
+            saving ||
+            uploadBlocked ||
+            comparison?.sameRound ||
+            assignmentBlocked
+          "
+        >
+          保存并录入下一间
+        </button>
+      </fieldset>
     </form>
   </Drawer>
   <Drawer
     v-if="modal === 'detail' && selected"
+    :dirty="voiding && !!voidReason.trim()"
     :title="selected.buildingName + ' ' + selected.roomNo + ' 卫生记录'"
     :subtitle="
       selected.inspectionDate +
@@ -828,7 +957,35 @@ watch(
       </ol>
       <p v-if="!history.length" class="muted">当前记录尚无更正。</p>
     </section>
-    <template #footer>
+    <form v-if="voiding" class="form" @submit.prevent="voidRecord">
+      <label>
+        作废原因 *
+        <textarea
+          v-model.trim="voidReason"
+          required
+          minlength="2"
+          maxlength="500"
+          autofocus
+        />
+      </label>
+      <div class="button-row">
+        <button class="btn danger" :disabled="saving || voidReason.length < 2">
+          确认作废
+        </button>
+        <button
+          class="btn"
+          type="button"
+          :disabled="saving"
+          @click="
+            voiding = false;
+            voidReason = '';
+          "
+        >
+          取消
+        </button>
+      </div>
+    </form>
+    <template v-if="!voiding" #footer>
       <RouterLink
         v-if="!selected.voidedAt && selected.grade === 'RECTIFY'"
         class="btn"
@@ -840,7 +997,12 @@ watch(
         更正评分
       </button>
       <button class="btn" @click="edit(selected, 'recheck')">录入复查</button>
-      <button class="btn danger" :disabled="saving" @click="voidRecord">
+      <button
+        v-if="!selected.voidedAt"
+        class="btn danger"
+        :disabled="saving"
+        @click="voiding = true"
+      >
         作废记录
       </button>
     </template>

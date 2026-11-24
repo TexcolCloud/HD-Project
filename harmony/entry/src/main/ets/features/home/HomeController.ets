@@ -13,8 +13,9 @@ import {
   RepairPage,
   Hygiene,
   HygienePage,
+  Remediation, RemediationPage,
 } from "../../models/ApiModels";
-import { ReadScope } from "../ReadScope";
+import { ReadScope, ReadTicket } from "../ReadScope";
 import { WorkspaceHost } from "../WorkspaceHost";
 
 @Observed
@@ -24,6 +25,8 @@ export class HomeState {
   residences: Residence[] = [];
   overview: Overview | null = null;
   repairs: Repair[] = [];
+  openRemediations: Remediation[] = [];
+  openTotal: number = 0;
   hygiene: Hygiene[] = [];
 }
 
@@ -79,13 +82,7 @@ export class HomeController {
         const room = await Api.request<Room | null>("/me/room");
         if (this.roomRead.current(residence)) this.state.room = room;
         if (!this.homeRead.current(ticket)) return;
-        const repairs = await Api.request<RepairPage>("/repairs?pageSize=5");
-        if (!this.homeRead.current(ticket)) return;
-        this.state.repairs = repairs.items;
-        const hygiene = await Api.request<HygienePage>(
-          "/me/hygiene-inspections?pageSize=3",
-        );
-        if (this.homeRead.current(ticket)) this.state.hygiene = hygiene.items;
+        await Promise.all([this.loadOpenRemediations(ticket), this.loadStudentHistory(ticket)]);
       }
     } catch (error) {
       if (this.homeRead.shouldReport(ticket, error as Error))
@@ -93,6 +90,20 @@ export class HomeController {
     } finally {
       if (this.homeRead.current(ticket)) this.state.loading = false;
     }
+  }
+  private async loadOpenRemediations(ticket: ReadTicket): Promise<void> {
+    const tasks = await Api.request<RemediationPage>("/hygiene-remediations?status=OPEN&pageSize=5");
+    if (this.homeRead.current(ticket)) {
+      this.state.openRemediations = tasks.items;
+      this.state.openTotal = tasks.total;
+    }
+  }
+  private async loadStudentHistory(ticket: ReadTicket): Promise<void> {
+    const repairs = await Api.request<RepairPage>("/repairs?pageSize=5");
+    if (!this.homeRead.current(ticket)) return;
+    this.state.repairs = repairs.items;
+    const hygiene = await Api.request<HygienePage>("/me/hygiene-inspections?pageSize=3");
+    if (this.homeRead.current(ticket)) this.state.hygiene = hygiene.items;
   }
   async loadResidences(): Promise<void> {
     const ticket = this.residenceRead.begin();

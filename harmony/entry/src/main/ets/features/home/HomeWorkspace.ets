@@ -1,5 +1,5 @@
 import { serviceSecondary, serviceSection, serviceEmpty, serviceDetail, repairStatusColor } from '../../components/ServiceParts';
-import { User, Residence, Repair } from '../../models/ApiModels';
+import { User, Residence, Repair, Remediation } from '../../models/ApiModels';
 import { statusLabel, categoryLabel, gradeLabel, dateText } from '../../services/Labels';
 import { palette } from '../../components/Palette';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
@@ -14,6 +14,7 @@ export struct HomeWorkspace {
   @Prop night: boolean = false;
   user: User | null = null;
   host: WorkspaceHost = emptyWorkspaceHost();
+  onRemediation: (id: string) => void = () => {};
   onRepairListReset: () => void = () => {};
   onHygieneListReset: () => void = () => {};
   private manager(): boolean { return this.user?.role === 'MANAGER'; }
@@ -65,6 +66,15 @@ export struct HomeWorkspace {
           Text(this.state.room.capacity + '人间 · 在住').fontSize(14).fontColor(this.muted())
         }.width('100%').height(54).border({width: {top: 1, bottom: 1}, color: this.line()}).onClick(() => this.host.navigate('room'))
       } else { serviceEmpty({message: '尚未关联宿舍，请联系宿管办理入住。', night: this.night}) }
+      if (this.state.openRemediations.length) {
+        Column({space: 6}) {
+          serviceSection({title: '待办卫生整改 · ' + this.state.openTotal + ' 项', action: '查看全部', night: this.night, click: () => this.host.navigate('remediations')})
+          Button(this.state.openRemediations[0].issueNote).width('100%').height(48).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
+            .onClick(() => this.onRemediation(this.state.openRemediations[0].id))
+          Text('截止 ' + dateText(this.state.openRemediations[0].dueAt)).fontSize(14).fontColor(this.muted())
+          if (this.state.openRemediations.some((r: Remediation): boolean => r.overdue)) { Text('已有整改逾期').fontSize(14).fontColor(palette(this.night).danger) }
+        }.width('100%').alignItems(HorizontalAlign.Start).padding(12).margin({top: 12}).backgroundColor(this.soft()).borderRadius(4)
+      }
       Image($rawfile('campus-courtyard.jpg')).width('100%').height(88).objectFit(ImageFit.Cover).borderRadius(2).margin({top: 16})
       Text('示意图 · Nick Allen / CC BY-SA 3.0').fontSize(14).fontColor(this.muted()).width('100%').constraintSize({minHeight: 36})
         .onClick(() => this.host.navigate('credits'))

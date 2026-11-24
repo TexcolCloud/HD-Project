@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModuleTabs from "../components/ModuleTabs.vue";
 import { ref, computed, onMounted } from "vue";
 import {
   getDispatchBuildings,
@@ -251,6 +252,7 @@ onMounted(async () => {
       <button class="btn" @click="travelOpen = true">通行时间</button>
     </div>
   </div>
+  <ModuleTabs domain="dispatch" />
   <div v-if="error" class="error-banner" role="alert">
     {{ error }}
     <br />

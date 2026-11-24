@@ -9,6 +9,12 @@ import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
 import { isMobilePhone, mobilePhoneError } from "../phone";
+import { useRoute } from "vue-router";
+const route = useRoute();
+const buildingQuery = useLatestQuery(),
+  buildings = ref<Model<"Building">[]>([]),
+  buildingId = ref(""),
+  occupancy = ref("");
 const listQuery = useLatestQuery();
 const historyQuery = useLatestQuery();
 const { busy: historyBusy, error: historyError } = historyQuery;
@@ -52,6 +58,8 @@ async function load() {
         "/students",
         {
           q: q.value,
+          occupancy: occupancy.value,
+          buildingId: buildingId.value,
           status: status.value,
           page: page.value,
           pageSize: 20,
@@ -95,12 +103,16 @@ function edit(s?: Student) {
   phoneError.value = "";
   modal.value = "student";
 }
-async function showHistory(s: Student) {
+async function showHistory(
+  s: Student,
+  action: "history" | "transfer" | "checkout" = "history",
+) {
   selected.value = s;
   history.value = [];
   current.value = undefined;
   formError.value = "";
-  modal.value = "history";
+  if (action === "history") modal.value = "history";
+  else residenceAction(action, s);
   await historyQuery.run(
     (signal) =>
       get<Model<"ResidencePage">>(
@@ -116,8 +128,12 @@ async function showHistory(s: Student) {
       current.value = result.items.find((r) => !r.checkedOutAt);
     },
   );
-  if (modal.value === "history" && selected.value?.id === s.id)
-    formError.value = historyQuery.error.value;
+  if (modal.value === action && selected.value?.id === s.id)
+    formError.value =
+      historyQuery.error.value ||
+      (action !== "history" && !current.value
+        ? "未找到有效入住，请核对学生档案"
+        : "");
 }
 function residenceAction(
   action: "checkin" | "transfer" | "checkout",
@@ -136,7 +152,7 @@ function residenceAction(
   formError.value = "";
   modal.value = action;
 }
-async function save() {
+async function save(event?: SubmitEvent) {
   if (saving.value) return;
   if (modal.value === "student") {
     const phone = studentForm.phone.trim();
@@ -152,7 +168,18 @@ async function save() {
     if (modal.value === "student") {
       if (selected.value)
         await patch(`/students/${selected.value.id}`, studentForm);
-      else await post("/students", studentForm);
+      else {
+        const student = await post<Student>("/students", studentForm);
+        if (
+          event?.submitter?.getAttribute("value") === "checkin" &&
+          studentForm.status === "ACTIVE"
+        ) {
+          residenceAction("checkin", student);
+          notify("学生档案已保存");
+          await load();
+          return;
+        }
+      }
     } else if (modal.value === "checkin") {
       await post("/residences/check-in", {
         studentId: residenceForm.studentId,
@@ -189,7 +216,24 @@ watch(
   },
   { flush: "sync" },
 );
-onMounted(load);
+watch(
+  () => route.query.action,
+  (action) => {
+    if (action === "checkin") {
+      selected.value = undefined;
+      residenceAction("checkin");
+    }
+  },
+  { immediate: true },
+);
+onMounted(() => {
+  void load();
+  void buildingQuery.run(
+    (signal) =>
+      get<Model<"BuildingPage">>("/buildings", { pageSize: 100 }, signal),
+    (result) => (buildings.value = result.items),
+  );
+});
 </script>
 <template>
   <div class="page-heading">
@@ -212,15 +256,19 @@ onMounted(load);
       </button>
     </div>
   </div>
-  <p v-if="error" class="error-banner" role="alert">
-    {{ error }}
+  <p
+    v-if="error || buildingQuery.error.value"
+    class="error-banner"
+    role="alert"
+  >
+    {{ error || buildingQuery.error.value }}
     <button @click="load">重新加载</button>
   </p>
   <section class="panel">
     <form class="filters" @submit.prevent="search">
       <label>
-        姓名 / 学号
-        <input v-model="q" placeholder="输入姓名或学号" />
+        姓名 / 学号 / 房号
+        <input v-model="q" placeholder="姓名 / 学号 / 房号" />
       </label>
       <label>
         档案状态
@@ -230,13 +278,30 @@ onMounted(load);
           <option value="INACTIVE">停用</option>
         </select>
       </label>
+      <label>
+        住宿状态
+        <select v-model="occupancy">
+          <option value="">全部</option>
+          <option value="ASSIGNED">已入住</option>
+          <option value="UNASSIGNED">未入住</option>
+        </select>
+      </label>
+      <label>
+        所属楼栋
+        <select v-model="buildingId">
+          <option value="">全部负责楼栋</option>
+          <option v-for="b in buildings" :key="b.id" :value="b.id">
+            {{ b.name }}
+          </option>
+        </select>
+      </label>
       <button class="btn primary" :disabled="busy">查询</button>
       <button
         class="btn"
         type="button"
         @click="
           q = '';
-          status = '';
+          status = occupancy = buildingId = '';
           search();
         "
       >
@@ -278,6 +343,14 @@ onMounted(load);
                 <button class="text-link" @click="showHistory(s)">
                   入住历史
                 </button>
+                <template v-if="s.roomId">
+                  <button class="text-link" @click="showHistory(s, 'transfer')">
+                    调宿
+                  </button>
+                  <button class="text-link" @click="showHistory(s, 'checkout')">
+                    退宿
+                  </button>
+                </template>
                 <button class="text-link" @click="edit(s)">编辑档案</button>
                 <button
                   v-if="!s.roomId && s.status === 'ACTIVE'"
@@ -313,74 +386,87 @@ onMounted(load);
     @close="modal = null"
   >
     <form class="form" @input="dirty = true" @submit.prevent="save">
-      <label>
-        学号 *
-        <input
-          v-model.trim="studentForm.studentNo"
-          required
-          maxlength="40"
-          :readonly="!!selected"
-        />
-      </label>
-      <label>
-        姓名 *
-        <input v-model.trim="studentForm.name" required maxlength="50" />
-      </label>
-      <p v-if="!selected" class="form-note">
-        新账号凭据由学校维护人员核验身份后单独发放，学生首次登录需设置自己的密码。
-      </p>
-      <label>
-        学院 *
-        <input v-model.trim="studentForm.college" required maxlength="100" />
-      </label>
-      <label>
-        专业
-        <input v-model.trim="studentForm.major" maxlength="100" />
-      </label>
-      <div class="form-row">
+      <fieldset class="form-fields" :disabled="saving">
         <label>
-          年级
+          学号 *
           <input
-            v-model.trim="studentForm.grade"
-            maxlength="20"
-            placeholder="例如 2024"
+            v-model.trim="studentForm.studentNo"
+            required
+            maxlength="40"
+            :readonly="!!selected"
           />
         </label>
         <label>
-          班级
-          <input v-model.trim="studentForm.className" maxlength="80" />
+          姓名 *
+          <input v-model.trim="studentForm.name" required maxlength="50" />
         </label>
-      </div>
-      <label>
-        联系电话 *
-        <input
-          v-model.trim="studentForm.phone"
-          type="tel"
-          inputmode="numeric"
-          aria-required="true"
-          :aria-invalid="!!phoneError"
-          aria-describedby="student-phone-note"
-          @input="phoneError = ''"
-        />
-        <small
-          id="student-phone-note"
-          :class="{ 'field-error': phoneError }"
-          aria-live="polite"
+        <p v-if="!selected" class="form-note">
+          新账号凭据由学校维护人员核验身份后单独发放，学生首次登录需设置自己的密码。
+        </p>
+        <label>
+          学院 *
+          <input v-model.trim="studentForm.college" required maxlength="100" />
+        </label>
+        <label>
+          专业
+          <input v-model.trim="studentForm.major" maxlength="100" />
+        </label>
+        <div class="form-row">
+          <label>
+            年级
+            <input
+              v-model.trim="studentForm.grade"
+              maxlength="20"
+              placeholder="例如 2024"
+            />
+          </label>
+          <label>
+            班级
+            <input v-model.trim="studentForm.className" maxlength="80" />
+          </label>
+        </div>
+        <label>
+          联系电话 *
+          <input
+            v-model.trim="studentForm.phone"
+            type="tel"
+            inputmode="numeric"
+            aria-required="true"
+            :aria-invalid="!!phoneError"
+            aria-describedby="student-phone-note"
+            @input="phoneError = ''"
+          />
+          <small
+            id="student-phone-note"
+            :class="{ 'field-error': phoneError }"
+            aria-live="polite"
+          >
+            {{ phoneError || "新增或修改时填写11位手机号。" }}
+          </small>
+        </label>
+        <label>
+          档案状态
+          <select v-model="studentForm.status">
+            <option value="ACTIVE">在校</option>
+            <option value="INACTIVE">停用</option>
+          </select>
+        </label>
+        <p v-if="formError" class="error-banner" role="alert">
+          {{ formError }}
+        </p>
+        <button class="btn primary" :disabled="saving">
+          {{ saving ? "正在保存…" : "保存学生档案" }}
+        </button>
+        <button
+          v-if="!selected && studentForm.status === 'ACTIVE'"
+          value="checkin"
+          type="submit"
+          class="btn"
+          :disabled="saving"
         >
-          {{ phoneError || "新增或修改时填写11位手机号。" }}
-        </small>
-      </label>
-      <label>
-        档案状态
-        <select v-model="studentForm.status">
-          <option value="ACTIVE">在校</option>
-          <option value="INACTIVE">停用</option>
-        </select>
-      </label>
-      <p v-if="formError" class="error-banner" role="alert">{{ formError }}</p>
-      <button class="btn primary" :disabled="saving">
-        {{ saving ? "正在保存…" : "保存学生档案" }}
-      </button>
+          保存并办理入住
+        </button>
+      </fieldset>
     </form>
   </Drawer>
   <Drawer
@@ -452,66 +538,76 @@ onMounted(load);
     @close="modal = null"
   >
     <form class="form" @input="dirty = true" @submit.prevent="save">
-      <template v-if="modal === 'checkin'">
-        <LookupSelect
-          v-model="residenceForm.studentId"
-          @update:model-value="dirty = true"
-          kind="student"
-          label="学生 *"
-          available
-          :initial-label="selected?.name"
-        />
-        <LookupSelect
-          v-model="residenceForm.roomId"
-          @update:model-value="dirty = true"
-          kind="room"
-          label="入住房间 *"
-          available
-        />
-        <label>
-          实际入住时间
-          <input v-model="residenceForm.checkedInAt" type="datetime-local" />
-          <small>留空使用办理时间，按北京时间保存。</small>
-        </label>
-      </template>
-      <template v-else>
-        <div class="info-note">
-          {{ selected?.name }} · 当前入住 {{ current?.buildingName }}
-          {{ current?.roomNo }}
-        </div>
-        <LookupSelect
-          v-if="modal === 'transfer'"
-          v-model="residenceForm.targetRoomId"
-          @update:model-value="dirty = true"
-          kind="room"
-          label="目标宿舍 *"
-          available
-        />
-        <label>
-          {{ modal === "transfer" ? "调宿原因" : "退宿原因" }} *
-          <textarea
-            v-model.trim="residenceForm.reason"
-            required
-            minlength="2"
-            maxlength="500"
+      <fieldset class="form-fields" :disabled="saving">
+        <template v-if="modal === 'checkin'">
+          <LookupSelect
+            v-model="residenceForm.studentId"
+            @update:model-value="dirty = true"
+            kind="student"
+            label="学生 *"
+            available
+            :initial-label="selected?.name"
           />
-        </label>
-        <p class="form-note">
-          旧房间的报修记录保留原归属，退宿或调宿不会关闭未结工单。
+          <LookupSelect
+            v-model="residenceForm.roomId"
+            @update:model-value="dirty = true"
+            kind="room"
+            label="入住房间 *"
+            available
+          />
+          <label>
+            实际入住时间
+            <input v-model="residenceForm.checkedInAt" type="datetime-local" />
+            <small>留空使用办理时间，按北京时间保存。</small>
+          </label>
+        </template>
+        <template v-else>
+          <p v-if="historyBusy" role="status">正在核对当前入住记录…</p>
+          <div v-else-if="current" class="info-note">
+            {{ selected?.name }} · 当前入住 {{ current?.buildingName }}
+            {{ current?.roomNo }}
+          </div>
+          <LookupSelect
+            v-if="modal === 'transfer'"
+            v-model="residenceForm.targetRoomId"
+            @update:model-value="dirty = true"
+            kind="room"
+            label="目标宿舍 *"
+            available
+          />
+          <label>
+            {{ modal === "transfer" ? "调宿原因" : "退宿原因" }} *
+            <textarea
+              v-model.trim="residenceForm.reason"
+              required
+              minlength="2"
+              maxlength="500"
+            />
+          </label>
+          <p class="form-note">
+            旧房间的报修记录保留原归属，退宿或调宿不会关闭未结工单。
+          </p>
+        </template>
+        <p v-if="formError" class="error-banner" role="alert">
+          {{ formError }}
         </p>
-      </template>
-      <p v-if="formError" class="error-banner" role="alert">{{ formError }}</p>
-      <button class="btn primary" :disabled="saving">
-        {{
-          saving
-            ? "正在办理…"
-            : modal === "checkin"
-              ? "确认入住"
-              : modal === "transfer"
-                ? "确认调宿"
-                : "确认退宿"
-        }}
-      </button>
+        <button
+          class="btn primary"
+          :disabled="
+            saving || (modal !== 'checkin' && (historyBusy || !current))
+          "
+        >
+          {{
+            saving
+              ? "正在办理…"
+              : modal === "checkin"
+                ? "确认入住"
+                : modal === "transfer"
+                  ? "确认调宿"
+                  : "确认退宿"
+          }}
+        </button>
+      </fieldset>
     </form>
   </Drawer>
 </template>

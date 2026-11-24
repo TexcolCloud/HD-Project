@@ -3,10 +3,15 @@ import { get } from "../api/client";
 import type { Model, User } from "../api/types";
 import { useLatestQuery } from "./useLatestQuery";
 
+const unread = ref(0);
+let revision = 0;
+export function syncInboxBadge(count = Math.max(0, unread.value - 1)) {
+  revision++;
+  unread.value = count;
+}
 export function useInboxBadge(
   user: () => Pick<User, "id" | "role" | "mustChangePassword"> | null,
 ) {
-  const unread = ref(0);
   const query = useLatestQuery();
   let timer: ReturnType<typeof setInterval> | undefined;
   const identity = () => {
@@ -17,11 +22,12 @@ export function useInboxBadge(
   };
   async function tick() {
     if (!identity() || document.hidden || query.busy.value) return;
+    const start = revision;
     await query.run(
       (signal) =>
         get<Model<"ServiceMessageSummary">>("/messages/summary", {}, signal),
       (summary) => {
-        unread.value = summary.unreadCount;
+        if (start === revision) unread.value = summary.unreadCount;
       },
     );
   }

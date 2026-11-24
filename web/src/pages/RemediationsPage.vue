@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ModuleTabs from "../components/ModuleTabs.vue";
 import { computed, onMounted, onScopeDispose, reactive, ref, watch } from "vue";
 import { onBeforeRouteUpdate, useRoute } from "vue-router";
 import { get, patch, post } from "../api/client";
@@ -14,7 +15,10 @@ const { busy, error } = listQuery;
 const items = ref<Model<"Remediation">[]>([]),
   total = ref(0),
   page = ref(1);
-const filters = reactive({ status: "", overdueOnly: false });
+const defaults = { q: "", buildingId: "", status: "", overdueOnly: false };
+const filters = reactive({ ...defaults }),
+  buildings = ref<Model<"Building">[]>([]),
+  buildingQuery = useLatestQuery();
 const selected = ref<Model<"Remediation">>(),
   inspection = ref<Hygiene>();
 const residents = ref<Model<"Residence">[]>([]),
@@ -99,6 +103,8 @@ async function load() {
       get<Model<"RemediationPage">>(
         "/hygiene-remediations",
         {
+          q: filters.q,
+          buildingId: filters.buildingId,
           status: filters.status,
           overdueOnly: filters.overdueOnly ? "true" : undefined,
           page: page.value,
@@ -336,7 +342,14 @@ watch(
   },
   { immediate: true },
 );
-onMounted(load);
+onMounted(() => {
+  void load();
+  void buildingQuery.run(
+    (signal) =>
+      get<Model<"BuildingPage">>("/buildings", { pageSize: 100 }, signal),
+    (result) => (buildings.value = result.items),
+  );
+});
 onScopeDispose(() => {
   disposed = true;
 });
@@ -350,9 +363,29 @@ onScopeDispose(() => {
       从巡检记录安排整改
     </RouterLink>
   </div>
-  <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
+  <ModuleTabs domain="hygiene" />
+  <p
+    v-if="error || buildingQuery.error.value"
+    class="error-banner"
+    role="alert"
+  >
+    {{ error || buildingQuery.error.value }}
+  </p>
   <section class="panel">
     <form class="filters" @submit.prevent="search">
+      <label>
+        关键词
+        <input v-model="filters.q" placeholder="房号 / 责任学生 / 整改问题" />
+      </label>
+      <label>
+        楼栋
+        <select v-model="filters.buildingId">
+          <option value="">全部负责楼栋</option>
+          <option v-for="b in buildings" :key="b.id" :value="b.id">
+            {{ b.name }}
+          </option>
+        </select>
+      </label>
       <label>
         任务状态
         <select v-model="filters.status">
@@ -374,6 +407,16 @@ onScopeDispose(() => {
         </select>
       </label>
       <button class="btn" :disabled="busy || saving">查询</button>
+      <button
+        class="btn"
+        type="button"
+        @click="
+          Object.assign(filters, defaults);
+          search();
+        "
+      >
+        重置
+      </button>
     </form>
     <div class="table-wrap">
       <table>

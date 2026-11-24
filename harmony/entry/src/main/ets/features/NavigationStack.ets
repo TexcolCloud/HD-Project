@@ -5,8 +5,23 @@ export interface PageEntry {
   resume?: () => void;
 }
 
-export function rootTab(page: string): boolean {
-  return ['home', 'repairs', 'profile'].includes(page);
+export interface TabLink { page: string; id: string; label: string; }
+const homeTab: TabLink = {page:'home', id:'tab-home', label:'首页'};
+const studentTabs: TabLink[] = [
+  homeTab, {page:'repairs',id:'tab-repairs',label:'我的报修'}, {page:'profile',id:'tab-profile',label:'我的'}
+];
+const managerTabs: TabLink[] = [
+  homeTab, {page:'route',id:'tab-route',label:'路线'}, {page:'repairs',id:'tab-repairs',label:'工单'},
+  {page:'hygiene',id:'tab-field',label:'巡检访客'}
+];
+export function bottomTabs(manager: boolean): TabLink[] {
+  return manager ? managerTabs : studentTabs;
+}
+export function activeTab(page: string): string {
+  return ['remediations','visitors'].includes(page) ? 'hygiene' : page;
+}
+export function rootTab(page: string, manager: boolean = false): boolean {
+  return page === 'profile' || bottomTabs(manager).some((tab: TabLink): boolean => tab.page === (manager ? activeTab(page) : page));
 }
 
 export function requiresLogoutOnBack(page: string, mustChangePassword: boolean): boolean {

@@ -5,7 +5,7 @@ import type { Model, Room, Residence, Repair } from "../../api/types";
 import { dateTime } from "../../ui";
 import { useLatestQuery } from "../../composables/useLatestQuery";
 import Drawer from "../Drawer.vue";
-const props = defineProps<{ room: Room }>();
+const props = defineProps<{ room?: Room; roomId: string }>();
 const emit = defineEmits<{ close: [] }>();
 const selectedRoom = ref(props.room),
   history = ref<Residence[]>([]),
@@ -16,15 +16,15 @@ onMounted(() =>
   query.run(
     (signal) =>
       Promise.all([
-        get<Room>(`/rooms/${props.room.id}`, {}, signal),
+        get<Room>(`/rooms/${encodeURIComponent(props.roomId)}`, {}, signal),
         get<Model<"ResidencePage">>(
           "/residences",
-          { roomId: props.room.id, pageSize: 100 },
+          { roomId: props.roomId, pageSize: 100 },
           signal,
         ),
         get<Model<"RepairPage">>(
           "/repairs",
-          { roomId: props.room.id, pageSize: 10 },
+          { roomId: props.roomId, pageSize: 10 },
           signal,
         ),
       ]),
@@ -38,13 +38,17 @@ onMounted(() =>
 </script>
 <template>
   <Drawer
-    :title="selectedRoom.buildingName + ' ' + selectedRoom.roomNo"
+    :title="
+      selectedRoom
+        ? selectedRoom.buildingName + ' ' + selectedRoom.roomNo
+        : '宿舍详情'
+    "
     subtitle="房间档案与历史入住"
     @close="emit('close')"
   >
     <p v-if="busy" role="status" class="loading">正在读取房间详情…</p>
     <p v-if="error" class="error-banner">{{ error }}</p>
-    <dl class="details">
+    <dl v-if="selectedRoom" class="details">
       <div>
         <dt>当前入住 / 容量</dt>
         <dd>
@@ -64,7 +68,11 @@ onMounted(() =>
         <dd>{{ selectedRoom.remark || "无" }}</dd>
       </div>
     </dl>
-    <section class="detail-section" style="margin-top: 26px">
+    <section
+      v-if="!busy && !error"
+      class="detail-section"
+      style="margin-top: 26px"
+    >
       <h3>入住历史</h3>
       <div
         v-for="h in history"
@@ -79,7 +87,7 @@ onMounted(() =>
       </div>
       <p v-if="!history.length" class="muted">暂无入住记录。</p>
     </section>
-    <section class="detail-section">
+    <section v-if="!busy && !error" class="detail-section">
       <h3>关联报修</h3>
       <p v-for="r in related" :key="r.id" style="margin-bottom: 12px">
         <RouterLink :to="'/repairs/' + r.id">{{ r.title }} →</RouterLink>

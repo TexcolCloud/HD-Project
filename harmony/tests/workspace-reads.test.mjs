@@ -504,3 +504,73 @@ test('a linked recheck returns the saved inspection and the originating remediat
   assert.deepEqual(results,[['task','new','source',80]]);
   assert.equal(hygiene.returnRemediationId,'');
 });
+
+test('adopting and undoing a repair suggestion persist the draft and preserve the student contact default', async()=>{
+  const repairs=await controller({epoch:1},{},{clear(){}});
+  repairs.initializeContact('王同学');
+  Object.assign(repairs.state,{repairTitle:'手写标题',repairDescription:'手写描述',repairCategory:'NETWORK',ai:{title:'建议标题',summary:'建议描述',category:'OTHER'}});
+  const saved=[];
+  repairs.saveDraft=()=>saved.push([repairs.state.repairTitle,repairs.state.repairDescription,repairs.state.repairCategory]);
+  repairs.adoptSuggestion();repairs.adoptSuggestion();repairs.undoSuggestion();
+  assert.deepEqual(saved,[['建议标题','建议描述','OTHER'],['手写标题','手写描述','NETWORK']]);
+  repairs.state.contactName='临时联系人';
+  repairs.discardDraft();
+  assert.equal(repairs.state.contactName,'王同学');assert.equal(repairs.state.ai,null);
+});
+
+test('student home loads the open remediation preview and total within its read scope',async()=>{
+  const pending=deferred(), requests=[];
+  const Api={epoch:1,request:async(path)=>{
+    requests.push(path);
+    if(path.startsWith('/hygiene-remediations'))return pending.promise;
+    return path==='/me/room'?{id:'room'}:{items:[]};
+  }};
+  const {ReadScope}=await load('features/ReadScope.ets',{Api});
+  const {HomeController}=await load('features/home/HomeController.ets',{Api,ReadScope});
+  const home=new HomeController({fail:e=>{throw e}});
+  const task={id:'task',issueNote:'清理地面',overdue:true};
+  pending.resolve({items:[task],total:8});
+  await home.loadHome();assert.ok(requests.includes('/hygiene-remediations?status=OPEN&pageSize=5'));
+  assert.deepEqual(home.state.openRemediations,[task]);assert.equal(home.state.openTotal,8);
+  const late=deferred(); Api.request=path=>path==='/me/room'?{}:late.promise;
+  const refresh=home.loadHome();await Promise.resolve();home.suspendReads();late.resolve({items:[],total:0});await refresh;
+  assert.deepEqual(home.state.openRemediations,[task]);
+});
+
+test('routine inspection starts without a target and advances only within the same active floor',async()=>{
+  const room={id:'r2',roomNo:'2',floorNo:1,buildingId:'a',enabled:true};
+  const rooms=[{...room,id:'r10',roomNo:'10'},{...room,id:'off',roomNo:'3',enabled:false},{...room,id:'other',roomNo:'4',buildingId:'b'},room];
+  const posts=[], pages=[], notices=[];
+  const Api={epoch:1,assertCurrent(){},request:async path=>path.startsWith('/rooms?')?{items:rooms,total:4}:{items:[],total:0},post:async(_p,body,key)=>{posts.push([body,key]);return {...body,totalScore:92}}};
+  const {ReadScope}=await load('features/ReadScope.ets',{Api}),{SubmissionKeys}=await load('services/SubmissionKeys.ets');
+  let sequence=0;
+  const {HygieneController}=await load('features/hygiene/HygieneController.ets',{Api,ReadScope,SubmissionKeys,...await load('services/Labels.ets'),util:{generateRandomUUID:()=>String(++sequence)}});
+  const hygiene=new HygieneController({setError(){},flash:m=>notices.push(m),navigate:p=>pages.push(p),fail:e=>{throw e}},{clear(){}});
+  hygiene.beginDraft();await hygiene.loadRooms();assert.equal(hygiene.state.inspectionRoomId,'');assert.equal(hygiene.state.targetChecked,false);
+  await hygiene.chooseRoom('r2');hygiene.state.issueNote='旧房间记录';await hygiene.submitHygiene(true);
+  assert.equal(hygiene.state.inspectionRoomId,'r10');assert.equal(hygiene.state.issueNote,'');assert.equal(hygiene.state.targetChecked,true);
+  await hygiene.submitHygiene(true);
+  assert.equal(hygiene.state.inspectionRoomId,'');assert.deepEqual(pages,[]);assert.equal(notices.at(-1),'本层已查完，请选择其他楼层或宿舍');
+  assert.deepEqual(posts.map(([b])=>b.roomId),['r2','r10']);assert.notEqual(posts[0][1],posts[1][1]);
+});
+
+test('visitor search requires an explicit choice, verifies restored targets and ignores late contact results',async()=>{
+  const target={id:'s',roomId:'r',roomNo:'303',name:'学生'}, late=deferred(), phone=deferred(), paths=[];
+  const Api={epoch:1,request:async path=>{
+    paths.push(path);
+    if(path==='/students/s')return target;
+    return path.includes('older')?late.promise:{items:[],total:0};
+  },post:()=>phone.promise};
+  const {ReadScope}=await load('features/ReadScope.ets',{Api}),{SubmissionKeys}=await load('services/SubmissionKeys.ets');
+  const {VisitorController}=await load('features/visitors/VisitorController.ets',{Api,ReadScope,SubmissionKeys,util:{generateRandomUUID:()=> 'key'}});
+  const v=new VisitorController({setError(){},fail:e=>{throw e}});
+  v.state.targetSearch='older';const first=v.loadStudents();v.state.targetSearch='303';await v.loadStudents();
+  late.resolve({items:[target]});await first;
+  assert.deepEqual(v.state.students,[]);assert.equal(v.state.visitedStudentId,'');
+  assert.ok(paths.includes('/students?pageSize=30&occupancy=ASSIGNED&q=303'));
+  Object.assign(v.state,{draftRestored:true,visitedStudentId:'s'});await v.loadStudents();
+  assert.equal(v.state.target?.id,'s');assert.equal(v.state.visitedStudentId,'s');
+  let shown=false;const revealing=v.contact({id:'v'},async()=>{shown=true;});
+  v.suspendReads();phone.resolve({phone:'test-only'});await revealing;
+  assert.equal(shown,false);
+});

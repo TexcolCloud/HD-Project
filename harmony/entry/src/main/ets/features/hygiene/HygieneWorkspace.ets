@@ -23,6 +23,9 @@ export struct HygieneWorkspace {
   photoDrafts: PhotoDraftController = new PhotoDraftController((error: Error): void => this.host.fail(error));
   controller: HygieneController = new HygieneController(this.host, this.photoDrafts);
   @Prop room: Room | null = null;
+  private buildingOptions(): Room[] {
+    return this.state.rooms.filter((r: Room, i: number, all: Room[]): boolean => all.findIndex((other: Room): boolean => other.buildingId === r.buildingId) === i);
+  }
   private live: boolean = false;
   aboutToAppear(): void { this.live = true; }
   aboutToDisappear(): void { this.live = false; }
@@ -74,9 +77,22 @@ export struct HygieneWorkspace {
     Row({space: 12}) {
       Column({space: 4}) { Text($$.label).fontSize(16).fontColor(this.ink()); Text($$.hint).fontSize(14).fontColor(this.muted()) }
         .alignItems(HorizontalAlign.Start).layoutWeight(1)
-      TextInput({text: $$.value}).id($$.id).type(InputType.Number).width(80).height(50).fontSize(18).fontColor(this.ink())
+      Button('−').width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.min(25,Math.max(0,Number($$.value)-1)))))
+      TextInput({text: $$.value}).id($$.id).type(InputType.Number).width(56).height(50).fontSize(18).fontColor(this.ink())
         .backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).textAlign(TextAlign.Center).maxLength(2).onChange($$.change)
-    }.width('100%').padding({top: 14, bottom: 14}).border({width: {bottom: 1}, color: this.line()})
+      Button('+').width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.max(0,Math.min(25,Number($$.value)+1)))))
+    }.width('100%')
+    Row({space: 8}) {
+      ForEach(['25','22','20','15'], (score: string) => {
+        Button(score).height(48).layoutWeight(1).fontColor(this.ink()).backgroundColor($$.value === score ? this.soft() : this.surface()).borderRadius(4).onClick(() => $$.change(score))
+      })
+    }.width('100%').padding({top: 8, bottom: 14}).border({width: {bottom: 1}, color: this.line()})
+  }
+
+  @Builder
+  private RoomChip(label: string, active: boolean, click: () => void) {
+    Button(label).height(48).borderRadius(4).fontSize(14).margin({right: 4,bottom: 4})
+      .fontColor(active ? palette(this.night).onPrimary : this.ink()).backgroundColor(active ? this.ink() : this.soft()).onClick(click)
   }
 
   @Builder
@@ -86,6 +102,7 @@ export struct HygieneWorkspace {
       Row() {
         Column({space: 6}) { Text('卫生总分').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()); Text('四项各25分 · 满分100分').fontSize(14).fontColor(this.muted()) }
           .alignItems(HorizontalAlign.Start).layoutWeight(1)
+        Button('一键满分').height(48).fontSize(14).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4).enabled(!this.state.busy && !this.state.draftBlocked).onClick(() => this.controller.fullScore())
         Text(String(this.controller.totalScore())).id('hygiene-total').fontSize(28).fontColor(this.ink()).fontWeight(FontWeight.Medium)
         Text(this.controller.scoreGrade()).fontSize(14).fontColor(this.muted()).margin({left: 6})
       }.width('100%').padding(18).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 24})
@@ -96,14 +113,30 @@ export struct HygieneWorkspace {
         Row({space: 8}) {
         TextInput({text: this.state.roomSearch, placeholder: '按房间号查找'}).id('hygiene-room-search').height(48).layoutWeight(1)
           .fontSize(14).fontColor(this.ink()).placeholderColor(this.muted()).backgroundColor(this.surface()).borderRadius(4)
-          .onChange((v: string) => this.state.roomSearch = v).onSubmit(() => this.controller.loadRooms())
-        serviceSecondary({label: '查找', click: () => this.controller.loadRooms(), night: this.night, busy: this.state.busy})
+          .onChange((v: string) => this.state.roomSearch = v)
       }.width('100%').margin({top: 8, bottom: 4})
-      if (this.state.rooms.length) {
-        Select(this.state.rooms.map((r: Room): SelectOption => { return {value: r.buildingName + ' ' + r.roomNo}; })).id('hygiene-room')
-          .selected(this.state.rooms.findIndex((r: Room): boolean => r.id === this.state.inspectionRoomId)).value(this.controller.roomChoice()).onSelect((i: number) => this.controller.chooseRoom(this.state.rooms[i].id))
-          .width('100%').height(50).fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 20})
-      } else { serviceEmpty({message: '暂无可巡检的宿舍，请刷新或联系管理员。', night: this.night}) }
+      if (this.buildingOptions().length > 1) {
+        Flex({wrap: FlexWrap.Wrap}) {
+          ForEach(this.buildingOptions(), (r: Room) => {
+            this.RoomChip(r.buildingName, this.state.buildingChoice === r.buildingId, () => this.controller.browseFloor(r.buildingId, 0))
+          }, (r: Room) => r.buildingId)
+        }
+      }
+      Flex({wrap: FlexWrap.Wrap}) {
+        ForEach(this.controller.floors(), (floor: number) => {
+          this.RoomChip(floor + 'F', this.state.floorChoice === floor, () => this.controller.browseFloor(this.state.buildingChoice, floor))
+        })
+      }
+      Flex({wrap: FlexWrap.Wrap}) {
+        ForEach(this.controller.visibleRooms(), (r: Room) => {
+          this.RoomChip((this.state.roomSearch ? r.buildingName + ' ' : '') + r.roomNo, r.id === this.state.inspectionRoomId, () => this.controller.chooseRoom(r.id))
+        }, (r: Room) => r.id)
+      }
+      Select(this.controller.visibleRooms().map((r: Room): SelectOption => { return {value:r.buildingName + ' ' + r.roomNo}; }))
+        .id('hygiene-room').selected(this.controller.visibleRooms().findIndex((r: Room): boolean => r.id === this.state.inspectionRoomId))
+        .value(this.controller.roomChoice()).fontColor(this.ink()).backgroundColor(this.surface()).optionBgColor(this.surface()).optionFontColor(this.ink())
+        .width('100%').height(48).borderRadius(4).margin({bottom:16})
+        .onSelect((index: number) => { const r = this.controller.visibleRooms()[index]; if (r) this.controller.chooseRoom(r.id); })
       }
       serviceLabel({text: '检查日期 *', night: this.night})
       Button(this.state.inspectionDate + '  更改日期').id('hygiene-date').height(50).width('100%').fontSize(16).fontColor(this.ink())
@@ -159,6 +192,10 @@ export struct HygieneWorkspace {
       this.Uploads('INSPECTION')
       servicePrimary({label: this.state.correctionId ? '保存更正' : '保存评分', click: () => this.controller.submitHygiene(), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading,
         enabled: !this.state.draftBlocked && !this.state.correctionConflict && (!!this.state.correctionId || this.state.targetChecked)})
+      if (!this.state.correctionId && this.state.inspectionRound === 'ROUTINE') {
+        serviceSecondary({label: '保存并查下一间', click: () => this.controller.submitHygiene(true), night: this.night,
+          busy: this.state.busy || this.state.uploading || this.state.draftBlocked || !this.state.targetChecked || this.state.alreadyRecorded})
+      }
       if (this.state.inspectionRoomId && !this.state.targetChecked && !this.state.checking && !this.state.correctionId) {
         serviceSecondary({label: '重新查找已有评分', click: () => this.controller.loadComparison(), night: this.night, busy: this.state.busy})
       }
@@ -174,6 +211,17 @@ export struct HygieneWorkspace {
   private HygieneList() {
     Column({space: 0}) {
       if (this.manager()) { servicePrimary({label: '＋ 录入卫生评分', click: () => this.host.navigate('hygiene-create'), night: this.night, page: this.page, busy: this.state.busy, uploading: this.state.uploading}); Blank().height(18) }
+      if (this.manager()) {
+        Row({space: 8}) {
+          TextInput({text: this.state.listKeyword, placeholder: '搜索房号'}).layoutWeight(1).height(48).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
+            .onChange((v:string) => this.state.listKeyword = v).onSubmit(() => { this.state.hygienePage = 1; this.controller.loadHygiene(); })
+          Select([{value:'全部'},{value:'待整改'},{value:'合格'},{value:'良好'},{value:'优秀'}])
+            .selected(['','RECTIFY','PASS','GOOD','EXCELLENT'].indexOf(this.state.listGrade)).value(this.state.listGrade ? gradeLabel(this.state.listGrade) : '全部')
+            .height(48).fontColor(this.ink()).backgroundColor(this.surface()).optionBgColor(this.surface()).optionFontColor(this.ink())
+            .onSelect((i: number) => { this.state.listGrade = ['','RECTIFY','PASS','GOOD','EXCELLENT'][i]; this.state.hygienePage = 1; this.controller.loadHygiene(); })
+          Button('查询').height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => { this.state.hygienePage = 1; this.controller.loadHygiene(); })
+        }.width('100%')
+      }
       Text(this.manager() ? '授权楼栋内的巡检记录' : '仅展示本人有效入住期间的宿舍检查记录').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%').margin({bottom: 18})
       if (!this.state.hygiene.length && !this.state.loading) { serviceEmpty({message: '暂时没有可查看的卫生记录。', night: this.night}) }
       ForEach(this.state.hygiene, (item: Hygiene) => {
