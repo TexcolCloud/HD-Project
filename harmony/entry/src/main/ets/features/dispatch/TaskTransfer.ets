@@ -95,7 +95,7 @@ export struct TaskTransfer {
               .width('100%').height(48).backgroundColor(palette(this.night).surface).fontColor(palette(this.night).ink).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.target = this.candidates()[index].userId)
           }
           FormInput({label: '交接或接续原因', value: this.reason, multiline: true, night: this.night, onChange: (value: string) => this.reason = value})
-          Button('确认责任接续').id('task-transfer-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4)
+          Button('确认责任接续', {type: ButtonType.Normal}).id('task-transfer-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4)
             .enabled(!this.busy && !!this.reason.trim() && !!this.task() && !this.board?.dirty && (!this.own() || !!this.target)).onClick(() => this.submit())
         }
       }.padding(12).width('100%').backgroundColor(palette(this.night).soft).margin({top: 16, bottom: 16}).borderRadius(4)

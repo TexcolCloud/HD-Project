@@ -248,7 +248,7 @@ export struct AccountWorkspace {
   private SendCode(second: boolean) {
     Button((second ? this.secondWait : this.firstWait) > 0
       ? '重新发送（' + (second ? this.secondWait : this.firstWait) + '秒）'
-      : second ? '向新手机号发送验证码' : this.kind() === 'change' ? '向原手机号发送验证码' : '发送验证码')
+      : second ? '向新手机号发送验证码' : this.kind() === 'change' ? '向原手机号发送验证码' : '发送验证码', {type: ButtonType.Normal})
       .id(second ? 'account-send-new' : 'account-send').fontSize(14).height(48)
       .fontColor(this.ink()).backgroundColor(palette(this.night).surface).borderRadius(4)
       .border({width: 1, color: palette(this.night).outline})
@@ -290,7 +290,7 @@ export struct AccountWorkspace {
       this.Field({id: 'account-recovery-input', label: '宿管恢复码', value: this.recoveryInput,
         change: (value: string) => this.recoveryInput = value, type: InputType.Password, maximum: 128})
     }
-    Button(this.busy ? '正在处理…' : this.kind() === 'recover' && !this.resetToken ? '验证短信' : '确认提交')
+    Button(this.busy ? '正在处理…' : this.kind() === 'recover' && !this.resetToken ? '验证短信' : '确认提交', {type: ButtonType.Normal})
       .id('account-submit').width('100%').height(50).fontSize(16).borderRadius(4)
       .fontColor(palette(this.night).onPrimary).backgroundColor(this.ink()).enabled(!this.busy)
       .onClick(() => this.submit())
@@ -306,12 +306,12 @@ export struct AccountWorkspace {
           serviceDetail({label: '宿管恢复码', value: this.user?.recoveryCodeConfigured ? '已设置' : '未设置', night: this.night})
         }
         if (this.user?.phoneMasked) {
-          Button('更换手机号').id('account-change-mode').height(48).fontSize(16).borderRadius(4)
+          Button('更换手机号', {type: ButtonType.Normal}).id('account-change-mode').height(48).fontSize(16).borderRadius(4)
             .fontColor(this.operation === 'change' ? palette(this.night).onPrimary : this.ink())
             .backgroundColor(this.operation === 'change' ? this.ink() : palette(this.night).surface)
             .enabled(!this.busy).onClick(() => this.choose('change'))
           if (this.user?.role === 'MANAGER') {
-            Button(this.user?.recoveryCodeConfigured ? '重签宿管恢复码' : '生成宿管恢复码')
+            Button(this.user?.recoveryCodeConfigured ? '重签宿管恢复码' : '生成宿管恢复码', {type: ButtonType.Normal})
               .id('account-replace-mode').height(48).fontSize(16).borderRadius(4)
               .fontColor(this.operation === 'replace' ? palette(this.night).onPrimary : this.ink())
               .backgroundColor(this.operation === 'replace' ? this.ink() : palette(this.night).surface)
@@ -347,7 +347,7 @@ export struct RecoveryCodeView {
       Text(this.code).id('account-recovery-code').fontSize(18).fontColor(palette(this.night).ink).copyOption(CopyOptions.LocalDevice)
         .width('100%').wordBreak(WordBreak.BREAK_ALL).padding(16)
         .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).line})
-      Button('已保存恢复码').id('account-recovery-done').width('100%').height(50).borderRadius(4)
+      Button('已保存恢复码', {type: ButtonType.Normal}).id('account-recovery-done').width('100%').height(50).borderRadius(4)
         .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).onClick(this.done)
     }.width('100%').alignItems(HorizontalAlign.Start).padding(24)
   }

@@ -65,7 +65,7 @@ export struct VisitorWorkspace {
       if (this.state.students.length) {
         Column({space: 4}) {
           ForEach(this.state.students,(s: Student) => {
-            Button() { Text((s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name + ' · ' + s.studentNo).fontSize(16).fontColor(this.ink()) }
+            Button({type: ButtonType.Normal}) { Text((s.buildingName || '') + ' ' + (s.roomNo || '') + ' · ' + s.name + ' · ' + s.studentNo).fontSize(16).fontColor(this.ink()) }
               .width('100%').constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontColor(this.ink()).borderRadius(4)
               .backgroundColor(this.state.visitedStudentId === s.id ? this.soft() : this.surface())
               .border({width: 1, color: this.state.visitedStudentId === s.id ? this.accent() : palette(this.night).outline})
@@ -77,7 +77,7 @@ export struct VisitorWorkspace {
       serviceField({label: '来访事由 *', value: this.state.visitorPurpose, change: (v: string)  => { this.state.visitorPurpose = v; this.controller.saveDraft(); }, placeholder: '例如：家属探访', night: this.night, page: this.page})
       Flex({wrap: FlexWrap.Wrap}) {
         ForEach(['家属探访','同学来访','搬运物品','公务联系'],(purpose: string) => {
-          Button(purpose).height(48).fontSize(14).fontColor(this.ink()).borderRadius(4).backgroundColor(this.soft()).margin({right:4,bottom:4})
+          Button(purpose, {type: ButtonType.Normal}).height(48).fontSize(14).fontColor(this.ink()).borderRadius(4).backgroundColor(this.soft()).margin({right:4,bottom:4})
             .onClick(() => { this.state.visitorPurpose = purpose; this.controller.saveDraft(); })
         })
       }
@@ -126,10 +126,10 @@ export struct VisitorWorkspace {
         }.padding({top: 18, bottom: 18}).width('100%').border({width: {bottom: 1}, color: this.line()})
       }, (visitor: Visitor) => visitor.id + ':' + visitor.version + ':' + String(visitor.overdue))
       Row({space: 12}) {
-        Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('上一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.visitorPage > 1 && !this.state.loading).onClick(() => { this.state.visitorPage--; this.host.scrollTop?.(); this.controller.loadVisitors(); })
         Text(String(this.state.visitorPage)).fontColor(this.muted()).fontSize(14)
-        Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('下一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.visitorPage * 10 < this.state.visitorTotal && !this.state.loading).onClick(() => { this.state.visitorPage++; this.host.scrollTop?.(); this.controller.loadVisitors(); })
       }.width('100%')
     }.width('100%').alignItems(HorizontalAlign.Start)
@@ -143,9 +143,9 @@ export struct VisitorWorkspace {
   @Builder
   private Actions($$: VisitorArgs) {
     Row({space: 8}) {
-      Button($$.visitor.phone + '  查看').fontSize(14).fontColor(this.ink()).height(48).backgroundColor(this.soft()).borderRadius(4).layoutWeight(1).onClick(() => this.phoneActions($$.visitor))
+      Button($$.visitor.phone + '  查看', {type: ButtonType.Normal}).fontSize(14).fontColor(this.ink()).height(48).backgroundColor(this.soft()).borderRadius(4).layoutWeight(1).onClick(() => this.phoneActions($$.visitor))
       if ($$.visitor.status === 'VISITING') {
-        Button('登记离访').id('visitor-leave-' + $$.visitor.id).fontSize(14).height(48).fontColor(this.onPrimary()).backgroundColor(this.ink()).borderRadius(4)
+        Button('登记离访', {type: ButtonType.Normal}).id('visitor-leave-' + $$.visitor.id).fontSize(14).height(48).fontColor(this.onPrimary()).backgroundColor(this.ink()).borderRadius(4)
           .enabled(!this.state.busy && !this.state.loading).onClick(() => this.controller.leave($$.visitor))
       }
     }.width('100%')

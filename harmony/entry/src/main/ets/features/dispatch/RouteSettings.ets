@@ -90,10 +90,10 @@ export struct RouteSettings {
       }
       if (this.manager && this.manager.version !== this.expectedVersion) {
         Text('设置已在其他终端更新。可保留当前填写，或载入最新状态后再修改。').fontSize(14).lineHeight(22).fontColor(palette(this.night).accent).width('100%')
-        Button('载入最新设置').height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4).onClick(() => this.reset())
+        Button('载入最新设置', {type: ButtonType.Normal}).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4).onClick(() => this.reset())
       }
       if (this.error) { Text(this.error).fontSize(14).fontColor(palette(this.night).danger).width('100%') }
-      Button(this.busy ? '正在保存…' : '保存接单设置').id('route-settings-save').width('100%').height(50).fontSize(16)
+      Button(this.busy ? '正在保存…' : '保存接单设置', {type: ButtonType.Normal}).id('route-settings-save').width('100%').height(50).fontSize(16)
         .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).borderRadius(4).enabled(!this.busy).onClick(() => this.save())
       Button('取消').width('100%').height(48).fontSize(14).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent)
         .enabled(!this.busy).onClick(this.onCancel)

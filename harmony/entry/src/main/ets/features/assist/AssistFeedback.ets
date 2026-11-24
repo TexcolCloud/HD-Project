@@ -58,7 +58,7 @@ export struct AssistFeedback {
           .height(48).width('100%').backgroundColor(palette(this.night).surface).fontColor(palette(this.night).ink).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.decision = ['ADOPTED', 'MODIFIED', 'IGNORED'][index])
         FormInput({label: '采用或调整原因', value: this.reason, multiline: true, night: this.night, onChange: (value: string) => this.reason = value})
         FormInput({label: '实际办理结果（可后续补充）', value: this.outcome, multiline: true, night: this.night, onChange: (value: string) => this.outcome = value})
-        Button('记录建议反馈').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy && !!this.reason.trim()).onClick(() => this.save())
+        Button('记录建议反馈', {type: ButtonType.Normal}).height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy && !!this.reason.trim()).onClick(() => this.save())
       }
       if (this.notice) { Text(this.notice).fontSize(14).fontColor(palette(this.night).accent).width('100%') }
       Button('查看历史反馈').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.load())

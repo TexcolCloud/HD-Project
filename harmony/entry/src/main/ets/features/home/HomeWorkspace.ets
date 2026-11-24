@@ -69,7 +69,7 @@ export struct HomeWorkspace {
       if (this.state.openRemediations.length) {
         Column({space: 6}) {
           serviceSection({title: '待办卫生整改 · ' + this.state.openTotal + ' 项', action: '查看全部', night: this.night, click: () => this.host.navigate('remediations')})
-          Button() { Text(this.state.openRemediations[0].issueNote).fontSize(16).fontColor(this.ink()) }.width('100%').constraintSize({minHeight: 48}).padding({top: 10, bottom: 10, left: 12, right: 12}).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
+          Button({type: ButtonType.Normal}) { Text(this.state.openRemediations[0].issueNote).fontSize(16).fontColor(this.ink()) }.width('100%').constraintSize({minHeight: 48}).padding({top: 10, bottom: 10, left: 12, right: 12}).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4)
             .onClick(() => this.onRemediation(this.state.openRemediations[0].id))
           Text('截止 ' + dateText(this.state.openRemediations[0].dueAt)).fontSize(14).fontColor(this.muted())
           if (this.state.openRemediations.some((r: Remediation): boolean => r.overdue)) { Text('已有整改逾期').fontSize(14).fontColor(palette(this.night).danger) }
@@ -78,7 +78,7 @@ export struct HomeWorkspace {
       Image($rawfile('campus-courtyard.jpg')).width('100%').height(88).objectFit(ImageFit.Cover).borderRadius(2).margin({top: 16})
       Text('示意图 · Nick Allen / CC BY-SA 3.0').fontSize(14).fontColor(this.muted()).width('100%').constraintSize({minHeight: 48})
         .onClick(() => this.host.navigate('credits'))
-      Button() {
+      Button({type: ButtonType.Normal}) {
         Text('提交宿舍报修').fontSize(16).fontColor(this.onPrimary()).fontWeight(FontWeight.Medium)
       }.id('create-repair').width('100%').height(52).borderRadius(4)
         .backgroundColor(this.ink()).fontColor(this.onPrimary()).enabled(!!this.state.room).onClick(() => this.host.navigate('repair-create'))
@@ -105,18 +105,22 @@ export struct HomeWorkspace {
       }.width('100%').padding({top: 20, bottom: 20}).margin({top: 20, bottom: 18})
         .border({width: {top: 1, bottom: 1}, color: this.line()})
       Row({space: 12}) {
-        Button('登记访客')
+        Button('登记访客', {type: ButtonType.Normal})
           .id('create-visitor').layoutWeight(1).height(48).fontSize(16).backgroundColor(this.surface()).fontColor(this.ink())
           .border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.host.navigate('visitor-create'))
-        Button('录入评分')
+        Button('录入评分', {type: ButtonType.Normal})
           .id('create-hygiene').layoutWeight(1).height(48).fontSize(16).backgroundColor(this.surface()).fontColor(this.ink())
           .border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.host.navigate('hygiene-create'))
       }.width('100%')
-      Row({space: 12}) { serviceSecondary({label: '访客记录', click: () => this.host.navigate('visitors'), night: this.night, busy: false}); serviceSecondary({label: '卫生记录', click: () => this.host.navigate('hygiene'), night: this.night, busy: false}) }.margin({top: 12})
-      Button('查看下一站').id('open-route').width('100%').height(52).fontSize(16).fontColor(this.onPrimary())
+      Row({space: 12}) {
+        serviceSecondary({label: '访客记录', click: () => this.host.navigate('visitors'), night: this.night, weight: 1})
+        serviceSecondary({label: '卫生记录', click: () => this.host.navigate('hygiene'), night: this.night, weight: 1})
+      }.width('100%').margin({top: 12})
+      Button('查看下一站', {type: ButtonType.Normal}).id('open-route').width('100%').height(52).fontSize(16).fontColor(this.onPrimary())
         .backgroundColor(this.ink()).borderRadius(4).margin({top: 18, bottom: 4}).onClick(() => this.host.navigate('route'))
-      Button('位置与出行辅助').id('open-mobility').width('100%').height(48).fontSize(16).fontColor(this.ink())
-        .backgroundColor(Color.Transparent).borderRadius(0).margin({top: 8}).onClick(() => this.host.navigate('mobility'))
+      Button('位置与出行辅助', {type: ButtonType.Normal}).id('open-mobility').width('100%').height(48).fontSize(16).fontColor(this.ink())
+        .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4)
+        .margin({top: 8}).onClick(() => this.host.navigate('mobility'))
       serviceSection({title: '待跟进工单', night: this.night, action: '查看全部', click: () => { this.onRepairListReset(); this.host.navigate('repairs'); }})
       if (!this.state.repairs.length) { serviceEmpty({message: '暂时没有工单。', night: this.night}) }
       ForEach(this.state.repairs.slice(0, 3), (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)

@@ -92,7 +92,7 @@ export struct ManagerAssist {
           Text('附带本单前3张故障图（可选）').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.includeImages = !this.includeImages)
         }.width('100%')
         }
-        Button(this.busy ? '正在整理…' : this.orderId ? '生成本单研判' : '生成值班简报').id('manager-assist-generate').width('100%').height(48).fontSize(16)
+        Button(this.busy ? '正在整理…' : this.orderId ? '生成本单研判' : '生成值班简报', {type: ButtonType.Normal}).id('manager-assist-generate').width('100%').height(48).fontSize(16)
           .fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy).onClick(() => this.generate())
         if (this.error) { Text(this.error).id('manager-assist-error').fontSize(14).lineHeight(23).fontColor(palette(this.night).danger).width('100%') }
         if (this.advice) {
@@ -111,7 +111,7 @@ export struct ManagerAssist {
           if (this.advice.uncertainty) { Text('不确定之处：' + this.advice.uncertainty).fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%') }
           if (this.advice.evidence.length) { Text('相关工单依据').fontSize(16).fontWeight(FontWeight.Medium).fontColor(palette(this.night).ink).width('100%') }
           ForEach(this.advice.evidence, (item: AssistEvidence) => {
-            Button(item.orderNo + ' · ' + item.title + '\n' + statusLabel(item.status) + '  查看 →').id('assist-evidence-' + item.orderId)
+            Button(item.orderNo + ' · ' + item.title + '\n' + statusLabel(item.status) + '  查看 →', {type: ButtonType.Normal}).id('assist-evidence-' + item.orderId)
               .width('100%').constraintSize({minHeight: 56}).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
               .borderRadius(4).enabled(!this.opening).onClick(() => this.evidence(item))
           }, (item: AssistEvidence) => item.orderId)

@@ -42,7 +42,7 @@ export struct DateTimeField {
   build() {
     Column({space: 4}) {
       Text(this.label).fontSize(16).fontColor(palette(this.night).ink)
-      Button(this.value || '请选择').id(this.inputId).width('100%').height(48).fontSize(16)
+      Button(this.value || '请选择', {type: ButtonType.Normal}).id(this.inputId).width('100%').height(48).fontSize(16)
         .accessibilityText(this.label + ' ' + (this.value || '请选择'))
         .fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
         .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.disabled).onClick(() => this.pick())
@@ -59,7 +59,7 @@ export struct TimePresets {
   build() {
     Flex({wrap: FlexWrap.Wrap, space: {main: LengthMetrics.vp(8), cross: LengthMetrics.vp(4)}}) {
       ForEach(this.labels, (label: string, index: number) => {
-        Button(label).height(48).fontSize(14).borderRadius(4).fontColor(palette(this.night).ink)
+        Button(label, {type: ButtonType.Normal}).height(48).fontSize(14).borderRadius(4).fontColor(palette(this.night).ink)
           .backgroundColor(palette(this.night).soft).enabled(!this.disabled).onClick(() => this.onChoose(index))
       }, (label: string) => label)
     }.width('100%')

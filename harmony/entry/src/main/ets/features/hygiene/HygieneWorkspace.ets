@@ -77,21 +77,21 @@ export struct HygieneWorkspace {
     Row({space: 12}) {
       Column({space: 4}) { Text($$.label).fontSize(16).fontColor(this.ink()); Text($$.hint).fontSize(14).fontColor(this.muted()) }
         .alignItems(HorizontalAlign.Start).layoutWeight(1)
-      Button('−').width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.min(25,Math.max(0,Number($$.value)-1)))))
+      Button('−', {type: ButtonType.Normal}).width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.min(25,Math.max(0,Number($$.value)-1)))))
       TextInput({text: $$.value}).id($$.id).type(InputType.Number).width(56).height(50).fontSize(18).fontColor(this.ink())
         .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).textAlign(TextAlign.Center).maxLength(2).onChange($$.change)
-      Button('+').width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.max(0,Math.min(25,Number($$.value)+1)))))
+      Button('+', {type: ButtonType.Normal}).width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.max(0,Math.min(25,Number($$.value)+1)))))
     }.width('100%')
     Row({space: 8}) {
       ForEach(['25','22','20','15'], (score: string) => {
-        Button(score).height(48).layoutWeight(1).fontColor(this.ink()).backgroundColor($$.value === score ? this.soft() : this.surface()).borderRadius(4).onClick(() => $$.change(score))
+        Button(score, {type: ButtonType.Normal}).height(48).layoutWeight(1).fontColor(this.ink()).backgroundColor($$.value === score ? this.soft() : this.surface()).borderRadius(4).onClick(() => $$.change(score))
       })
     }.width('100%').padding({top: 8, bottom: 14}).border({width: {bottom: 1}, color: this.line()})
   }
 
   @Builder
   private RoomChip(label: string, active: boolean, click: () => void) {
-    Button(label).height(48).borderRadius(4).fontSize(14).margin({right: 4,bottom: 4})
+    Button(label, {type: ButtonType.Normal}).height(48).borderRadius(4).fontSize(14).margin({right: 4,bottom: 4})
       .fontColor(active ? palette(this.night).onPrimary : this.ink()).backgroundColor(active ? this.ink() : this.soft()).onClick(click)
   }
 
@@ -102,7 +102,7 @@ export struct HygieneWorkspace {
       Row() {
         Column({space: 6}) { Text('卫生总分').fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()); Text('四项各25分 · 满分100分').fontSize(14).fontColor(this.muted()) }
           .alignItems(HorizontalAlign.Start).layoutWeight(1)
-        Button('一键满分').height(48).fontSize(14).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4).enabled(!this.state.busy && !this.state.draftBlocked).onClick(() => this.controller.fullScore())
+        Button('一键满分', {type: ButtonType.Normal}).height(48).fontSize(14).fontColor(this.ink()).backgroundColor(this.surface()).borderRadius(4).enabled(!this.state.busy && !this.state.draftBlocked).onClick(() => this.controller.fullScore())
         Text(String(this.controller.totalScore())).id('hygiene-total').fontSize(28).fontColor(this.ink()).fontWeight(FontWeight.Medium)
         Text(this.controller.scoreGrade()).fontSize(14).fontColor(this.muted()).margin({left: 6})
       }.width('100%').padding(18).backgroundColor(this.soft()).borderRadius(4).margin({bottom: 24})
@@ -139,7 +139,7 @@ export struct HygieneWorkspace {
         .onSelect((index: number) => { const r = this.controller.visibleRooms()[index]; if (r) this.controller.chooseRoom(r.id); })
       }
       serviceLabel({text: '检查日期 *', night: this.night})
-      Button(this.state.inspectionDate + '  更改日期').id('hygiene-date').height(50).width('100%').fontSize(16).fontColor(this.ink())
+      Button(this.state.inspectionDate + '  更改日期', {type: ButtonType.Normal}).id('hygiene-date').height(50).width('100%').fontSize(16).fontColor(this.ink())
         .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).margin({top: 8, bottom: 18})
         .enabled(!this.state.busy && !this.state.draftBlocked && !this.state.uploading).onClick(() => this.selectDate())
       DateTimeField({label: '实际检查时间 *', inputId:'hygiene-inspection-time', value: this.state.inspectionTime, clock: true, night: this.night,
@@ -219,7 +219,7 @@ export struct HygieneWorkspace {
             .selected(['','RECTIFY','PASS','GOOD','EXCELLENT'].indexOf(this.state.listGrade)).value(this.state.listGrade ? gradeLabel(this.state.listGrade) : '全部')
             .height(48).fontColor(this.ink()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).optionBgColor(this.surface()).optionFontColor(this.ink())
             .onSelect((i: number) => { this.state.listGrade = ['','RECTIFY','PASS','GOOD','EXCELLENT'][i]; this.state.hygienePage = 1; this.controller.loadHygiene(); })
-          Button('查询').height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => { this.state.hygienePage = 1; this.controller.loadHygiene(); })
+          Button('查询', {type: ButtonType.Normal}).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => { this.state.hygienePage = 1; this.controller.loadHygiene(); })
         }.width('100%')
       }
       Text(this.manager() ? '授权楼栋内的巡检记录' : '仅展示本人有效入住期间的宿舍检查记录').fontSize(14).fontColor(this.muted()).lineHeight(22).width('100%').margin({bottom: 18})
@@ -239,18 +239,24 @@ export struct HygieneWorkspace {
           Text('检查人：' + item.inspectorName).fontSize(14).fontColor(this.muted()).width('100%')
           ForEach(item.images, (asset: FileAsset) => { SecureImage({url: asset.url, thumbnailUrl:asset.thumbnailUrl, night: this.night}) }, (asset: FileAsset) => asset.id)
           if (this.manager()) {
-            serviceSecondary({label: '更正评分', click: () => this.controller.correct(item), night: this.night, busy: this.state.busy})
-            serviceSecondary({label: '查看更正记录', click: () => this.controller.history(item), night: this.night, busy: this.state.busy})
-            serviceSecondary({label: '录入整改复查', click: () => this.controller.recheck(item), night: this.night, busy: this.state.busy})
-            serviceSecondary({label: '安排整改任务', click: () => this.onRemediate(item), night: this.night, busy: this.state.busy})
+            Row({space: 8}) {
+              serviceSecondary({label: '更正评分', click: () => this.controller.correct(item), night: this.night, weight: 1, busy: this.state.busy})
+              serviceSecondary({label: '查看更正记录', click: () => this.controller.history(item), night: this.night, weight: 1, busy: this.state.busy})
+            }.width('100%')
+            if (item.grade === 'RECTIFY' && !item.voidedAt) {
+              Row({space: 8}) {
+                serviceSecondary({label: '录入整改复查', click: () => this.controller.recheck(item), night: this.night, weight: 1, busy: this.state.busy})
+                serviceSecondary({label: '安排整改任务', click: () => this.onRemediate(item), night: this.night, weight: 1, busy: this.state.busy})
+              }.width('100%')
+            }
           }
         }.padding(18).width('100%').alignItems(HorizontalAlign.Start).backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(6).margin({bottom: 14})
       }, (item: Hygiene) => item.id + ':' + item.version)
       Row({space: 12}) {
-        Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('上一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.hygienePage > 1 && !this.state.loading).onClick(() => { this.state.hygienePage--; this.host.scrollTop?.(); this.controller.loadHygiene(); })
         Text(String(this.state.hygienePage)).fontSize(14).fontColor(this.muted())
-        Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('下一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.hygienePage * 10 < this.state.hygieneTotal && !this.state.loading).onClick(() => { this.state.hygienePage++; this.host.scrollTop?.(); this.controller.loadHygiene(); })
       }.width('100%')
     }.width('100%').alignItems(HorizontalAlign.Start)

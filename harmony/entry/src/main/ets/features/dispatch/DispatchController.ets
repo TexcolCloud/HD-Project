@@ -100,7 +100,7 @@ export class DispatchController {
     const previous = this.revision.value();
     if (!this.revision.accept(board.revision)) return;
     if (previous >= 0 && board.revision > previous) {
-      this.notice = '路线已更新至版本 ' + board.revision + (board.changes.length ? '：' + board.changes.slice(0, 3).join('；') : '，请核对剩余站点。');
+      this.notice = '路线已更新' + (board.changes.length ? '：' + board.changes.slice(0, 3).join('；') : '，请核对剩余站点。');
     }
     this.error = '';
     this.board = board; this.offline = false; this.emit();
@@ -115,7 +115,7 @@ export class DispatchController {
   }
   dismissNotice(): void { this.notice = ''; this.emit(); }
   async refresh(showLoading: boolean = true): Promise<void> {
-    if (!this.session) return;
+    if (!this.session || (showLoading && this.busy)) return;
     const epoch = this.epoch;
     if (showLoading) { this.loading = true; this.error = ''; this.emit(); }
     try {

@@ -103,11 +103,9 @@ export struct RoutePage {
   }
   build() {
     Column({space: 0}) {
-      Row() {
-        Blank().layoutWeight(1)
-        Button('刷新').id('route-refresh').height(48).fontSize(14).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent)
-          .enabled(!this.loading && !this.busy).onClick(() => this.controller.refresh())
-      }.width('100%').margin({bottom: 8})
+      Button('定位与扫码校准', {type: ButtonType.Normal}).height(48).fontSize(14).fontColor(palette(this.night).ink)
+        .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).outline})
+        .borderRadius(4).margin({bottom: 8}).onClick(this.onCalibrate)
       Text('到场后可开始处理并提交完工结果。').fontSize(14).lineHeight(23)
         .fontColor(palette(this.night).muted).width('100%').margin({bottom: 18})
       if (this.offline) {
@@ -121,7 +119,6 @@ export struct RoutePage {
           Button('已了解本次变化').fontSize(14).height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.dismissNotice())
         }.width('100%').padding(14).backgroundColor(palette(this.night).soft).borderRadius(4).margin({bottom: 14})
       }
-      Button('定位与扫码校准').height(48).fontSize(14).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(this.onCalibrate)
       if (this.loading) { LoadingProgress().width(24).height(24).color(palette(this.night).accent).margin({bottom: 12}) }
       if (this.board) {
         Row() {
@@ -129,7 +126,7 @@ export struct RoutePage {
             Text(this.board.onlineCount + ' 人在线 · ' + this.board.participatingCount + ' 人参与').id('route-manager-counts').fontSize(16).fontColor(palette(this.night).ink)
 
           }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-          Button('接单与位置').id('route-settings').height(48).fontSize(14).fontColor(palette(this.night).ink)
+          Button('接单与位置', {type: ButtonType.Normal}).id('route-settings').height(48).fontSize(14).fontColor(palette(this.night).ink)
             .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.showSettings = !this.showSettings)
         }.width('100%').padding({top: 16, bottom: 16}).border({width: {top: 1, bottom: 1}, color: palette(this.night).line}).margin({bottom: 16})
         if (!this.board.me.acceptingNewTasks) { Text('已暂停新增任务；现有办理责任保留。').fontSize(14).fontColor(palette(this.night).accent).width('100%').margin({bottom: 14}) }
@@ -150,7 +147,7 @@ export struct RoutePage {
             Text('记录受阻：' + this.blockedTask.buildingName + ' ' + this.blockedTask.roomNo).fontSize(18).fontColor(palette(this.night).ink).width('100%')
             FormInput({label: '受阻原因', value: this.blockReason, multiline: true, inputId: 'route-block-reason', night: this.night,
               onChange: (value: string) => this.blockReason = value})
-            Button('确认受阻').id('route-block-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink)
+            Button('确认受阻', {type: ButtonType.Normal}).id('route-block-submit').height(48).width('100%').fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink)
               .borderRadius(4).enabled(!this.busy && !!this.blockReason.trim()).onClick(() => this.submitBlock())
             Button('取消').height(48).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent).onClick(() => this.blockedTask = null)
           }.width('100%').padding(16).backgroundColor(palette(this.night).soft).borderRadius(4).margin({bottom: 16})
@@ -175,7 +172,7 @@ export struct RoutePage {
             }.width('100%').alignItems(HorizontalAlign.Start).padding(14).border({width: 1, color: palette(this.night).line}).borderRadius(4).margin({bottom: 10})
           }, (item: DispatchUnassigned) => item.task.orderId + ':' + this.board?.revision)
         }
-        Button(this.busy ? '正在更新…' : '更新剩余路线').id('route-replan').width('100%').height(50).fontSize(16).fontColor(palette(this.night).onPrimary)
+        Button(this.busy ? '正在更新…' : '更新剩余路线', {type: ButtonType.Normal}).id('route-replan').width('100%').height(50).fontSize(16).fontColor(palette(this.night).onPrimary)
           .backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy && !this.offline).onClick(() => this.controller.replan()).margin({top: 18, bottom: 12})
         Text('预计通行 ' + (this.route()?.travelMinutes ?? 0) + ' 分钟 · 等待 ' + (this.route()?.waitingMinutes ?? 0) + ' 分钟 · 剩余工作约 ' + (this.route()?.workloadMinutes ?? 0) + ' 分钟')
           .fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%')

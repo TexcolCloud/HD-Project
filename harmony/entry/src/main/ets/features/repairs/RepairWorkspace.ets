@@ -85,7 +85,7 @@ export struct RepairWorkspace {
           Checkbox({name: 'analysis-consent'}).select(this.state.aiConsent).selectedColor(this.accent()).onChange((v: boolean) => this.state.aiConsent = v)
           Text('同意将本次故障描述与所选图片发送给AI服务分析').fontSize(14).fontColor(this.ink()).layoutWeight(1).lineHeight(22).constraintSize({minHeight:48}).onClick(() => this.state.aiConsent = !this.state.aiConsent)
         }.width('100%')
-        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善').id('repair-ai').height(48).width('100%').fontSize(16)
+        Button(this.state.aiBusy ? '正在整理…' : 'AI 帮我完善', {type: ButtonType.Normal}).id('repair-ai').height(48).width('100%').fontSize(16)
           .backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4).enabled(!this.state.aiBusy && !this.state.aiAdopted && !this.state.uploading && !this.state.busy).onClick(() => this.controller.suggest())
         if (this.state.aiError) { Text(this.state.aiError).fontSize(14).fontColor(this.night ? '#F1A99C' : '#A13E37').lineHeight(22).width('100%') }
         if (this.state.ai) {
@@ -93,7 +93,7 @@ export struct RepairWorkspace {
           Text(this.state.ai.title + '\n' + categoryLabel(this.state.ai.category) + '\n' + this.state.ai.summary).fontSize(14).fontColor(this.ink()).lineHeight(24).width('100%')
           if (this.state.ai.uncertainty) { Text(this.state.ai.uncertainty).fontSize(14).fontColor(this.muted()).width('100%') }
           ForEach(this.state.ai.questions, (question: string) => { Text('待补充：' + question).fontSize(14).fontColor(this.muted()).width('100%') })
-          Button(this.state.aiAdopted ? '撤销采纳，恢复原文' : '采纳建议').height(48).width('100%').fontSize(16).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+          Button(this.state.aiAdopted ? '撤销采纳，恢复原文' : '采纳建议', {type: ButtonType.Normal}).height(48).width('100%').fontSize(16).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
             .onClick(() => { if (this.state.aiAdopted) this.controller.undoSuggestion(); else this.controller.adoptSuggestion(); })
         }
       }.padding({top: 16, bottom: 16}).width('100%').alignItems(HorizontalAlign.Start).border({width: {top: 1}, color: this.line()}).margin({bottom: 24})
@@ -144,10 +144,10 @@ export struct RepairWorkspace {
       if (!this.state.repairs.length && !this.state.listLoading) { serviceEmpty({message: '暂无符合条件的工单，请调整筛选条件。', night: this.night}) }
       ForEach(this.state.repairs, (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
       Row({space: 12}) {
-        Button('上一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('上一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.repairPage > 1 && !this.state.listLoading).onClick(() => { this.state.repairPage--; this.host.scrollTop?.(); this.controller.loadRepairs(); })
         Text(String(this.state.repairPage)).fontSize(14).fontColor(this.muted())
-        Button('下一页').height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
+        Button('下一页', {type: ButtonType.Normal}).height(48).layoutWeight(1).backgroundColor(this.surface()).fontColor(this.ink()).borderRadius(4)
           .enabled(this.state.repairPage * 10 < this.state.repairTotal && !this.state.listLoading).onClick(() => { this.state.repairPage++; this.host.scrollTop?.(); this.controller.loadRepairs(); })
       }.width('100%').margin({top: 12})
     }.width('100%').alignItems(HorizontalAlign.Start)
@@ -209,7 +209,7 @@ export struct RepairWorkspace {
       }, (event: RepairEvent) => event.id)
       if (!this.state.events.length && !this.state.detailLoading) { serviceEmpty({message: '暂无进度记录', night: this.night}) }
       ForEach(this.state.selected.allowedActions, (action: string) => {
-        Button(action === 'rework' && this.manager() ? '撤回结果并返修' : actionLabel(action)).id('repair-action-' + action)
+        Button(action === 'rework' && this.manager() ? '撤回结果并返修' : actionLabel(action), {type: ButtonType.Normal}).id('repair-action-' + action)
           .width('100%').height(50).fontSize(16).fontColor(['reject', 'cancel'].includes(action) ? this.accent() : this.onPrimary())
           .backgroundColor(['reject', 'cancel'].includes(action) ? this.surface() : this.ink()).borderRadius(4)
           .enabled(!this.state.busy).onClick(() => this.controller.beginAction(action)).margin({top: 10})

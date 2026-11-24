@@ -29,10 +29,10 @@ export struct RepairReminders {
   build() {
     Column({space: 8}) {
       if (this.repair && appointment(this.repair).calendar) {
-        Button('添加预约至系统日历').id('repair-calendar').width('100%').height(48).fontSize(14).fontColor(palette(this.night).accent)
+        Button('添加预约至系统日历', {type: ButtonType.Normal}).id('repair-calendar').width('100%').height(48).fontSize(14).fontColor(palette(this.night).accent)
           .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.trigger(true))
       }
-      Button('开启并测试系统通知').id('repair-notifications').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
+      Button('开启并测试系统通知', {type: ButtonType.Normal}).id('repair-notifications').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
         .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy).onClick(() => this.trigger(false))
       if (this.message) { Text(this.message).fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%') }
       Text('本地提醒仅处理已知预约，不代表应用关闭后能接收新的服务端工单。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
