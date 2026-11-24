@@ -40,28 +40,28 @@ export struct RouteTaskCard {
         }
         if (this.task.reason) { Text(this.task.reason).fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).width('100%') }
         if (this.task.state === 'RECOMMENDED') {
-          Button('接受推荐任务').id('route-claim-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
+          Button('接受推荐任务', {type: ButtonType.Normal}).id('route-claim-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
             .onClick(() => { if (this.task) this.onAction(this.task, 'claim'); })
         } else if (this.task.state === 'ASSIGNED') {
-          Button(this.canDepart ? '向下一站出发' : '当前任务完成后再出发').id('route-depart-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
+          Button(this.canDepart ? '向下一站出发' : '当前任务完成后再出发', {type: ButtonType.Normal}).id('route-depart-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled && this.canDepart)
             .onClick(() => { if (this.task) this.onAction(this.task, 'depart'); })
         } else if (this.task.state === 'EN_ROUTE') {
-          Button('已到达现场').id('route-arrive-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
+          Button('已到达现场', {type: ButtonType.Normal}).id('route-arrive-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
             .onClick(() => { if (this.task) this.onAction(this.task, 'arrive'); })
         } else if (this.task.state === 'ON_SITE' && ['ACCEPTED', 'PROCESSING'].includes(this.task.repairStatus)) {
-          Button(this.task.repairStatus === 'ACCEPTED' ? '开始处理工单' : '提交完工结果 →').width('100%').height(48).fontSize(16).borderRadius(4)
+          Button(this.task.repairStatus === 'ACCEPTED' ? '开始处理工单' : '提交完工结果 →', {type: ButtonType.Normal}).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
             .onClick(() => { if (this.task) this.onAction(this.task, this.task.repairStatus === 'ACCEPTED' ? 'start' : 'finish'); })
         } else if (this.task.state === 'BLOCKED') {
-          Button('恢复路线安排').id('route-resume-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
+          Button('恢复路线安排', {type: ButtonType.Normal}).id('route-resume-' + this.task.orderId).width('100%').height(48).fontSize(16).borderRadius(4)
             .backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).enabled(!this.busy && this.actionsEnabled)
             .onClick(() => { if (this.task) this.onAction(this.task, 'resume'); })
         }
         Row({space: 10}) {
-          Button(this.task.state === 'ON_SITE' ? '打开工单处理 →' : '查看工单 →').id('route-order-' + this.task.orderId)
+          Button(this.task.state === 'ON_SITE' ? '打开工单处理 →' : '查看工单 →', {type: ButtonType.Normal}).id('route-order-' + this.task.orderId)
             .layoutWeight(1).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).soft).borderRadius(4)
             .enabled(!this.busy).onClick(() => { if (this.task) this.onOpen(this.task); })
           if (['EN_ROUTE', 'ON_SITE'].includes(this.task.state)) {

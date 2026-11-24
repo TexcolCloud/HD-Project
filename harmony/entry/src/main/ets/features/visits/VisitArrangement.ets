@@ -105,7 +105,7 @@ export struct VisitArrangement {
           Text(this.repair.waitingReason).fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
         }
         if (!this.editing && this.editable()) {
-          Button(this.manager ? '调整访问安排' : '调整可上门时段').id('visit-edit').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
+          Button(this.manager ? '调整访问安排' : '调整可上门时段', {type: ButtonType.Normal}).id('visit-edit').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
             .backgroundColor(palette(this.night).surface).border({width: 1, color: palette(this.night).outline}).borderRadius(4).onClick(() => this.edit())
         }
         if (this.editing) {
@@ -127,7 +127,7 @@ export struct VisitArrangement {
               onChange: (value: string) => this.waitingReason = value}) }
           }
           if (this.error) { Text(this.error).fontSize(14).lineHeight(22).fontColor(palette(this.night).danger).width('100%') }
-          Button(this.busy ? '正在保存…' : '保存访问安排').id('visit-save').width('100%').height(50).fontSize(16).fontColor(palette(this.night).onPrimary)
+          Button(this.busy ? '正在保存…' : '保存访问安排', {type: ButtonType.Normal}).id('visit-save').width('100%').height(50).fontSize(16).fontColor(palette(this.night).onPrimary)
             .backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy).onClick(() => this.save())
           Button('取消修改').width('100%').height(48).fontSize(14).fontColor(palette(this.night).muted).backgroundColor(Color.Transparent)
             .enabled(!this.busy).onClick(() => this.editing = false)

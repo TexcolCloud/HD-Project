@@ -101,7 +101,7 @@ export struct MobilityPage {
   }
   @Builder
   private Action($$: MobilityActionArgs) {
-    Button($$.label).id($$.id).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
+    Button($$.label, {type: ButtonType.Normal}).id($$.id).height(48).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface)
       .border({width: 1, color: palette(this.night).outline}).borderRadius(4).enabled(!this.snapshot.busy).onClick($$.run)
   }
   build() {
@@ -135,7 +135,7 @@ export struct MobilityPage {
         }.width('100%')
         Text('后台模式会显示系统持续任务通知，可返回本页暂停或结束。系统仍可能限制后台任务。').fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%')
         if (!this.snapshot.view?.session || this.snapshot.ownsSource || this.snapshot.view.session.state !== 'ACTIVE') {
-        Button(this.canResume() ? '继续本次出行' : this.snapshot.ownsSource ? '重新开启本次出行' : '开始本次出行')
+        Button(this.canResume() ? '继续本次出行' : this.snapshot.ownsSource ? '重新开启本次出行' : '开始本次出行', {type: ButtonType.Normal})
           .id('mobility-start').width('100%').height(52).fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4)
           .enabled(this.consent && !this.snapshot.busy && !!this.snapshot.view).onClick(() => {
             if (this.canResume()) this.controller.action('resume');
@@ -155,7 +155,7 @@ export struct MobilityPage {
       this.Action({label: this.scanning ? '正在扫码…' : '扫描地点二维码', id: 'mobility-scan', run: () => { if (!this.scanning) this.scan(); }})
       if (this.scanError) { Text(this.scanError).fontSize(14).fontColor(palette(this.night).danger).width('100%') }
       ForEach(this.snapshot.view?.anchors || [], (anchor: CampusAnchor) => {
-        Button() { Text(anchor.buildingName + ' · ' + anchor.name + (anchor.floorNo !== null ? ' · ' + anchor.floorNo + '层' : '')).fontSize(14).fontColor(palette(this.night).ink) }
+        Button({type: ButtonType.Normal}) { Text(anchor.buildingName + ' · ' + anchor.name + (anchor.floorNo !== null ? ' · ' + anchor.floorNo + '层' : '')).fontSize(14).fontColor(palette(this.night).ink) }
           .width('100%').constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontSize(14).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).borderRadius(4)
           .enabled(this.snapshot.ownsSource).onClick(() => { this.preview = anchor; this.source = 'MANUAL'; })
       }, (anchor: CampusAnchor) => anchor.id + ':' + anchor.version)
@@ -163,7 +163,7 @@ export struct MobilityPage {
       if (this.preview) {
         Column({space: 10}) {
           Text('请现场核对：' + this.preview.buildingName + ' · ' + this.preview.name).fontSize(16).fontColor(palette(this.night).ink).width('100%')
-          Button('确认我在此处').id('mobility-confirm-anchor').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
+          Button('确认我在此处', {type: ButtonType.Normal}).id('mobility-confirm-anchor').width('100%').height(48).fontSize(14).fontColor(palette(this.night).ink)
             .backgroundColor(palette(this.night).surface).borderRadius(4).enabled(this.snapshot.ownsSource && this.snapshot.view?.session?.state === 'ACTIVE')
             .onClick(() => this.confirm())
           this.Action({label: '取消', id: 'mobility-cancel-anchor', run: () => this.preview = null})

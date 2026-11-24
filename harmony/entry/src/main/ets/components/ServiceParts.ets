@@ -16,7 +16,7 @@ export interface FieldArgs {
 }
 export interface DetailArgs { label: string; value: string; night: boolean; }
 export interface PrimaryArgs { label: string; click: () => void; night: boolean; page: string; busy?: boolean; uploading?: boolean; enabled?: boolean; }
-export interface SecondaryArgs { label: string; click: () => void; night: boolean; busy?: boolean; }
+export interface SecondaryArgs { label: string; click: () => void; night: boolean; busy?: boolean; weight?: number; }
 export interface SectionArgs { title: string; night: boolean; action?: string; click?: () => void; }
 export interface EmptyArgs { message: string; night: boolean; }
 
@@ -79,7 +79,7 @@ export function serviceField($$: FieldArgs) {
 
 @Builder
 export function servicePrimary($$: PrimaryArgs) {
-  Button() {
+  Button({type: ButtonType.Normal}) {
     Text($$.busy ? '正在保存…' : $$.label).fontSize(16).fontWeight(FontWeight.Medium).fontColor(palette($$.night).onPrimary)
   }.id(primaryInputId($$.page)).width('100%').constraintSize({minHeight: 50}).padding({top: 8, bottom: 8, left: 12, right: 12})
     .backgroundColor(palette($$.night).ink).fontColor(palette($$.night).onPrimary).borderRadius(4)
@@ -88,7 +88,7 @@ export function servicePrimary($$: PrimaryArgs) {
 
 @Builder
 export function serviceSecondary($$: SecondaryArgs) {
-  Button() { Text($$.label).fontSize(14).fontColor(palette($$.night).ink) }.constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontColor(palette($$.night).ink).backgroundColor(palette($$.night).surface)
+  Button({type: ButtonType.Normal}) { Text($$.label).fontSize(14).fontColor(palette($$.night).ink) }.layoutWeight($$.weight ?? 0).constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).fontColor(palette($$.night).ink).backgroundColor(palette($$.night).surface)
     .border({width: 1, color: palette($$.night).outline}).borderRadius(4).enabled(!$$.busy).onClick($$.click)
 }
 
@@ -96,7 +96,7 @@ export function serviceSecondary($$: SecondaryArgs) {
 export function serviceSection($$: SectionArgs) {
   Row() {
     Text($$.title).fontSize(18).fontWeight(FontWeight.Medium).fontColor(palette($$.night).ink).layoutWeight(1)
-    if ($$.action) { Button() { Text($$.action).fontSize(14).fontColor(palette($$.night).ink) }.fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).onClick(() => { if ($$.click) $$.click(); }) }
+    if ($$.action) { Button({type: ButtonType.Normal}) { Text($$.action).fontSize(14).fontColor(palette($$.night).ink) }.fontColor(palette($$.night).ink).backgroundColor(Color.Transparent).constraintSize({minHeight: 48}).padding({top: 8, bottom: 8, left: 12, right: 12}).onClick(() => { if ($$.click) $$.click(); }) }
   }.width('100%').margin({top: 18, bottom: 8})
 }
 

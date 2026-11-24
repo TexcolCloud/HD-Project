@@ -30,7 +30,7 @@ export struct StudentPlaceCheck {
   }
   build() {
     Column({space: 8}) {
-      Button(this.busy ? '正在核对…' : '扫码核对入住楼栋').id('student-place-scan').width('100%').height(48).fontSize(14)
+      Button(this.busy ? '正在核对…' : '扫码核对入住楼栋', {type: ButtonType.Normal}).id('student-place-scan').width('100%').height(48).fontSize(14)
         .fontColor(palette(this.night).accent).backgroundColor(palette(this.night).surface).borderRadius(4).enabled(!this.busy && !!this.room).onClick(() => this.scan())
       if (this.message) { Text(this.message).fontSize(14).lineHeight(21).fontColor(palette(this.night).muted).width('100%') }
     }.width('100%').margin({bottom: 18})
