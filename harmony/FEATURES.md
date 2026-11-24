@@ -1,17 +1,25 @@
-# 调度、设备能力、图片与管理AI模块
+# 鸿蒙应用模块与接口
 
-2026年11月15日对双角色界面完成排版与文案收敛，沿用R3暖白／暖黑；主题取自`components/Palette.ets`。`Index.ets`负责认证、主题、导航和页面组合；业务表单与记录由各功能控制器及Workspace管理，设备采集、消息跟进、草稿和图片生命周期分别归属对应模块。当前闭环及验收见[16](../docs/16-服务闭环与联合验收.md)，界面与当前安装包见[18](../docs/18-界面收敛与交付版本.md)。
+2026-11-25 按 `main @ 522344f` 核对。`pages/Index.ets` 管理认证、主题与系统栏、导航和页面组合。各业务 Workspace 渲染页面，控制器管理请求与状态。设备采集、消息轮询、草稿和图片资源各有独立生命周期。双角色导航、R3 日夜主题与 Pura 90 模拟器验收见[界面与交付版本](../docs/18-界面收敛与交付版本.md)，业务流程见[联合验收](../docs/16-服务闭环与联合验收.md)。
 
 ## 模块与接口
 
 | 模块 | 职责 | 对外入口 |
 | --- | --- | --- |
+| `features/NavigationStack.ets` | 按角色判定底栏可见性，维护多级页面栈。返回时恢复原滚动位置和业务上下文，页内面板可先处理返回 | `rootTab/bottomTabs/activeTab`、`NavigationStack.enter/back`、`BackPanels.close` |
+| `features/service/ServiceCenterController.ets` | 服务消息读取、自动／本页批量已读、关联业务跳转，以及卫生整改的指派、反馈和关联复查验收 | `loadMessages/openMessage/readPage/openRemediation/loadRechecks/review` |
+| `features/service/ServiceCenterWorkspace.ets` | 展示收件箱、整改列表与详情，以及按角色开放的反馈、调整与验收表单 | `page/state/manager/controller/onRecheck` |
+| `features/service/InboxPoller.ets` | 管理前台未读数轮询，以会话代次及已读修订号丢弃迟到结果，防止角标回滚 | `start/markRead/stop` |
+| `features/account/AccountWorkspace.ets` | 预置账号激活、手机号绑定与换绑、短信找回密码、宿管恢复码的签发与找回校验 | `screen`（`activate/account/recover`）、`onComplete/onExit` |
+| `services/LocalDrafts.ets` | 按服务地址与账号隔离报修、访客、巡检的限期文字草稿，未决提交保留对应幂等键 | `save/read/clear`、`reserveKey/completeKey` |
+| `services/ImageSource.ets`、`components/SecureImage.ets` | 页面内优先请求缩略图，打开半模态时按需请求独立高清图，通过 ResourceSlot 释放解码资源 | `embeddedImage/previewImage`、`url/thumbnailUrl/night` |
+| `components/Palette.ets` | 提供 R3 暖白／暖黑语义色，控件边界 `outline` 对表面的对比度 ≥3.0:1，`line` 用于弱分隔 | `palette(night)` |
 | `features/dispatch/DispatchController.ets` | 会话级调度状态、受保护请求、board缓存、版本门控、设置与执行动作 | `startSession/stopSession`、`subscribe`、`refresh/replan/saveSettings/taskAction/openRepair` |
 | `features/dispatch/ForegroundPoll.ets` | 前台循环：30秒登录心跳与5秒可见路线只读刷新共用生命周期、单飞与代际失效 | `setSession/setForeground/stop`；可注入scheduler验证 |
 | `features/dispatch/RequestFlight.ets` | 手动、轮询、心跳后GET按登录epoch共用一个在途请求 | `run/reset` |
 | `features/dispatch/AppVisibility.ets` | UIAbility前后台事件唯一来源 | `setForeground/subscribe` |
 | `features/dispatch/RouteRevision.ets` | 拒绝迟到旧计划；允许同版本刷新明细 | `accept/value/clear` |
-| `features/dispatch/RoutePage.ets` | 订阅调度快照、展示本次路线、变化提示与待安排原因 | `controller/night/onOpenRepair` |
+| `features/dispatch/RoutePage.ets` | 订阅调度快照、展示本次路线、变化提示与待安排原因 | `controller/night/onOpenRepair/onFinish/onCalibrate` |
 | `features/dispatch/RouteTaskCard.ets` | 当前位置／下一站／剩余／暂缓站点及明确执行动作 | `task`与`onAction/onOpen` |
 | `features/dispatch/RouteSettings.ets` | 接单意愿、负责范围内当前位置、本次有效可用截止时间 | `manager/buildings`与`onSave/onCancel` |
 | `features/visits/VisitWindowFields.ets` | 学生可上门范围的独立输入及不可变草稿 | `draft/night/onChange` |
@@ -25,7 +33,7 @@
 | `features/mobility/MobilityPage.ets` | 用途确认、状态和位置新鲜度、锚点预览、下一站核对建议 | `controller/dispatch/night/onOpenRoute` |
 | `features/mobility/DeviceActions.ets` | CameraPicker、ScanKit、CalendarKit创建页、显式系统通知 | `takePhoto/scanAnchor/calendar/notify` |
 | `features/photos/PhotoDraftController.ets` | 相册／拍照共享六张上限、上传重试、换号取消和清理 | `choose/retry/remove/reset/subscribe` |
-| `features/photos/PhotoAttachments.ets` | 原R3上传区显示与本地预览 | `controller/usage/night/disabled` |
+| `features/photos/PhotoAttachments.ets` | 相册／拍照入口、三列已上传缩略图、重试与移除 | `controller/usage/night/disabled` |
 | `services/ResourceSlot.ets` | 持有一个原生资源，销毁后释放迟到解码结果 | `begin/accept/clear` |
 
 所有后台数据类型来自`contracts/openapi.json`生成的`ApiModels.ets`，没有另写调度或管理AI响应DTO。
@@ -56,11 +64,13 @@ API24的NetworkKit没有PATCH（官方标注API26起支持）；`Api.patch`使�
 
 ## 验证
 
-使用系统Node执行：
+在项目根目录使用系统 Node 执行：
 
 ```powershell
 node --test harmony/tests/*.test.mjs
 ```
+
+2026-11-25 的 107 项测试全部通过。`palette-contrast.test.mjs` 对照 `components/Palette.ets` 与 `design/tokens.json`，验证日夜主题的边界与正文对比度。`dispatch-recovery.test.mjs` 驱动 `DispatchController`，验证路线更新最多展示三条变化、无变化摘要时提示核对站点、同版本不重复通知，界面提示不包含内部版本号。该测试还覆盖保存设置期间的手动刷新。[主题测试](tests/palette-contrast.test.mjs) · [路线测试](tests/dispatch-recovery.test.mjs)
 
 回归直接读取实际ArkTS源码，覆盖时间、幂等提交、未结列表、定时器生命周期与旧响应／旧版本拒绝。恢复测试仅替换原生I/O端口，通过实际Controller的后台刷新验证HTTP错误在接收当前账号的有效版本后清除；其它账号与过期版本不能清错。Hvigor负责原生编译检查；设备实际安装、RCP PATCH、接单设置、两端版本变化和执行闭环须由模拟器与应用内浏览器联合验证，不能用编译或这些测试替代。
 
