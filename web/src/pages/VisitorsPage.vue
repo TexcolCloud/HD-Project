@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openModal } from "../components/modal";
 import { ref, reactive, onMounted, onUnmounted, watch } from "vue";
 import { onBeforeRouteLeave, useRoute } from "vue-router";
 import { get, post, patch, ApiError } from "../api/client";
@@ -188,7 +189,7 @@ function currentLeaveCandidate() {
   )
     return candidate;
 }
-watch(leaveDialog, (dialog) => dialog?.showModal(), { flush: "post" });
+watch(leaveDialog, (dialog) => openModal(dialog), { flush: "post" });
 watch(
   currentLeaveCandidate,
   (candidate) => {
@@ -470,6 +471,7 @@ watch(
       <LookupSelect
         v-if="modal === 'create'"
         v-model="form.visitedStudentId"
+        @update:model-value="dirty = true"
         kind="student"
         label="被访学生 *"
         require-residence

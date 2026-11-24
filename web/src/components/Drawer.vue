@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
+import { openModal } from "./modal";
 import Icon from "./Icon.vue";
 const props = defineProps<{
   title: string;
@@ -23,7 +24,7 @@ function unload(event: BeforeUnloadEvent) {
   }
 }
 onMounted(() => {
-  el.value?.showModal();
+  openModal(el.value);
   window.addEventListener("beforeunload", unload);
 });
 onBeforeUnmount(() => window.removeEventListener("beforeunload", unload));

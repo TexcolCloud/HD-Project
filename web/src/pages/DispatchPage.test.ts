@@ -4,6 +4,7 @@ import type { DispatchBoard, DispatchManager } from "../api/dispatch";
 import type { User } from "../api/types";
 import { useManagerPresence } from "../composables/useManagerPresence";
 import { find, node, renderer, text } from "../test/renderer";
+import { useDispatchBoard } from "../composables/useDispatchBoard";
 import DispatchPage from "./DispatchPage.vue";
 
 const api = vi.hoisted(() => ({
@@ -91,4 +92,40 @@ it("等待心跳响应时显示正在连接，收到响应才显示在线", asyn
   user.value = null;
   await nextTick();
   expect(status()).toBe("尚未连接");
+});
+
+it("后台轮询保持按钮可用，写入后的主动刷新优先于迟到的轮询", async () => {
+  vi.useFakeTimers();
+  const scope = effectScope();
+  try {
+    vi.stubGlobal(
+      "document",
+      Object.assign(new EventTarget(), { hidden: false }),
+    );
+    let complete!: (result: DispatchBoard) => void;
+    api.getDispatchBoard
+      .mockReset()
+      .mockResolvedValueOnce(board)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            complete = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({ ...board, revision: 3 });
+    const state = scope.run(() => useDispatchBoard())!;
+    expect(state.busy.value).toBe(true);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(state.busy.value).toBe(false);
+    expect(api.getDispatchBoard).toHaveBeenCalledTimes(2);
+    const current = state.refresh();
+    expect(state.busy.value).toBe(true);
+    await current;
+    complete({ ...board, revision: 2 });
+    await nextTick();
+    expect(state.board.value?.revision).toBe(3);
+  } finally {
+    scope.stop();
+    vi.useRealTimers();
+  }
 });

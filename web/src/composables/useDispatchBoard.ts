@@ -32,19 +32,27 @@ export function useDispatchBoard() {
     lastCheckedAt.value = new Date().toISOString();
     error.value = "";
   }
-  async function refresh() {
-    if (busy.value || disposed || document.hidden) return;
-    busy.value = true;
-    controller = new AbortController();
+  async function refresh(silent = false) {
+    if (disposed || document.hidden || (silent && controller)) return;
+    controller?.abort();
+    const request = new AbortController();
+    controller = request;
+    busy.value = !silent || !board.value;
     try {
-      const incoming = await getDispatchBoard(controller.signal);
-      if (!disposed) accept(incoming);
+      const incoming = await getDispatchBoard(request.signal);
+      if (!disposed && controller === request) accept(incoming);
     } catch (e) {
-      if (!disposed && !(e instanceof DOMException && e.name === "AbortError"))
+      if (
+        !disposed &&
+        controller === request &&
+        !(e instanceof DOMException && e.name === "AbortError")
+      )
         error.value = errorText(e);
     } finally {
-      if (!disposed) busy.value = false;
-      controller = undefined;
+      if (controller === request) {
+        busy.value = false;
+        controller = undefined;
+      }
     }
   }
   async function replan() {
@@ -52,9 +60,9 @@ export function useDispatchBoard() {
     const incoming = await replanDispatch(board.value.revision);
     if (!disposed) accept(incoming);
   }
-  const timer = setInterval(() => void refresh(), 5_000);
+  const timer = setInterval(() => void refresh(true), 5_000);
   const visibility = () => {
-    if (!document.hidden) void refresh();
+    if (!document.hidden) void refresh(true);
   };
   document.addEventListener("visibilitychange", visibility);
   void refresh();

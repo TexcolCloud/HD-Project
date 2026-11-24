@@ -1,3 +1,4 @@
+import { DateTimeField, TimePresets } from '../../components/DateTimeFields';
 import { Building, DispatchManager, DispatchSettingsRequest } from '../../models/ApiModels';
 import { FormInput } from '../../components/FormInput';
 import { palette } from '../../components/Palette';
@@ -74,9 +75,14 @@ export struct RouteSettings {
       if (this.accepting) {
         Text('本次可用截止时间 *').fontSize(16).fontColor(palette(this.night).ink).width('100%')
         Text('接受新任务时须填写有效截止时间。未设置或已过期时，账号在线也不会参与新任务安排。').fontSize(14).fontColor(palette(this.night).muted).lineHeight(21).width('100%')
-        FormInput({label: '可用截止日期（北京时间）', value: this.availableDay, placeholder: 'YYYY-MM-DD', inputId: 'route-available-date', night: this.night,
+        TimePresets({labels: ['+2小时', '今日 18:00', '今日 22:00'], night: this.night, disabled: this.busy, onChoose: (index: number): void => {
+          const local = beijingParts(new Date(Date.now() + (index === 0 ? 7200000 : 0)).toISOString());
+          this.availableDay = local.day;
+          this.availableClock = index === 0 ? local.clock : index === 1 ? '18:00' : '22:00';
+        }})
+        DateTimeField({label: '可用截止日期（北京时间）', value: this.availableDay, disabled: this.busy, inputId: 'route-available-date', night: this.night,
           onChange: (value: string) => this.availableDay = value})
-        FormInput({label: '可用截止时间', value: this.availableClock, placeholder: '18:00', inputId: 'route-available-time', night: this.night,
+        DateTimeField({label: '可用截止时间', value: this.availableClock, disabled: this.busy, clock: true, inputId: 'route-available-time', night: this.night,
           onChange: (value: string) => this.availableClock = value})
       } else {
         Text(this.manager?.availableUntil ? '暂停期间保留原截止时间：' + dateText(this.manager.availableUntil) : '尚未设置可用时段，恢复接单时请填写。')

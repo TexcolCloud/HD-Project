@@ -89,7 +89,9 @@ export struct RepairWorkspace {
         this.state.contactPhone = v; this.state.phoneError = ''; this.controller.saveDraft();
       }, invalidPhonePaste: () => { this.state.phoneError = '请输入11位手机号'; }, error: this.state.phoneError,
         placeholder: '请输入11位手机号', inputType: InputType.PhoneNumber, night: this.night, page: this.page})
-      serviceField({label: '方便联系时段', value: this.state.contactTime, change: (v: string)  => { this.state.contactTime = v; this.controller.saveDraft(); }, placeholder: '例如：工作日18:00后', night: this.night, page: this.page})
+      if (!this.state.visitDraft.enabled) {
+        serviceField({label: '方便联系时段', value: this.state.contactTime, change: (v: string) => { this.state.contactTime = v; this.controller.saveDraft(); }, placeholder: '例如：工作日18:00后', night: this.night, page: this.page})
+      }
       VisitWindowFields({draft: this.state.visitDraft, night: this.night, onChange: (draft: VisitWindowDraft) => { this.state.visitDraft = draft; this.controller.saveDraft(); }})
       serviceLabel({text: '紧急程度', night: this.night})
       Select([{value: '一般'}, {value: '较急'}]).selected(this.state.repairPriority === 'URGENT' ? 1 : 0).value(this.state.repairPriority === 'URGENT' ? '较急' : '一般').width('100%').height(50)

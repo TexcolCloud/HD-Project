@@ -245,7 +245,7 @@ add('/hygiene-remediations/{id}/feedback','post','Remediation','RemediationFeedb
 add('/hygiene-remediations/{id}/review','post','Remediation','RemediationReviewRequest')
 for query_path, fields in {
     '/messages': {'page':'integer','pageSize':'integer','unreadOnly':'boolean'},
-    '/hygiene-remediations': {'page':'integer','pageSize':'integer','status':'string','roomId':'string','buildingId':'string','inspectionId':'string','overdueOnly':'boolean'},
+    '/hygiene-remediations': {'page':'integer','pageSize':'integer','q':'string','status':'string','roomId':'string','buildingId':'string','inspectionId':'string','overdueOnly':'boolean'},
 }.items():
     paths[query_path]['get']['parameters'].extend({'name':name,'in':'query','schema':{'type':value}} for name,value in fields.items())
 

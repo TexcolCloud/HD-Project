@@ -7,8 +7,12 @@ import { palette } from '../../components/Palette';
 import { FormInput } from '../../components/FormInput';
 import { VisitWindowFields, VisitWindowDraft } from './VisitWindowFields';
 
+import { BackPanels } from '../NavigationStack';
+
 @Component
 export struct VisitArrangement {
+  @Consume backPanels: BackPanels;
+  private releaseBack: () => void = () => {};
   @Prop repair: Repair | null = null;
   @Prop manager: boolean = false;
   @Prop userId: string = '';
@@ -26,8 +30,18 @@ export struct VisitArrangement {
   private version: number = 0;
   private live: boolean = false;
   private keys: SubmissionKeys = new SubmissionKeys((): string => util.generateRandomUUID());
-  aboutToAppear(): void { this.live = true; }
-  aboutToDisappear(): void { this.live = false; }
+  aboutToAppear(): void {
+    this.live = true;
+    this.releaseBack = this.backPanels.register((): boolean => {
+      if (!this.editing) return false;
+      if (!this.busy) this.editing = false;
+      return true;
+    });
+  }
+  aboutToDisappear(): void {
+    this.releaseBack();
+    this.live = false;
+  }
   private editable(): boolean {
     return !!this.repair && canEditVisit(this.repair.status) && (!this.manager || !this.repair.handlerUserId || this.repair.handlerUserId === this.userId);
   }

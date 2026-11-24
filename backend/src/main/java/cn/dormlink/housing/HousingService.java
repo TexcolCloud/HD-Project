@@ -221,6 +221,12 @@ public class HousingService {
         } else {
             sql = BusinessSupport.filter(sql, args, q, "status", "s.status");
         }
+        String occupancy = q.get("occupancy");
+        if ("UNASSIGNED".equals(occupancy) || "AVAILABLE".equals(occupancy)) {
+            sql += " AND h.id IS NULL AND s.status='ACTIVE'";
+        } else if ("ASSIGNED".equals(occupancy)) {
+            sql += " AND h.id IS NOT NULL";
+        }
         var page = ops.page(sql + " ORDER BY s.student_no", args, q);
         for (var row : BusinessSupport.items(page)) {
             sanitizeStudent(row);

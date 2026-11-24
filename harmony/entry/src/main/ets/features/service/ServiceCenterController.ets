@@ -96,14 +96,31 @@ export class ServiceCenterController {
       this.host.navigate('remediation-detail');
     } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
   }
-  async loadRechecks(): Promise<void> {
+  async beginRecheck(open: (source: Hygiene, taskId: string) => Promise<void>): Promise<void> {
+    const task = this.state.selected;
+    if (!task || task.status !== 'SUBMITTED' || this.state.busy) return;
+    const ticket = this.reads.begin();
+    this.state.busy = true;
+    try {
+      const source = await Api.request<Hygiene>('/hygiene-inspections/' + task.inspectionId);
+      if (this.reads.current(ticket) && this.state.selected === task) await open(source, task.id);
+    } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
+    finally { if (this.reads.current(ticket)) this.state.busy = false; }
+  }
+  async loadRechecks(saved?: Hygiene): Promise<void> {
     const item = this.state.selected;
-    if (!item) return;
+    if (!item || this.state.busy) return;
     const ticket = this.reads.begin();
     try {
       const data = await Api.request<HygienePage>('/hygiene-inspections?roomId=' + item.roomId + '&pageSize=100');
-      if (this.reads.current(ticket) && item === this.state.selected)
-        this.state.rechecks = data.items.filter((h: Hygiene): boolean => !h.voidedAt && h.totalScore >= 60 && h.relatedInspectionId === item.inspectionId && h.id !== item.inspectionId && h.round.startsWith('RECHECK'));
+      if (this.reads.current(ticket) && item === this.state.selected) {
+        const checks = data.items.slice();
+        if (saved && !checks.some((row: Hygiene): boolean => row.id === saved.id)) checks.unshift(saved);
+        this.state.rechecks = checks.filter((h: Hygiene): boolean => !h.voidedAt && h.totalScore >= 60 &&
+          h.roomId === item.roomId && h.relatedInspectionId === item.inspectionId && h.round.startsWith('RECHECK'));
+        const preferred = saved?.id || this.state.recheckId;
+        this.state.recheckId = this.state.rechecks.some((h: Hygiene): boolean => h.id === preferred) ? preferred : '';
+      }
     } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
   }
   async prepare(inspection: Hygiene): Promise<void> {
@@ -117,6 +134,23 @@ export class ServiceCenterController {
       if (existing.items.length) await this.openRemediation(existing.items[0].id);
       else this.host.navigate('remediation-create');
     } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
+  }
+  preserveAssignment(): () => void {
+    const state = this.state;
+    const selected = state.selected, inspection = state.inspection;
+    const studentId = state.responsibleStudentId, issue = state.issue, reason = state.assignmentReason;
+    const day = state.dueDay, clock = state.dueClock;
+    return (): void => {
+      if (state !== this.state) return;
+      state.selected = selected;
+      state.inspection = inspection;
+      state.responsibleStudentId = studentId;
+      state.issue = issue;
+      state.assignmentReason = reason;
+      state.dueDay = day;
+      state.dueClock = clock;
+      state.students = [];
+    };
   }
   async findResidents(): Promise<void> {
     const item = this.state.inspection || this.state.selected;

@@ -11,7 +11,10 @@ defineProps<{
   busy?: boolean;
 }>();
 defineEmits<{
-  action: [action: "claim" | DispatchTaskAction, task: DispatchTask];
+  action: [
+    action: "claim" | "start" | "finish" | DispatchTaskAction,
+    task: DispatchTask,
+  ];
 }>();
 </script>
 <template>
@@ -83,6 +86,22 @@ defineEmits<{
           @click="$emit('action', 'arrive', task)"
         >
           到达现场
+        </button>
+        <button
+          v-if="task.state === 'ON_SITE' && task.repairStatus === 'ACCEPTED'"
+          class="btn primary"
+          :disabled="busy"
+          @click="$emit('action', 'start', task)"
+        >
+          开始处理
+        </button>
+        <button
+          v-if="task.state === 'ON_SITE' && task.repairStatus === 'PROCESSING'"
+          class="btn primary"
+          :disabled="busy"
+          @click="$emit('action', 'finish', task)"
+        >
+          提交完工
         </button>
         <button
           v-if="task.state === 'BLOCKED'"

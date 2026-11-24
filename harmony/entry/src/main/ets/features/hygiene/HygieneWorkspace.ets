@@ -1,7 +1,8 @@
+import { DateTimeField, TimePresets } from '../../components/DateTimeFields';
 import { DraftNotice } from "../DraftNotice";
 import { serviceLabel, serviceField, servicePrimary, serviceSecondary, serviceEmpty } from '../../components/ServiceParts';
 import { User, Room, FileAsset, Hygiene } from '../../models/ApiModels';
-import { dateText, gradeLabel, today } from '../../services/Labels';
+import { beijingClock, dateText, gradeLabel, today } from '../../services/Labels';
 import { palette } from '../../components/Palette';
 import { SecureImage } from '../../components/SecureImage';
 import { WorkspaceHost, emptyWorkspaceHost } from '../WorkspaceHost';
@@ -108,7 +109,11 @@ export struct HygieneWorkspace {
       Button(this.state.inspectionDate + '  更改日期').id('hygiene-date').height(50).width('100%').fontSize(16).fontColor(this.ink())
         .backgroundColor(this.surface()).border({width: 1, color: this.line()}).borderRadius(4).margin({top: 8, bottom: 18})
         .enabled(!this.state.busy && !this.state.draftBlocked && !this.state.uploading).onClick(() => this.selectDate())
-      serviceField({label: '实际检查时间 *', value: this.state.inspectionTime, change: (v: string)  => { this.state.inspectionTime = v; this.controller.editDraft(); }, placeholder: 'HH:mm，例如18:30', night: this.night, page: this.page})
+      DateTimeField({label: '实际检查时间 *', inputId:'hygiene-inspection-time', value: this.state.inspectionTime, clock: true, night: this.night,
+        disabled: this.state.busy || this.state.uploading || this.state.draftBlocked,
+        onChange: (value: string) => { this.state.inspectionTime = value; this.controller.editDraft(); }})
+      TimePresets({labels: ['当前时间'], night: this.night, disabled: this.state.busy || this.state.uploading || this.state.draftBlocked,
+        onChoose: () => { this.state.inspectionTime = beijingClock(); this.controller.editDraft(); }})
       Text('北京时间。补录时填写实际检查的日期与时刻，不使用保存时间代替。').fontSize(14).fontColor(this.muted()).lineHeight(21).margin({bottom: 18})
       serviceLabel({text: '巡检轮次 *', night: this.night})
       Text(this.state.inspectionRound === 'ROUTINE' ? '日常巡检' : '关联复查 · 第 ' + (this.state.inspectionRound.slice(7) || '1') + ' 次')

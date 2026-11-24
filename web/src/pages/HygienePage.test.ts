@@ -13,6 +13,7 @@ vi.mock("vue-router", () => ({
 }));
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),
+  vModelCheckbox: {},
   vModelText: {},
   vModelSelect: {},
 }));
@@ -174,4 +175,63 @@ it("同轮记录进入带原版本和四项分数的更正流程", async () => {
     ),
   );
   expect(api.post).not.toHaveBeenCalled();
+});
+
+it("低分巡检先保存记录，派单失败后关闭创建表单并提供补建入口", async () => {
+  api.get.mockImplementation(async (path: string) => ({
+    items:
+      path === "/residences"
+        ? [{ id: "r", studentId: "s", studentName: "陈同学" }]
+        : [],
+    total: 0,
+  }));
+  api.post
+    .mockReset()
+    .mockResolvedValueOnce({ id: "new-check" })
+    .mockRejectedValueOnce(new Error("无法派单"));
+  const { root, dialog } = await openForm();
+  for (const id of ["floorScore", "deskScore", "bedScore", "bathroomScore"]) {
+    (
+      find(dialog, (el) => el.props.id === id)!.props[
+        "onUpdate:modelValue"
+      ] as (value: number) => void
+    )(10);
+  }
+  await vi.waitFor(() => expect(text(dialog)).toContain("陈同学"));
+  expect(api.get).toHaveBeenCalledWith(
+    "/residences",
+    { roomId: "room-1", status: "CURRENT", pageSize: 100 },
+    expect.any(AbortSignal),
+  );
+  const responsibility = find(
+    dialog,
+    (el) => el.tag === "label" && text(el).includes("责任学生"),
+  )!;
+  updateField(
+    dialog,
+    find(responsibility, (el) => el.tag === "select"),
+    "s",
+  );
+  updateField(
+    dialog,
+    find(dialog, (el) => el.tag === "textarea"),
+    "清理地面",
+  );
+  const form = find(dialog, (el) => el.tag === "form")!;
+  await (
+    form.props.onSubmit as (e: { preventDefault(): void }) => Promise<void>
+  )({ preventDefault() {} });
+  await nextTick();
+  expect(api.post.mock.calls.map(([path]) => path)).toEqual([
+    "/hygiene-inspections",
+    "/hygiene-remediations",
+  ]);
+  expect(api.post.mock.calls[1]?.[1]).toMatchObject({
+    inspectionId: "new-check",
+    responsibleStudentId: "s",
+    issueNote: "清理地面",
+    dueAt: expect.stringMatching(/T10:00:00.000Z$/),
+  });
+  expect(find(root, (el) => el.tag === "dialog")).toBeUndefined();
+  expect(text(root)).toContain("巡检已保存");
 });

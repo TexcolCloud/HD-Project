@@ -5784,6 +5784,7 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                q?: string;
                 status?: string;
                 roomId?: string;
                 buildingId?: string;

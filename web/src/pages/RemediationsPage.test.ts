@@ -154,3 +154,95 @@ it("提交整改处置时阻止同页面深链接切换，未保存原因需确�
   await nextTick();
   expect(guard()).toBe(true);
 });
+
+it("空白复核可直接关闭；内联合格复查保存后，验收重试复用其 ID", async () => {
+  const confirm = vi.fn(() => false);
+  vi.stubGlobal("window", {
+    confirm,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+  api.get.mockImplementation(async (path: string) =>
+    path.endsWith("/8")
+      ? task
+      : { items: path === "/hygiene-remediations" ? [task] : [], total: 1 },
+  );
+  api.post
+    .mockReset()
+    .mockResolvedValueOnce({
+      id: "check-2",
+      round: "RECHECK",
+      relatedInspectionId: task.inspectionId,
+      totalScore: 80,
+    })
+    .mockRejectedValueOnce(new Error("连接失败"))
+    .mockResolvedValueOnce({ ...task, status: "CLOSED" });
+  const root = node("root"),
+    app = renderer.createApp(RemediationsPage);
+  app.mount(root);
+  unmount = () => app.unmount();
+  const click = async (label: string) => {
+    const button = () =>
+      find(root, (el) => el.tag === "button" && text(el).trim() === label);
+    await vi.waitFor(() => expect(button()).toBeDefined());
+    (button()!.props.onClick as () => void)();
+    await nextTick();
+  };
+  await click("查看整改");
+  await click("复核学生反馈");
+  (
+    find(root, (el) => el.props["aria-label"] === "关闭详情")!.props
+      .onClick as () => void
+  )();
+  await nextTick();
+  expect(confirm).not.toHaveBeenCalled();
+  await click("查看整改");
+  await click("复核学生反馈");
+  await click("当场录入合格复查");
+  const form = find(
+    root,
+    (el) => el.tag === "form" && text(el).includes("保存并通知相关人员"),
+  )!;
+  const submit = () =>
+    (form.props.onSubmit as (e: { preventDefault(): void }) => Promise<void>)({
+      preventDefault() {},
+    });
+  await submit();
+  expect(api.post).not.toHaveBeenCalled();
+  for (const label of ["地面", "桌面", "床铺", "卫生间"]) {
+    const field = find(
+      form,
+      (el) => el.tag === "label" && text(el).startsWith(label),
+    )!;
+    (
+      find(field, (el) => el.tag === "input")!.props["onUpdate:modelValue"] as (
+        value: number,
+      ) => void
+    )(20);
+  }
+  (
+    find(form, (el) => el.tag === "textarea")!.props["onUpdate:modelValue"] as (
+      value: string,
+    ) => void
+  )("现场已合格");
+  await submit();
+  expect(text(root)).toContain("复查已保存并选中");
+  await submit();
+  expect(api.post.mock.calls.map(([path]) => path)).toEqual([
+    "/hygiene-inspections",
+    "/hygiene-remediations/8/review",
+    "/hygiene-remediations/8/review",
+  ]);
+  expect(api.post.mock.calls[0]?.[1]).toMatchObject({
+    roomId: task.roomId,
+    relatedInspectionId: task.inspectionId,
+    round: "RECHECK",
+    floorScore: 20,
+  });
+  expect(api.post.mock.calls[2]?.[1]).toMatchObject({
+    expectedVersion: 2,
+    relatedRecheckId: "check-2",
+    approved: true,
+    reviewNote: "现场已合格",
+  });
+});

@@ -69,6 +69,56 @@ const scores = [
 const score = computed(() =>
   scores.reduce((sum, [key]) => sum + Number(form[key] || 0), 0),
 );
+const needsRemediation = computed(
+  () =>
+    modal.value === "form" &&
+    mode.value === "create" &&
+    form.round === "ROUTINE" &&
+    score.value < 60,
+);
+const createRemediation = ref(false),
+  responsibleStudentId = ref(""),
+  dueLocal = ref("");
+const residentQuery = useLatestQuery();
+const residents = ref<Model<"Residence">[]>([]);
+const incomplete = ref<{ inspectionId: string; message: string }>();
+function setDue(days: number) {
+  dueLocal.value = localDate(new Date(Date.now() + days * 86400000)) + "T18:00";
+}
+watch(needsRemediation, (enabled) => {
+  createRemediation.value = enabled;
+  if (enabled) setDue(2);
+});
+watch(
+  () => needsRemediation.value && createRemediation.value && form.roomId,
+  async (roomId) => {
+    residentQuery.cancel();
+    residents.value = [];
+    responsibleStudentId.value = "";
+    residentQuery.error.value = "";
+    if (!roomId) return;
+    await residentQuery.run(
+      (signal) =>
+        get<Model<"ResidencePage">>(
+          "/residences",
+          { roomId, status: "CURRENT", pageSize: 100 },
+          signal,
+        ),
+      (result) => {
+        residents.value = result.items;
+      },
+    );
+  },
+);
+const assignmentBlocked = computed(
+  () =>
+    needsRemediation.value &&
+    createRemediation.value &&
+    (residentQuery.busy.value ||
+      !!residentQuery.error.value ||
+      (residents.value.length > 0 &&
+        (!responsibleStudentId.value || !dueLocal.value))),
+);
 const retainedImages = computed(() =>
   mode.value === "correction" ? (selected.value?.images ?? []) : [],
 );
@@ -223,6 +273,7 @@ async function save() {
     saving.value ||
     uploadBlocked.value ||
     comparing.value ||
+    assignmentBlocked.value ||
     comparison.value?.sameRound
   )
     return;
@@ -241,7 +292,33 @@ async function save() {
         ...body,
         correctionReason: correctionReason.value.trim(),
       });
-    else await post("/hygiene-inspections", body);
+    else {
+      const assignment =
+        needsRemediation.value &&
+        createRemediation.value &&
+        residents.value.length
+          ? {
+              responsibleStudentId: responsibleStudentId.value,
+              dueAt: isoTime(dueLocal.value)!,
+              issueNote: form.issueNote || form.remediationNote || "",
+            }
+          : undefined;
+      const saved = await post<Hygiene>("/hygiene-inspections", body);
+      if (assignment) {
+        try {
+          await post("/hygiene-remediations", {
+            inspectionId: saved.id,
+            ...assignment,
+          } satisfies Model<"RemediationRequest">);
+          notify("整改任务已安排");
+        } catch (cause) {
+          incomplete.value = {
+            inspectionId: saved.id,
+            message: "巡检已保存，整改任务待核对。" + errorText(cause),
+          };
+        }
+      }
+    }
     dirty.value = false;
     modal.value = null;
     notify(
@@ -349,6 +426,17 @@ watch(
     role="alert"
   >
     {{ detailQuery.error.value }}
+  </p>
+  <p v-if="incomplete" class="error-banner" role="alert">
+    {{ incomplete.message }}
+    <RouterLink
+      :to="{
+        path: '/remediations',
+        query: { inspectionId: incomplete.inspectionId },
+      }"
+    >
+      查看或补建整改任务
+    </RouterLink>
   </p>
   <section class="panel">
     <form class="filters" @submit.prevent="search">
@@ -579,6 +667,51 @@ watch(
         整改建议
         <textarea v-model.trim="form.remediationNote" maxlength="1000" />
       </label>
+      <section v-if="needsRemediation" class="detail-section">
+        <label class="checkbox">
+          <input v-model="createRemediation" type="checkbox" />
+          同步安排卫生整改
+        </label>
+        <template v-if="createRemediation && form.roomId">
+          <p v-if="residentQuery.busy.value" role="status">正在读取在住学生…</p>
+          <p v-else-if="residentQuery.error.value" class="field-error">
+            {{ residentQuery.error.value }}，可关闭同步安排后保存巡检。
+          </p>
+          <p v-else-if="!residents.length" class="form-note">
+            该宿舍暂无在住学生，无法指派整改。可仅保存巡检记录。
+          </p>
+          <template v-else>
+            <label>
+              责任学生 *
+              <select v-model="responsibleStudentId" required>
+                <option value="">请选择在住学生</option>
+                <option
+                  v-for="resident in residents"
+                  :key="resident.id"
+                  :value="resident.studentId"
+                >
+                  {{ resident.studentName }} · {{ resident.studentNo }}
+                </option>
+              </select>
+            </label>
+            <label>
+              整改截止时间 *
+              <input v-model="dueLocal" type="datetime-local" required />
+            </label>
+            <div class="button-row">
+              <button
+                v-for="days in [2, 3, 7]"
+                :key="days"
+                type="button"
+                class="btn"
+                @click="setDue(days)"
+              >
+                +{{ days }}天
+              </button>
+            </div>
+          </template>
+        </template>
+      </section>
       <label v-if="mode === 'correction'">
         更正原因 *
         <textarea
@@ -614,7 +747,11 @@ watch(
       <button
         class="btn primary"
         :disabled="
-          saving || uploadBlocked || comparing || comparison?.sameRound
+          saving ||
+          uploadBlocked ||
+          comparing ||
+          comparison?.sameRound ||
+          assignmentBlocked
         "
       >
         {{
@@ -693,7 +830,7 @@ watch(
     </section>
     <template #footer>
       <RouterLink
-        v-if="!selected.voidedAt"
+        v-if="!selected.voidedAt && selected.grade === 'RECTIFY'"
         class="btn"
         :to="{ path: '/remediations', query: { inspectionId: selected.id } }"
       >

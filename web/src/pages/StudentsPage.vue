@@ -455,6 +455,7 @@ onMounted(load);
       <template v-if="modal === 'checkin'">
         <LookupSelect
           v-model="residenceForm.studentId"
+          @update:model-value="dirty = true"
           kind="student"
           label="学生 *"
           available
@@ -462,6 +463,7 @@ onMounted(load);
         />
         <LookupSelect
           v-model="residenceForm.roomId"
+          @update:model-value="dirty = true"
           kind="room"
           label="入住房间 *"
           available
@@ -480,6 +482,7 @@ onMounted(load);
         <LookupSelect
           v-if="modal === 'transfer'"
           v-model="residenceForm.targetRoomId"
+          @update:model-value="dirty = true"
           kind="room"
           label="目标宿舍 *"
           available

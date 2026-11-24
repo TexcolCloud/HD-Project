@@ -71,7 +71,8 @@ class RemediationService {
         var args = new ArrayList<Object>();
         String sql =
                 "SELECT t.* FROM hygiene_remediation t JOIN hygiene_inspection h ON"
-                        + " h.id=t.inspection_id WHERE ";
+                    + " h.id=t.inspection_id JOIN student s ON s.id=t.responsible_student_id WHERE"
+                    + " ";
         if (actor.manager()) {
             sql += ops.scope("t.building_id");
         } else {
@@ -102,6 +103,16 @@ class RemediationService {
             sql += " AND t.status IN ('OPEN','SUBMITTED') AND t.due_at<?";
             args.add(Timestamp.from(Instant.now()));
         }
+        sql =
+                BusinessSupport.search(
+                        sql,
+                        args,
+                        query,
+                        "t.room_no",
+                        "t.building_name",
+                        "t.responsible_name",
+                        "s.student_no",
+                        "t.issue_note");
         var page = ops.page(sql + " ORDER BY t.due_at,t.id", args, query);
         var rows = BusinessSupport.items(page);
         var images =

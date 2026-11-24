@@ -15,6 +15,15 @@ const unreadMessages = useInboxBadge(() => session.user);
 const route = useRoute(),
   router = useRouter();
 const scopeQuery = useLatestQuery();
+const noticeStack = ref<HTMLElement>();
+watch(
+  () => [noticeStack.value, notices.length],
+  () => {
+    if (notices.length) noticeStack.value?.showPopover?.();
+    else noticeStack.value?.hidePopover?.();
+  },
+  { flush: "post" },
+);
 const buildingNames = ref<string[]>([]);
 watch(
   () =>
@@ -183,7 +192,12 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", expired));
       </main>
     </div>
   </div>
-  <div class="notice-stack" aria-live="polite">
+  <div
+    ref="noticeStack"
+    popover="manual"
+    class="notice-stack"
+    aria-live="polite"
+  >
     <div
       v-for="(notice, i) in notices"
       :key="i"

@@ -54,6 +54,7 @@ import {
 import { HygieneWorkspace } from "../features/hygiene/HygieneWorkspace";
 import { HomeController, HomeState } from "../features/home/HomeController";
 import { HomeWorkspace } from "../features/home/HomeWorkspace";
+import { NavigationStack, BackPanels, rootTab, requiresLogoutOnBack } from "../features/NavigationStack";
 import { WorkspaceHost } from "../features/WorkspaceHost";
 interface EmptyRequest {}
 
@@ -77,7 +78,10 @@ struct Index {
   @State oldPassword: string = "";
   @State newPassword: string = "";
   private dispatch: DispatchController = new DispatchController();
-  private repairReturnPage: string = "repairs";
+  @State hasPrevious: boolean = false;
+  private navigation: NavigationStack = new NavigationStack();
+  @Provide backPanels: BackPanels = new BackPanels();
+  private navigationVersion: number = 0;
   private scroller: Scroller = new Scroller();
   private submissionKeys: SubmissionKeys = new SubmissionKeys((): string =>
     util.generateRandomUUID(),
@@ -201,7 +205,9 @@ struct Index {
     this.visitorState = this.visitors.state;
     this.hygieneState = this.hygiene.state;
     this.homeState = this.home.state;
-    this.repairReturnPage = "repairs";
+    this.hasPrevious = false;
+    this.navigation.reset("home");
+    this.navigationVersion++;
   }
   private currentLoading(): boolean {
     if (this.page === "home") return this.homeState.loading;
@@ -212,18 +218,61 @@ struct Index {
     if (this.page === "hygiene") return this.hygieneState.loading;
     return false;
   }
+  private switchTab(page: string): void {
+    this.navigation.reset(page);
+    this.showPage(page);
+  }
   private go(page: string): void {
     if (this.busy && (this.page === "activate" || this.page === "account") && this.page !== page) return;
     if (this.user?.mustChangePassword && page !== "password" && page !== "activate") { this.page = "password"; return; }
+    if (page === this.page) return;
+    const completesForm = (['remediation-create','remediation-assignment'].includes(this.page) && page === 'remediation-detail') ||
+      (this.page === 'repair-create' && page === 'detail') ||
+      (this.page === 'hygiene-create' && ['remediation-detail','hygiene'].includes(page)) ||
+      (this.page === 'visitor-create' && page === 'visitors');
+    if (completesForm) {
+      if (this.navigation.previous() === page) this.popPage();
+      else { this.navigation.replace(page); this.showPage(page); }
+      return;
+    }
+    let recordId = '';
+    if (this.page === 'detail') recordId = this.repairState.selected?.id || '';
+    if (this.page === 'visitor-detail') recordId = this.visitorState.detailId;
+    if (this.page === 'remediation-detail') recordId = this.serviceState.selected?.id || '';
+    let resume: (() => void) | undefined = undefined;
+    if (this.page === 'action') resume = this.repairs.preserveAction();
+    if (['remediation-assignment', 'remediation-create'].includes(this.page)) resume = this.serviceCenter.preserveAssignment();
+    this.navigation.enter(page, this.page, this.scroller.currentOffset()?.yOffset || 0, recordId, resume);
+    this.showPage(page);
+  }
+  private popPage(): boolean {
+    const entry = this.navigation.back();
+    if (!entry) return false;
+    if (this.page === "hygiene-create") this.hygiene.returnRemediationId = "";
+    entry.resume?.();
+    if (entry.page === 'visitor-detail' && entry.recordId) this.visitorState.detailId = entry.recordId;
+    this.showPage(entry.page, entry.scrollY);
+    if (entry.page === 'remediation-detail' && entry.recordId && this.serviceState.selected?.id !== entry.recordId) {
+      this.serviceState.selected = null;
+      this.serviceCenter.openRemediation(entry.recordId);
+    }
+    if (entry.page === 'detail' && entry.recordId) this.repairs.restoreDetail(entry.recordId);
+    return true;
+  }
+  private showPage(page: string, offset: number = 0): void {
     this.saveDrafts();
     this.home.suspendReads();
     this.repairs.suspendReads();
     this.visitors.suspendReads();
     this.hygiene.suspendReads();
     this.serviceCenter.suspend();
+    this.hasPrevious = !!this.navigation.previous();
     this.page = page;
     this.error = "";
-    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 });
+    const version = ++this.navigationVersion;
+    setTimeout(() => {
+      if (version === this.navigationVersion) this.scroller.scrollTo({xOffset: 0, yOffset: offset});
+    }, 0);
     if (page === "messages") this.serviceCenter.loadMessages();
     else if (page === "remediations") this.serviceCenter.loadRemediations();
     else if (["remediation-create", "remediation-assignment"].includes(page)) this.serviceCenter.findResidents();
@@ -255,12 +304,25 @@ struct Index {
     else if (this.page === 'hygiene-create') this.hygiene.loadRooms();
   }
   private async openRepair(order: Repair): Promise<void> {
-    if (!["route", "detail", "action"].includes(this.page))
-      this.repairReturnPage = "repairs";
+    if (this.page === 'action' && this.navigation.previous() === 'route') { this.popPage(); return; }
+    if (this.page === 'action' && this.navigation.previous() === 'detail') {
+      const entry = this.navigation.back();
+      this.showPage('detail', entry?.scrollY || 0);
+    }
     this.go("detail");
     await this.repairs.loadDetail(order);
   }
+  private async returnToReview(taskId: string, saved: Hygiene): Promise<void> {
+    if (this.serviceState.selected?.id === taskId) this.go('remediation-detail');
+    else await this.serviceCenter.openRemediation(taskId);
+    if (this.page === 'remediation-detail' && this.serviceState.selected?.id === taskId)
+      await this.serviceCenter.loadRechecks(saved);
+  }
   aboutToAppear(): void {
+    this.hygiene.onRecheckSaved = (taskId: string, saved: Hygiene): void => {
+      if (this.page !== 'hygiene-create') return;
+      this.returnToReview(taskId, saved);
+    };
     this.unsubscribePhotos = this.photoDrafts.subscribe(
       (snapshot: PhotoSnapshot) => {
         this.repairs.photoChanged(snapshot);
@@ -296,7 +358,11 @@ struct Index {
   }
 
   onBackPress(): boolean {
-    if (this.displayedRecoveryCode) return true;
+    if (this.displayedRecoveryCode || this.backPanels.close()) return true;
+    if (requiresLogoutOnBack(this.page, this.user?.mustChangePassword === true)) {
+      this.confirmForcedLogout();
+      return true;
+    }
     if (this.recoverEntry) {
       if (!this.busy) this.exitAccount("recover");
       return true;
@@ -305,20 +371,18 @@ struct Index {
       this.setLoginMode("USERNAME", false);
       return true;
     }
-    if (this.user && this.page !== "home") {
-      this.go(this.workspaceBackPage());
-      return true;
-    }
+    if (!this.user) return false;
+    if (this.repairState.busy || this.serviceState.busy || this.hygieneState.busy || this.visitorState.busy || this.busy) return true;
+    if (this.popPage()) return true;
+    if (this.page === 'activate' && this.user.mustChangePassword) { this.switchTab('password'); return true; }
     return false;
   }
-  private workspaceBackPage(): string {
-    if (this.page === 'activate') return 'password';
-    if (this.page === 'account') return 'profile';
-    if (this.page === 'action') return 'detail';
-    if (this.page === 'detail') return this.repairReturnPage;
-    if (this.page === 'visitor-detail' || this.page === 'visitor-create') return 'visitors';
-    if (this.page === 'hygiene-create') return 'hygiene';
-    return 'home';
+  private async confirmForcedLogout(): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      if (await this.host.confirm('退出登录', '退出当前账号并返回登录页？', '继续修改', '退出登录')) await this.logout();
+    } finally { this.busy = false; }
   }
 
   private bg(): string {
@@ -435,7 +499,7 @@ struct Index {
       this.recoverEntry = false;
       this.error = "";
     } else {
-      this.go(mode === "activate" ? "password" : "profile");
+      if (!this.popPage()) this.switchTab(mode === "activate" ? "password" : "profile");
     }
   }
 
@@ -444,7 +508,7 @@ struct Index {
     if (revoked) {
       this.clearSession();
     } else {
-      this.page = "profile";
+      this.switchTab("profile");
     }
     this.displayedRecoveryCode = result.recoveryCode || "";
     this.accountMessage = this.displayedRecoveryCode ? message : "";
@@ -739,16 +803,16 @@ struct Index {
   @Builder
   private Header() {
     Row({space: 12}) {
-      if (this.page !== 'home') {
+      if (this.hasPrevious || this.user?.mustChangePassword) {
         Button('‹').id('page-back').fontSize(28).fontColor(this.ink()).backgroundColor(Color.Transparent).width(40).height(48)
-          .onClick(() => this.go(this.workspaceBackPage()))
+          .onClick(() => this.onBackPress())
       }
       Text(this.pageTitle()).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
       if (this.canRefreshWorkspace()) {
         Button('刷新').id('workspace-refresh').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent())
           .onClick(() => this.refreshWorkspace())
       }
-      if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
+      if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
       Button(this.night ? '日间' : '夜间').id('theme-toggle').fontSize(14).fontColor(this.muted()).height(48).backgroundColor(Color.Transparent)
         .onClick(() => { this.night = !this.night; this.saveSettings(); })
     }.width('100%').padding({left: 16, right: 16, top: 4, bottom: 8}).backgroundColor(this.surface()).border({width: {bottom: 1}, color: this.line()})
@@ -759,13 +823,13 @@ struct Index {
     Row() {
       Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.house')).fontSize(18).fontColor([this.page === 'home' ? this.accent() : this.muted()]); Text('首页').fontSize(14).fontColor(this.page === 'home' ? this.accent() : this.muted()) } }
         .id('tab-home').layoutWeight(1).height(58).fontColor(this.page === 'home' ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.go('home'))
+        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('home'))
       Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.doc_text')).fontSize(18).fontColor([['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()]); Text(this.manager() ? '工单' : '我的报修').fontSize(14).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted()) } }
         .id('tab-repairs').layoutWeight(1).height(58).fontColor(['repairs', 'detail', 'action'].includes(this.page) ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; this.go('repairs'); })
+        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('repairs'))
       Button() { Column({space: 2}) { SymbolGlyph($r('sys.symbol.person')).fontSize(18).fontColor([this.page === 'profile' ? this.accent() : this.muted()]); Text('我的').fontSize(14).fontColor(this.page === 'profile' ? this.accent() : this.muted()) } }
         .id('tab-profile').layoutWeight(1).height(58).fontColor(this.page === 'profile' ? this.accent() : this.muted())
-        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.go('profile'))
+        .backgroundColor(Color.Transparent).borderRadius(0).onClick(() => this.switchTab('profile'))
     }.width('100%').backgroundColor(this.surface()).border({width: {top: 1}, color: this.line()})
   }
 
@@ -792,7 +856,7 @@ struct Index {
           else { this.Login() }
         }.width('100%').constraintSize({maxWidth: 720}).padding({left: this.user ? 16 : 0, right: this.user ? 16 : 0, top: this.user ? 16 : 0, bottom: 28}).alignItems(HorizontalAlign.Start)
       }.id('page-scroll').layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
-      if (this.user && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
+      if (this.user && rootTab(this.page) && !this.user.mustChangePassword && !this.displayedRecoveryCode) { this.BottomTabs() }
     }.width('100%').height('100%').backgroundColor(this.bg())
   }
   @Builder
@@ -805,7 +869,7 @@ struct Index {
   @Builder
   private Content() {
     if (['messages', 'remediations', 'remediation-create', 'remediation-detail', 'remediation-assignment'].includes(this.page)) {
-      ServiceCenterWorkspace({state: this.serviceState, page: this.page, night: this.night, manager: this.manager(), host: this.host, controller: this.serviceCenter, photos: this.photoDrafts})
+      ServiceCenterWorkspace({state: this.serviceState, page: this.page, night: this.night, manager: this.manager(), host: this.host, controller: this.serviceCenter, photos: this.photoDrafts, onRecheck: (source: Hygiene, taskId: string) => this.hygiene.recheck(source, taskId)})
     } else if (this.page === 'home' || this.page === 'room') {
       HomeWorkspace({state: this.homeState, page: this.page, night: this.night, user: this.user, host: this.host,
         onRepairListReset: () => { this.repairState.repairPage = 1; this.repairState.repairFilter = ''; }, onHygieneListReset: () => { this.hygieneState.hygienePage = 1; }})
@@ -816,7 +880,7 @@ struct Index {
     } else if (['hygiene', 'hygiene-create'].includes(this.page)) {
       HygieneWorkspace({state: this.hygieneState, page: this.page, night: this.night, user: this.user, host: this.host, controller: this.hygiene, photoDrafts: this.photoDrafts, onRemediate: (item: Hygiene): void => { this.serviceCenter.prepare(item); }})
     } else if (this.page === 'route' && this.manager()) {
-      RoutePage({controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => { this.repairReturnPage = 'route'; this.openRepair(repair); }})
+      RoutePage({controller: this.dispatch, night: this.night, onOpenRepair: (repair: Repair) => this.openRepair(repair), onFinish: (repair: Repair) => { this.repairState.selected = repair; this.repairs.beginAction('finish'); }})
     } else if (this.page === 'mobility' && this.manager()) {
       MobilityPage({controller: this.mobility, dispatch: this.dispatch, night: this.night, onOpenRoute: () => this.go('route')})
     } else if (this.page === 'password') { this.Password() }
