@@ -18,11 +18,11 @@
   "dependencies": {
     "lucide-vue-next": "1.0.0",
     "vue": "3.5.46",
-    "vue-router": "5.4.0"
+    "vue-router": "5.5.1"
   },
   "devDependencies": {
-    "@types/node": "24.10.1",
-    "@vitejs/plugin-vue": "6.0.10",
+    "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.11",
     "openapi-typescript": "7.13.0",
     "prettier": "3.6.2",
     "typescript": "5.9.3",
