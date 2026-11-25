@@ -106,6 +106,7 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 
 | 入口 | 用途 |
 | --- | --- |
+| [贡献守则](CONTRIBUTING.md)、[安全策略](SECURITY.md)、[开源许可](LICENSE) | 分支与提交规范、本地门禁、漏洞报告及 Apache-2.0 许可与第三方资产声明 |
 | [最新界面与交付依据](docs/18-界面收敛与交付版本.md)、[界面规范](docs/04-界面与设计规范.md) | 四域导航、R3 双主题与 Google 交互守则，Chrome 和 Pura 90 模拟器的验证范围及真机边界 |
 | [后端说明](backend/README.md)、[Web说明](web/README.md)、[鸿蒙说明](harmony/README.md) | 各端运行、构建与测试 |
 | [共享接口契约](contracts/API.md)、[OpenAPI schema](contracts/openapi.json) | 当前 API 与生成客户端类型的唯一契约 |

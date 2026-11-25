@@ -1,0 +1,11 @@
+DormLink (寓见 · 学生公寓综合服务管理平台)
+
+DormLink source code is licensed under the Apache License, Version 2.0.
+See LICENSE for the terms. Bundled third-party fonts and photographs retain
+their original licenses and attributions.
+
+字体按 SIL Open Font License 1.1 分发。字体来源、子集与许可见
+design/assets/fonts/README.md 和 harmony/entry/src/main/resources/rawfile/OFL-Noto-Serif-SC.txt。
+
+庭院照片由 Nick Allen 拍摄，按 CC BY-SA 3.0 分发。
+作品来源、署名与图片调整记录见 harmony/IMAGE-SOURCES.md。

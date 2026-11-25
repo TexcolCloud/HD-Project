@@ -1,0 +1,22 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sh text eol=lf
+backend/mvnw text eol=lf
+
+# Keep i/lf in the index but use platform-default checkout for historical SQL.
+# SchemaMigrations hashes file content: Windows-initialized openGauss databases
+# must keep their original CRLF bytes for schema_migration SHA-256 validation.
+backend/src/main/resources/db/**/*.sql text=auto !eol
+
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.woff2 binary
+*.ttf binary
+*.ico binary
+*.jar binary
+*.zip binary
+*.hap binary
