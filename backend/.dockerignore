@@ -1,0 +1,22 @@
+# Keep downloaded Maven distributions, private settings and local build artifacts out.
+**
+!.mvn/
+!.mvn/bootstrap.sh
+!mvnw
+!pom.xml
+!src/
+!src/**
+.git
+**/node_modules
+**/target
+**/dist
+harmony
+output
+.tools
+.playwright-cli
+deploy/.env*
+.env*
+**/.env*
+**/*.log
+**/data
+**/uploads
