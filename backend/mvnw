@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+base=$(CDPATH= cd "$(dirname "$0")/.mvn" && pwd)
+MAVEN_BASE="$base/apache-maven-3.9.12"
+if [ ! -x "$MAVEN_BASE/bin/mvn" ]; then
+    "$base/bootstrap.sh"
+fi
+exec "$MAVEN_BASE/bin/mvn" "$@"

@@ -1,0 +1,28 @@
+name: 功能建议
+description: 描述使用场景、希望实现的变化及验收方法
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 涉及模块
+      options:
+        - 后端 (Spring Boot / SQL)
+        - Web 管理端 (Vue 3)
+        - 鸿蒙端 (ArkTS / ArkUI)
+        - 共享契约与工程基建
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: 使用场景
+      description: 谁在执行什么任务，当前遇到了什么困难？
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 期望结果与验收方法
+      description: 用一个例子说明如何判断这一改进有效。
+    validations:
+      required: true

@@ -1,0 +1,11 @@
+# Default reviewer for the repository.
+* @TexcolCloud
+
+# Shared contracts and historical database migrations.
+/contracts/ @TexcolCloud
+/backend/src/main/resources/db/ @TexcolCloud
+
+# CI, release tooling and shared design assets.
+/.github/ @TexcolCloud
+/scripts/ @TexcolCloud
+/design/ @TexcolCloud

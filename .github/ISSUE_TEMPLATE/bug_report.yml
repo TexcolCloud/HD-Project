@@ -1,0 +1,34 @@
+name: 缺陷报告
+description: 报告可以复现的功能或工程问题
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 涉及模块
+      options:
+        - 后端 (Spring Boot / SQL)
+        - Web 管理端 (Vue 3)
+        - 鸿蒙端 (ArkTS / ArkUI)
+        - 共享契约与工程基建
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 填写提交号、系统版本及相关浏览器或设备。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请使用演示数据，并隐去凭据和个人信息。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 实际结果与预期结果
+    validations:
+      required: true

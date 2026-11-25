@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 私密安全报告
+    url: https://github.com/TexcolCloud/HD-Project/blob/main/SECURITY.md
+    about: 安全漏洞请通过安全策略中的私密渠道报告。
