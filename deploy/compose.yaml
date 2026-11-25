@@ -1,25 +1,73 @@
 name: hd-project
 services:
-  mysql:
-    image: mysql:8.4@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
-    container_name: hd-project-mysql
-    restart: unless-stopped
+  opengauss:
+    image: enmotech/opengauss:6.0.0@sha256:9bd81380273944e5a02a2139c90954d4f46813b71810f7b23fe8f738014d03b5
+    container_name: hd-project-opengauss
+    shm_size: 512m
+    # openGauss 6 MOT recovery calls mbind even with NUMA disabled.
+    cap_add: [SYS_NICE]
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-13306}:3306"
+      - "127.0.0.1:${OG_PORT:-15432}:5432"
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dormlink}
-      MYSQL_USER: ${MYSQL_USER:-dormlink}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      GS_PASSWORD: ${OG_ADMIN_PASSWORD:?set OG_ADMIN_PASSWORD}
+      # Skip the image's optional default privileged SQL user.
+      GS_DB: postgres
+      OG_USER: ${OG_USER:-dormlink}
+      OG_PASSWORD: ${OG_PASSWORD:?set OG_PASSWORD}
+      OG_DATABASE: ${OG_DATABASE:-dormlink}
       TZ: Asia/Shanghai
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
-      - mysql-data:/var/lib/mysql
+      - opengauss-data:/var/lib/opengauss
+      - ./opengauss-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER --silent"]
+      test: ["CMD", "gosu", "omm", "bash", "/docker-entrypoint-initdb.d/01-init-dormlink.sh", "--health"]
       interval: 5s
       timeout: 5s
-      retries: 30
-      start_period: 30s
+      retries: 20
+      start_period: 60s
+
+  mysql:
+    extends:
+      file: compose.mysql.yaml
+      service: mysql
+
+  backend:
+    profiles: ["app"]
+    build: { context: ../backend, dockerfile: Dockerfile }
+    container_name: hd-project-backend
+    depends_on:
+      opengauss: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: opengauss
+      DB_URL: jdbc:opengauss://opengauss:5432/${OG_DATABASE:-dormlink}?stringtype=unspecified&use_boolean=true&currentSchema=public
+      DB_USER: ${OG_USER:-dormlink}
+      DB_PASSWORD: ${OG_PASSWORD:?set OG_PASSWORD}
+      APP_SEED: ${APP_SEED:-true}
+      FILE_STORAGE: /var/lib/dormlink/uploads
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
+      AI_MODEL: ${AI_MODEL:-deepseek-flash}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-10}
+      APP_SMS_GATEWAY_URL: ${APP_SMS_GATEWAY_URL:-}
+      APP_SMS_GATEWAY_TOKEN: ${APP_SMS_GATEWAY_TOKEN:-}
+      APP_SMS_SIGNING_KEY: ${APP_SMS_SIGNING_KEY:-}
+      TZ: Asia/Shanghai
+    volumes:
+      - backend-uploads:/var/lib/dormlink/uploads
+
+  web:
+    profiles: ["app"]
+    build: { context: .., dockerfile: web/Dockerfile }
+    container_name: hd-project-web
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:8080"
+
 volumes:
+  opengauss-data:
+  backend-uploads:
   mysql-data:

@@ -16,12 +16,19 @@ PATTERNS = {
 
 
 def local_secrets():
-    path = ROOT / 'deploy/.env.opengauss'
     secrets = {}
-    if path.is_file():
+    files = {
+        '.env.opengauss': ('SSH_PASSWORD', 'OG_PASSWORD', 'OG_ADMIN_PASSWORD', 'AI_API_KEY',
+                           'APP_SMS_GATEWAY_TOKEN', 'APP_SMS_SIGNING_KEY'),
+        '.env': ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD'),
+    }
+    for name, keys in files.items():
+        path = ROOT / 'deploy' / name
+        if not path.is_file():
+            continue
         for line in path.read_text(encoding='utf-8-sig').splitlines():
             key, _, value = line.partition('=')
-            if key in ('SSH_PASSWORD', 'OG_PASSWORD', 'AI_API_KEY') and value:
+            if key in keys and value:
                 secrets[key] = value.encode('utf-8')
     return secrets
 

@@ -8,9 +8,15 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 
 ## 本机启动
 
-在项目根目录使用 PowerShell。后端启动脚本默认连接VMware／openEuler上的openGauss；Java、Node与DevEco仍在开发机运行。数据库替换的实际状态及验证边界见[openGauss迁移与验收](docs/10-openGauss迁移与验收.md)，工具版本见[环境说明](docs/05-实施路线与环境.md)。
+在项目根目录使用 PowerShell 和 Docker Compose。运行下列命令可直接启动本机 openGauss、Java API 和 Nginx Web。首次启动会生成独立随机口令，保存在 Git 忽略的 `deploy/.env.opengauss`；空业务库会初始化演示数据。
 
-先启动openEuler虚拟机及其中的既有openGauss容器，将[配置模板](deploy/opengauss.env.example)复制为被忽略的 `deploy/.env.opengauss` 并填写本机数据库连接。目标应为项目独立的PG兼容数据库；应用凭据只留本机。执行下列脚本仅验证TCP端口可达，SQL登录须在后端健康检查中确认。
+```powershell
+.\scripts\run-containers.ps1
+```
+
+Web、API、数据库分别监听本机回环地址的 5173、8080 和 15432 端口。数据库和附件分别保存在命名卷中，`run-containers.ps1 -Down` 停止容器并保留卷。请随数据库备份妥善保存本地口令文件。
+
+开发时可只启动数据库容器，再在宿主机运行后端和 Web。脚本会检查应用账号的 SQL 登录，准备 PG 兼容的业务库和十个隔离测试库。如需使用外部 openGauss（含既有 VMware／openEuler 环境），按[配置模板](deploy/opengauss.env.example)填写远端 `OG_HOST`、端口与应用凭据；此时该脚本只探测 TCP，SQL 登录由 API 健康接口确认。
 
 ```powershell
 .\scripts\start-database.ps1
@@ -91,7 +97,7 @@ Web 入口：[http://127.0.0.1:5173](http://127.0.0.1:5173)。启动后端与 We
 2026年11月12—13日的真实数据库完整运行记录为107项通过：78项实际openGauss、5项H2、24项纯Java／架构；本地运行注册106项，其中102通过、4项真实库可选用例跳过。2026年11月15日重新运行Web33项、Harmony80项回放及正式API24构建并通过；完成应用内浏览器33个布局状态，最终以Playwright补齐11页×3宽度×2主题共66个布局检查，DevEco模拟器安装并查看学生／宿管页面。当日界面整理未重新跑测后端。11 月 15 日归档的 API 1.3 包含 104 个 schema，兼容当时的 1.1 快照；旧HTTP Map适配仍保留，跨模块维修读取使用类型化快照。11月13日运行包与业务逐项记录见[16](docs/16-服务闭环与联合验收.md)及联合验收索引（本机生成：`output/acceptance/closure-delivery.json`），结构治理历史保留在[15](docs/15-结构治理与联合回归.md)。
 
 ```powershell
-# 本地H2／纯计算；真实库模式另需配置独立测试库及HBA
+# 本地 H2／纯计算；第二条使用 start-database.ps1 准备的独立 openGauss 测试库
 .\scripts\test-backend.ps1
 .\scripts\test-backend.ps1 -Database opengauss
 ```

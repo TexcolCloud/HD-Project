@@ -4,6 +4,8 @@
 
 ## 启动
 
+在项目根目录运行 `.\scripts\run-containers.ps1` 可构建并启动完整应用。打开 http://127.0.0.1:5173，非 root Nginx 提供 Vue 静态页面并将同源 `/api/` 请求转发至 Compose 网络内的后端。`-WebPort` 可更改本机 Web 端口。
+
 在本目录使用 Node.js 24.12 或以上版本：
 
 ```powershell

@@ -14,14 +14,16 @@ Spring Boot **4.1.2**，Java 编译基线21，已使用本机JDK25编译运行�
 
 默认 `local` profile 使用H2文件库 `data/dormlink.mv.db`，重启保留业务数据，附件位于 `data/uploads/`。默认API为 `http://127.0.0.1:8080/api/v1`。健康接口 `/health` 会实际访问SQL。
 
-正常三端运行现以VMware／openEuler中的openGauss为目标。将 `deploy/opengauss.env.example` 复制为被忽略的 `deploy/.env.opengauss`，在项目根目录运行：
+本机开发默认使用 Docker openGauss 6.0。以下命令在项目根目录执行；首次启动自动生成私有的 `deploy/.env.opengauss`，准备 UTF8、PG 兼容的业务库和十个独立测试库。
 
 ```powershell
 .\scripts\start-database.ps1
 .\scripts\run-backend.ps1
 ```
 
-第一个脚本只检查目标TCP端口，不代表SQL登录成功。后端使用 `org.opengauss:opengauss-jdbc:6.0.6-og`／`org.opengauss.Driver`，运行profile为 `opengauss`；URL结构为 `jdbc:opengauss://<host>:<port>/<database>?stringtype=unspecified&use_boolean=true&currentSchema=public`。应用账号必须具有目标项目数据库所需权限，密码只通过环境文件或进程环境提供。手动运行时设置 `SPRING_PROFILES_ACTIVE=opengauss`、`DB_URL`、`DB_USER`、`DB_PASSWORD`；实际切换状态见[迁移与验收](../docs/10-openGauss迁移与验收.md)。
+本机数据库通过应用账号登录健康检查后即可使用。也可用 `scripts/run-containers.ps1` 一次启动数据库、非 root Java 容器与 Web，API 的 8080 端口支持既有鸿蒙模拟器转发。容器上传文件存入 `backend-uploads` 命名卷。
+
+连接外部 openGauss 时，在私有环境文件中指定远端 `OG_HOST`、端口、库名与凭据，启动脚本仅做 TCP 探测。后端使用 `org.opengauss:opengauss-jdbc:6.0.6-og`，手动启动时设置 `SPRING_PROFILES_ACTIVE=opengauss`、`DB_URL`、`DB_USER`、`DB_PASSWORD`。迁移既有数据库见[迁移与验收](../docs/10-openGauss迁移与验收.md)。
 
 旧MySQL8.4 Docker环境及数据保留，可显式运行 `start-database.ps1 -Database mysql`、`run-backend.ps1 -Database mysql`。`run-backend.ps1 -Database local`使用独立H2；不同数据库不是同一份业务，切换profile不等同数据迁移。`-BuildOnly`无需环境文件，`-SkipBuild`仅运行已成功构建的产物。
 
