@@ -11,6 +11,8 @@ interface AssistLinesArgs { title: string; values: string[]; }
 @Component
 export struct ManagerAssist {
   @Prop @Watch('orderChanged') orderId: string = '';
+  @Prop aiConfigured: boolean = true;
+  @Prop imageCount: number = 0;
   @Prop night: boolean = false;
   onOpenRepair: (repair: Repair) => void = () => {};
   onUnauthorized: (error: Error) => void = () => {};
@@ -31,10 +33,10 @@ export struct ManagerAssist {
     this.consent = false; this.includeImages = false; this.expanded = false; this.keys.clear();
   }
   private async generate(): Promise<void> {
-    if (this.busy) return;
+    if (this.busy || !this.aiConfigured) return;
     this.error = '';
     if (!this.consent) { this.error = '请先同意发送本次业务信息进行分析'; return; }
-    const request: ManagerAssistRequest = {consentToExternalAnalysis: true, includeImages: !!this.orderId && this.includeImages};
+    const request: ManagerAssistRequest = {consentToExternalAnalysis: true, includeImages: !!this.orderId && this.imageCount > 0 && this.includeImages};
     const orderId = this.orderId, token = Api.token, generation = ++this.generation;
     const path = orderId ? '/ai/manager/repairs/' + encodeURIComponent(orderId) : '/ai/manager/brief';
     this.busy = true;
@@ -79,21 +81,25 @@ export struct ManagerAssist {
           .height(48).fontSize(14).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.expanded = !this.expanded)
       }.width('100%')
       if (this.expanded) {
-        Text('整理授权范围内的业务信息，建议仅供核对，办理仍使用工单操作。').fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
-        Row({space: 8}) {
-          Checkbox({name: 'manager-assist-consent'}).id('manager-assist-consent').select(this.consent).selectedColor(palette(this.night).accent)
-            .onChange((value: boolean) => this.consent = value)
-          Text('同意发送本次工单摘要与业务统计进行AI分析，不含学生电话或访客信息。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.consent = !this.consent)
-        }.width('100%')
-        if (this.orderId) {
-        Row({space: 8}) {
-          Checkbox({name: 'manager-assist-images'}).id('manager-assist-images').select(this.includeImages).selectedColor(palette(this.night).accent)
-            .onChange((value: boolean) => this.includeImages = value)
-          Text('附带本单前3张故障图（可选）').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.includeImages = !this.includeImages)
-        }.width('100%')
+        if (!this.aiConfigured) {
+          Text('当前服务端未配置 AI 密钥，请直接人工办理。').fontSize(14).fontColor(palette(this.night).muted)
+        } else {
+          Text('整理授权范围内的业务信息，建议仅供核对，办理仍使用工单操作。').fontSize(14).lineHeight(23).fontColor(palette(this.night).muted).width('100%')
+          Row({space: 8}) {
+            Checkbox({name: 'manager-assist-consent'}).id('manager-assist-consent').select(this.consent).selectedColor(palette(this.night).accent)
+              .onChange((value: boolean) => this.consent = value)
+            Text('同意发送本次工单摘要与业务统计进行AI分析，不含学生电话或访客信息。').fontSize(14).lineHeight(22).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.consent = !this.consent)
+          }.width('100%')
+          if (this.orderId && this.imageCount > 0) {
+            Row({space: 8}) {
+              Checkbox({name: 'manager-assist-images'}).id('manager-assist-images').select(this.includeImages).selectedColor(palette(this.night).accent)
+                .onChange((value: boolean) => this.includeImages = value)
+              Text('附带本单前3张故障图（可选）').fontSize(14).lineHeight(22).fontColor(palette(this.night).muted).layoutWeight(1).constraintSize({minHeight:48}).onClick(() => this.includeImages = !this.includeImages)
+            }.width('100%')
+          }
         }
         Button(this.busy ? '正在整理…' : this.orderId ? '生成本单研判' : '生成值班简报', {type: ButtonType.Normal}).id('manager-assist-generate').width('100%').height(48).fontSize(16)
-          .fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(!this.busy).onClick(() => this.generate())
+          .fontColor(palette(this.night).onPrimary).backgroundColor(palette(this.night).ink).borderRadius(4).enabled(this.aiConfigured && !this.busy).onClick(() => this.generate())
         if (this.error) { Text(this.error).id('manager-assist-error').fontSize(14).lineHeight(23).fontColor(palette(this.night).danger).width('100%') }
         if (this.advice) {
           Text('AI建议，请结合现场核对').fontSize(14).fontColor(palette(this.night).accent).width('100%')

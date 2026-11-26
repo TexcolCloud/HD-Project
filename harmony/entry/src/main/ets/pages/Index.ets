@@ -309,8 +309,8 @@ struct Index {
 
   private canRefreshWorkspace(): boolean {
     if (this.user?.mustChangePassword || this.displayedRecoveryCode) return false;
-    if (this.page === 'route') return this.manager();
-    return ['home','messages','remediations','visitors', 'visitor-detail', 'repairs', 'detail', 'hygiene', 'hygiene-create'].includes(this.page);
+    if (this.page === 'route' || this.page === 'mobility') return this.manager();
+    return ['home','messages','remediations','visitors', 'visitor-detail', 'repairs', 'detail', 'hygiene', 'room', 'remediation-detail'].includes(this.page);
   }
   private async refreshWorkspace(): Promise<void> {
     if (!this.user || this.currentLoading() || this.visitorState.busy || this.serviceState.busy || this.hygieneState.busy || this.repairState.busy) return;
@@ -324,7 +324,9 @@ struct Index {
     else if (this.page === 'repairs') await this.repairs.loadRepairs();
     else if (this.page === 'detail' && this.repairState.selected) await this.repairs.loadDetail(this.repairState.selected);
     else if (this.page === 'hygiene') await this.hygiene.loadHygiene();
-    else if (this.page === 'hygiene-create') await this.hygiene.loadRooms();
+    else if (this.page === 'room') await this.home.loadResidences();
+    else if (this.page === 'remediation-detail') await this.serviceCenter.refreshRemediation(this.manager());
+    else if (this.page === 'mobility' && this.manager()) await this.mobility.refresh();
   }
   private async openRepair(order: Repair): Promise<void> {
     if (this.page === 'action' && this.navigation.previous() === 'route') { this.popPage(); return; }
@@ -523,6 +525,7 @@ struct Index {
     if (this.busy) return;
     if (this.activationSignIn !== activate) this.password = "";
     this.loginIdentifier = identifier;
+    if (identifier === 'PHONE') this.username = this.username.replace(/\D/g, '').slice(0, 11);
     this.activationSignIn = activate;
     this.error = "";
   }
@@ -751,9 +754,10 @@ struct Index {
       serviceLabel({text: this.loginIdentifier === 'PHONE' ? '手机号' : '账号', night: this.night})
       TextInput({text: this.username, placeholder: this.loginIdentifier === 'PHONE' ? '请输入11位手机号' : '请输入学校提供的账号'})
         .id('login-username').enterKeyType(EnterKeyType.Next).type(this.loginIdentifier === 'PHONE' ? InputType.PhoneNumber : InputType.Normal)
-        .onChange((value: string) => this.username = value).height(52).fontSize(16).fontColor(this.ink())
+        .inputFilter(this.loginIdentifier === 'PHONE' ? '[0-9]' : '')
+        .onChange((value: string) => this.username = this.loginIdentifier === 'PHONE' ? value.replace(/\D/g, '').slice(0, 11) : value).height(52).fontSize(16).fontColor(this.ink())
         .placeholderColor(this.muted()).backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline})
-        .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(this.loginIdentifier === 'PHONE' ? 20 : 64)
+        .borderRadius(4).margin({top: 8, bottom: 22}).maxLength(this.loginIdentifier === 'PHONE' ? 11 : 64)
       serviceLabel({text: this.activationSignIn ? '学校发放的临时密码' : '密码', night: this.night})
       TextInput({text: this.password, placeholder: '请输入密码'}).id('login-password').type(InputType.Password)
         .enterKeyType(EnterKeyType.Go).onSubmit(() => this.login())
@@ -856,10 +860,6 @@ struct Index {
           .onClick(() => this.onBackPress())
       }
       Text(this.pageTitle()).fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.ink()).layoutWeight(1)
-      if (this.canRefreshWorkspace()) {
-        Button('刷新').id('workspace-refresh').height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent())
-          .onClick(() => this.refreshWorkspace())
-      }
       if (!this.user?.mustChangePassword) { Button('消息' + (this.unreadCount ? ' ' + this.unreadCount : '')).id('service-messages').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.accent()).onClick(() => this.go('messages')) }
       if (this.manager() && !this.user?.mustChangePassword && !this.displayedRecoveryCode) {
         Button('我的').id('open-profile').enabled(!this.busy && !this.hygieneState.busy && !this.repairState.busy && !this.serviceState.busy && !this.visitorState.busy).height(48).fontSize(14).backgroundColor(Color.Transparent).fontColor(this.page === 'profile' ? this.accent() : this.ink()).onClick(() => this.switchTab('profile'))

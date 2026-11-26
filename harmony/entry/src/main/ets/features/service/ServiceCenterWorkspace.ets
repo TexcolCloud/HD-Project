@@ -6,7 +6,7 @@ import { palette } from '../../components/Palette';
 import { FormInput } from '../../components/FormInput';
 import { SecureImage } from '../../components/SecureImage';
 import { Api, UploadedPhoto } from "../../services/Api";
-import { beijingParts, dateText } from '../../services/Labels';
+import { beijingParts, today, dateText } from '../../services/Labels';
 import { PhotoAttachments } from '../photos/PhotoAttachments';
 import { PhotoDraftController } from '../photos/PhotoDraftController';
 
@@ -45,7 +45,6 @@ export struct ServiceCenterWorkspace {
     Row({space: 10}) {
       Checkbox().enabled(!this.state.busy).select(this.state.unreadOnly).selectedColor(palette(this.night).accent).onChange((value: boolean) => this.showUnread(value))
       Text('只看未读').fontSize(14).fontColor(palette(this.night).ink).layoutWeight(1).constraintSize({ minHeight: 48 }).onClick(() => this.showUnread(!this.state.unreadOnly))
-      Button('刷新').enabled(!this.state.busy).height(48).backgroundColor(Color.Transparent).fontColor(palette(this.night).accent).onClick(() => this.controller.loadMessages())
     }.width('100%')
     Button('本页未读标为已读', {type: ButtonType.Normal}).height(48).borderRadius(4).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).soft)
       .enabled(!this.state.busy && !this.state.loading && this.state.messages.some((item: ServiceMessage): boolean => !item.readAt)).onClick(() => this.controller.readPage())
@@ -70,7 +69,6 @@ export struct ServiceCenterWorkspace {
   }
   @Builder
   private List() {
-    Button('刷新整改任务').height(48).fontColor(palette(this.night).accent).backgroundColor(Color.Transparent).onClick(() => this.controller.loadRemediations())
     if (!this.state.remediations.length && !this.state.loading) { Text('暂时没有整改任务').fontColor(palette(this.night).muted).padding(20) }
     ForEach(this.state.remediations, (item: Remediation) => {
       Column({space: 10}) {
@@ -95,7 +93,7 @@ export struct ServiceCenterWorkspace {
       .width('100%').height(48).fontColor(palette(this.night).ink).backgroundColor(palette(this.night).surface).optionBgColor(palette(this.night).surface).optionFontColor(palette(this.night).ink).onSelect((index: number) => this.state.responsibleStudentId = this.state.students[index].id).margin({bottom: 16})
     TimePresets({labels: ['明天 18:00','2天后 18:00','3天后 18:00'], night: this.night, disabled: this.state.busy,
       onChoose: (index: number) => { this.state.dueDay = beijingParts(new Date(Date.now() + (index + 1) * 86400000).toISOString()).day; this.state.dueClock = '18:00'; }})
-    DateTimeField({label: '截止日期', inputId: 'remediation-due-date', disabled: this.state.busy, value: this.state.dueDay, night: this.night, onChange: (value: string) => this.state.dueDay = value})
+    DateTimeField({label: '截止日期', minDay: today(), inputId: 'remediation-due-date', disabled: this.state.busy, value: this.state.dueDay, night: this.night, onChange: (value: string) => this.state.dueDay = value})
     DateTimeField({label: '截止时间', clock: true, inputId: 'remediation-due-time', disabled: this.state.busy, value: this.state.dueClock, night: this.night, onChange: (value: string) => this.state.dueClock = value})
     if (this.page === 'remediation-assignment') { FormInput({label: '调整原因', value: this.state.assignmentReason, multiline: true, night: this.night, onChange: (value: string) => this.state.assignmentReason = value}) }
     Button(this.page === 'remediation-assignment' ? '保存责任与期限' : '发送整改任务', {type: ButtonType.Normal}).id('remediation-create-submit').height(48).width('100%').backgroundColor(palette(this.night).ink).fontColor(palette(this.night).onPrimary).borderRadius(4)

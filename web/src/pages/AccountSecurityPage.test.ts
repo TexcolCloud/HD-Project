@@ -43,75 +43,111 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("换绑验证旧号与新号，保留一次性恢复码直到确认后返回登录", async () => {
-  session.user = { ...manager };
-  api.post
-    .mockResolvedValueOnce({ challengeId: "challenge-old" })
-    .mockResolvedValueOnce({ challengeId: "challenge-new" })
-    .mockResolvedValueOnce({ recoveryCode: "RECOVER-DEMO" });
-  const root = node("root");
-  const app = renderer.createApp(AccountSecurityPage);
-  app.component("RouterLink", { template: "<a><slot /></a>" });
-  app.mount(root);
-  unmount = () => app.unmount();
-  const button = (name: string) =>
-    find(
-      root,
-      (candidate) =>
-        candidate.tag === "button" && text(candidate).trim() === name,
+it.each(["SMS", "GRAPHIC"])(
+  "%s 换绑核对验证码并在退出前展示一次性恢复码",
+  async (delivery) => {
+    session.user = { ...manager };
+    api.post
+      .mockResolvedValueOnce({
+        challengeId: "first-new",
+        delivery,
+        captchaImage: delivery === "GRAPHIC" ? "first-image" : undefined,
+      })
+      .mockResolvedValueOnce(
+        delivery === "GRAPHIC"
+          ? {
+              challengeId: "challenge-new",
+              delivery,
+              captchaImage: "new-image",
+            }
+          : { challengeId: "challenge-old" },
+      )
+      .mockResolvedValueOnce({ recoveryCode: "RECOVER-DEMO" });
+    const root = node("root");
+    const app = renderer.createApp(AccountSecurityPage);
+    app.component("RouterLink", { template: "<a><slot /></a>" });
+    app.mount(root);
+    unmount = () => app.unmount();
+    const button = (name: string) =>
+      find(
+        root,
+        (candidate) =>
+          candidate.tag === "button" && text(candidate).trim() === name,
+      );
+    const click = (name: string) =>
+      (button(name)!.props.onClick as () => void)();
+    const input = (label: string, value: string) => {
+      const wrapper = find(
+        root,
+        (candidate) =>
+          candidate.tag === "label" && text(candidate).trim().startsWith(label),
+      )!;
+      const field = find(wrapper, (candidate) => candidate.tag === "input")!;
+      (field.props["onUpdate:modelValue"] as (value: string) => void)(value);
+    };
+    click("更换手机号");
+    await nextTick();
+    input("当前密码", "only-for-test");
+    input("新手机号", "13800000001");
+    await nextTick();
+    click("获取新号验证码");
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    await nextTick();
+    expect(api.post).toHaveBeenNthCalledWith(1, "/auth/phone/challenges", {
+      purpose: "CHANGE_PHONE_NEW",
+      phone: "13800000001",
+      currentPassword: "only-for-test",
+    });
+    if (delivery === "GRAPHIC") {
+      expect(find(root, (n) => n.tag === "img")?.props.src).toBe("first-image");
+      expect(button("向旧号发送验证码")).toBeUndefined();
+      click("换一张");
+      await vi.waitFor(() =>
+        expect(find(root, (n) => n.tag === "img")?.props.src).toBe("new-image"),
+      );
+      input("图形验证码", "a2bc");
+    } else {
+      expect(text(root)).toMatch(/\d+秒后可重发/);
+      input("当前密码", "edited-for-test");
+      await nextTick();
+      expect(text(root)).toContain("新号验证码");
+      click("向旧号发送验证码");
+      await vi.waitFor(() => expect(text(root)).toContain("旧号验证码"));
+      expect(api.post).toHaveBeenNthCalledWith(2, "/auth/phone/challenges", {
+        purpose: "CHANGE_PHONE_OLD",
+        currentPassword: "edited-for-test",
+      });
+      input("旧号验证码", "000011");
+      input("新号验证码", "000012");
+    }
+    const form = find(root, (candidate) => candidate.tag === "form")!;
+    (form.props.onSubmit as (event: { preventDefault: () => void }) => void)({
+      preventDefault() {},
+    });
+    await vi.waitFor(() => expect(text(root)).toContain("RECOVER-DEMO"));
+    expect(api.post).toHaveBeenNthCalledWith(
+      3,
+      "/auth/phone/change",
+      delivery === "GRAPHIC"
+        ? {
+            newChallengeId: "challenge-new",
+            newCode: "a2bc",
+          }
+        : {
+            oldChallengeId: "challenge-old",
+            oldCode: "000011",
+            newChallengeId: "first-new",
+            newCode: "000012",
+          },
     );
-  const click = (name: string) => (button(name)!.props.onClick as () => void)();
-  const input = (label: string, value: string) => {
-    const wrapper = find(
-      root,
-      (candidate) =>
-        candidate.tag === "label" && text(candidate).trim().startsWith(label),
-    )!;
-    const field = find(wrapper, (candidate) => candidate.tag === "input")!;
-    (field.props["onUpdate:modelValue"] as (value: string) => void)(value);
-  };
-  click("更换手机号");
-  await nextTick();
-  input("当前密码", "only-for-test");
-  input("新手机号", "13800000001");
-  await nextTick();
-  click("向旧号发送验证码");
-  await vi.waitFor(() => expect(text(root)).toContain("旧号验证码"));
-  expect(api.post).toHaveBeenNthCalledWith(1, "/auth/phone/challenges", {
-    purpose: "CHANGE_PHONE_OLD",
-    currentPassword: "only-for-test",
-  });
-  expect(text(root)).toMatch(/\d+秒后可重发/);
-  input("当前密码", "edited-for-test");
-  await nextTick();
-  expect(text(root)).toContain("旧号验证码");
-  click("向新号发送验证码");
-  await vi.waitFor(() => expect(text(root)).toContain("新号验证码"));
-  expect(api.post).toHaveBeenNthCalledWith(2, "/auth/phone/challenges", {
-    purpose: "CHANGE_PHONE_NEW",
-    phone: "13800000001",
-    currentPassword: "edited-for-test",
-  });
-  input("旧号验证码", "000011");
-  input("新号验证码", "000012");
-  const form = find(root, (candidate) => candidate.tag === "form")!;
-  (form.props.onSubmit as (event: { preventDefault: () => void }) => void)({
-    preventDefault() {},
-  });
-  await vi.waitFor(() => expect(text(root)).toContain("RECOVER-DEMO"));
-  expect(api.post).toHaveBeenNthCalledWith(3, "/auth/phone/change", {
-    oldChallengeId: "challenge-old",
-    oldCode: "000011",
-    newChallengeId: "challenge-new",
-    newCode: "000012",
-  });
-  expect(session.user).toBeNull();
-  expect(router.replace).not.toHaveBeenCalled();
-  click("我已保存，重新登录");
-  await nextTick();
-  expect(text(root)).not.toContain("RECOVER-DEMO");
-  expect(router.replace).toHaveBeenCalledWith("/login");
-});
+    expect(session.user).toBeNull();
+    expect(router.replace).not.toHaveBeenCalled();
+    click("我已保存，重新登录");
+    await nextTick();
+    expect(text(root)).not.toContain("RECOVER-DEMO");
+    expect(router.replace).toHaveBeenCalledWith("/login");
+  },
+);
 
 it("两次新密码一致才修改登录密码并清除会话", async () => {
   session.user = { ...manager };

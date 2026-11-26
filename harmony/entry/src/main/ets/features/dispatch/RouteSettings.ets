@@ -80,7 +80,7 @@ export struct RouteSettings {
           this.availableDay = local.day;
           this.availableClock = index === 0 ? local.clock : index === 1 ? '18:00' : '22:00';
         }})
-        DateTimeField({label: '可用截止日期（北京时间）', value: this.availableDay, disabled: this.busy, inputId: 'route-available-date', night: this.night,
+        DateTimeField({label: '可用截止日期（北京时间）', minDay: today(), value: this.availableDay, disabled: this.busy, inputId: 'route-available-date', night: this.night,
           onChange: (value: string) => this.availableDay = value})
         DateTimeField({label: '可用截止时间', value: this.availableClock, disabled: this.busy, clock: true, inputId: 'route-available-time', night: this.night,
           onChange: (value: string) => this.availableClock = value})

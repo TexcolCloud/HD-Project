@@ -3,12 +3,14 @@ import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { post } from "../api/client";
 import type { Model } from "../api/types";
-import { isMobilePhone, mobilePhoneError } from "../phone";
+import { filterPhoneInput, isMobilePhone, mobilePhoneError } from "../phone";
 import { clearLocalSession } from "../session";
 import { errorText, notify } from "../ui";
 
+import CaptchaImage from "../components/CaptchaImage.vue";
 import { useResendWait } from "../composables/useResendWait";
 const { seconds: wait, start: startWait } = useResendWait();
+const captchaImage = ref("");
 const showRecovery = ref(false);
 const router = useRouter();
 const phone = ref(""),
@@ -22,7 +24,7 @@ const phone = ref(""),
   error = ref("");
 
 watch(phone, () => {
-  challengeId.value = code.value = error.value = "";
+  captchaImage.value = challengeId.value = code.value = error.value = "";
 });
 
 async function act(operation: () => Promise<void>) {
@@ -52,7 +54,9 @@ function requestCode() {
         clientType: "WEB",
       } satisfies Model<"PasswordRecoveryChallengeRequest">,
     );
-    startWait();
+    captchaImage.value =
+      result.delivery === "GRAPHIC" ? (result.captchaImage ?? "") : "";
+    if (result.delivery !== "GRAPHIC") startWait();
     challengeId.value = result.challengeId;
     code.value = "";
   });
@@ -81,7 +85,7 @@ function complete() {
       return;
     }
     if (proof.value.recoveryCodeRequired && !recoveryCode.value.trim()) {
-      error.value = "请输入宿管恢复码";
+      error.value = "请输入安全恢复码";
       return;
     }
     await post("/auth/password-recovery/complete", {
@@ -130,6 +134,7 @@ function reset() {
             <input
               v-model="phone"
               type="tel"
+              maxlength="11"
               inputmode="numeric"
               autocomplete="tel"
               :disabled="busy"
@@ -137,6 +142,7 @@ function reset() {
               :aria-describedby="
                 error === mobilePhoneError ? 'recovery-phone-error' : undefined
               "
+              @input="phone = filterPhoneInput($event)"
             />
             <small
               v-if="error === mobilePhoneError"
@@ -148,20 +154,28 @@ function reset() {
             </small>
           </label>
           <template v-if="challengeId">
-            <p class="form-note" role="status">
+            <CaptchaImage
+              v-if="captchaImage"
+              :src="captchaImage"
+              :disabled="busy"
+              @refresh="requestCode"
+            />
+            <p v-else class="form-note" role="status">
               如果该号码可以找回密码，验证码将发送到此号码。
             </p>
             <label>
-              短信验证码
+              {{ captchaImage ? "图形验证码（不区分大小写）" : "短信验证码" }}
               <input
                 v-model="code"
                 required
-                inputmode="numeric"
+                maxlength="6"
+                :inputmode="captchaImage ? 'text' : 'numeric'"
                 autocomplete="one-time-code"
                 :disabled="busy"
               />
             </label>
             <button
+              v-if="!captchaImage"
               class="text-link"
               type="button"
               :disabled="busy || wait > 0"
@@ -173,7 +187,7 @@ function reset() {
         </template>
         <template v-else>
           <label v-if="proof.recoveryCodeRequired">
-            宿管恢复码
+            安全恢复码
             <input
               v-model="recoveryCode"
               required
@@ -245,10 +259,10 @@ function reset() {
               : proof
                 ? "重设密码并返回登录"
                 : challengeId
-                  ? "验证短信"
+                  ? "验证并继续"
                   : wait
                     ? wait + "秒后可重发"
-                    : "发送验证码"
+                    : "获取验证码"
           }}
         </button>
         <RouterLink to="/login">返回登录</RouterLink>

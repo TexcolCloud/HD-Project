@@ -21,9 +21,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("只在短信验证通过并收到要求后显示宿管恢复码输入", async () => {
+it.each(["SMS", "GRAPHIC"])("%s 核验后显示安全恢复码输入", async (delivery) => {
   api.post
-    .mockResolvedValueOnce({ challengeId: "sms-demo" })
+    .mockResolvedValueOnce({
+      challengeId: "challenge-demo",
+      delivery,
+      captchaImage: delivery === "GRAPHIC" ? "example-image" : undefined,
+    })
     .mockResolvedValueOnce({
       resetToken: "proof-demo",
       recoveryCodeRequired: true,
@@ -52,19 +56,22 @@ it("只在短信验证通过并收到要求后显示宿管恢复码输入", asyn
   update("tel", "13800000000");
   await submit();
   await vi.waitFor(() =>
-    expect(text(root)).toContain("如果该号码可以找回密码"),
+    expect(text(root)).toContain(
+      delivery === "SMS" ? "如果该号码可以找回密码" : "换一张",
+    ),
   );
   expect(recoveryInput()).toBeUndefined();
   expect(api.post).toHaveBeenCalledWith("/auth/password-recovery/challenges", {
     phone: "13800000000",
     clientType: "WEB",
   });
-  update("one-time-code", "000123");
+  const code = delivery === "SMS" ? "000123" : "a2bc";
+  update("one-time-code", code);
   await submit();
   await vi.waitFor(() => expect(recoveryInput()).toBeDefined());
   expect(api.post).toHaveBeenCalledWith("/auth/password-recovery/verify", {
-    challengeId: "sms-demo",
-    code: "000123",
+    challengeId: "challenge-demo",
+    code,
     clientType: "WEB",
   });
 });

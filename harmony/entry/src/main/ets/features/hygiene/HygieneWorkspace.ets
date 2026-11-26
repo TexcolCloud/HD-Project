@@ -79,7 +79,11 @@ export struct HygieneWorkspace {
         .alignItems(HorizontalAlign.Start).layoutWeight(1)
       Button('−', {type: ButtonType.Normal}).width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.min(25,Math.max(0,Number($$.value)-1)))))
       TextInput({text: $$.value}).id($$.id).type(InputType.Number).width(56).height(50).fontSize(18).fontColor(this.ink())
-        .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).textAlign(TextAlign.Center).maxLength(2).onChange($$.change)
+        .backgroundColor(this.surface()).border({width: 1, color: palette(this.night).outline}).borderRadius(4).textAlign(TextAlign.Center).maxLength(2).inputFilter('[0-9]')
+        .onChange((value: string) => {
+          const digits = value.replace(/\D/g, '');
+          $$.change(digits ? String(Math.min(25, Number(digits))) : '');
+        })
       Button('+', {type: ButtonType.Normal}).width(48).height(48).borderRadius(4).fontColor(this.ink()).backgroundColor(this.soft()).onClick(() => $$.change(String(Math.max(0,Math.min(25,Number($$.value)+1)))))
     }.width('100%')
     Row({space: 8}) {

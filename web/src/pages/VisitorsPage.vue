@@ -14,7 +14,7 @@ import StatusBadge from "../components/StatusBadge.vue";
 import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
-import { isMobilePhone, mobilePhoneError } from "../phone";
+import { filterPhoneInput, isMobilePhone, mobilePhoneError } from "../phone";
 import { session } from "../session";
 
 const askConfirm = useConfirm();
@@ -488,11 +488,15 @@ watch(
         <input
           v-model.trim="form.phone"
           type="tel"
+          maxlength="11"
           inputmode="numeric"
           :aria-required="modal === 'create'"
           :aria-invalid="!!phoneError"
           :aria-describedby="phoneError ? 'visitor-phone-error' : undefined"
-          @input="phoneError = ''"
+          @input="
+            form.phone = filterPhoneInput($event);
+            phoneError = '';
+          "
         />
         <small
           v-if="phoneError"

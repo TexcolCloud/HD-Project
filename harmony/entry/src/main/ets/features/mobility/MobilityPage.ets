@@ -169,7 +169,6 @@ export struct MobilityPage {
           this.Action({label: '取消', id: 'mobility-cancel-anchor', run: () => this.preview = null})
         }.width('100%').padding(14).backgroundColor(palette(this.night).soft).borderRadius(4)
       }
-      this.Action({label: '刷新会话与位置', id: 'mobility-refresh', run: () => this.controller.refresh()})
       TravelEfficiency({night: this.night, onError: (error: Error) => { this.scanError = error.message; }})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }

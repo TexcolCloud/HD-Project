@@ -119,7 +119,7 @@ public final class Inputs {
 
     public static String phone(Map<String, Object> b, String k, String existing) {
         String s = text(b, k, 20, true);
-        if (!s.equals(existing) && !s.matches("[0-9]{11}")) {
+        if (!s.equals(existing) && !s.matches("1[3-9][0-9]{9}")) {
             throw ApiException.bad(k + "须为11位手机号");
         }
         return s;

@@ -24,7 +24,19 @@ class VerificationLimits {
         writes = new TransactionTemplate(transactions);
     }
 
-    boolean issue(String source, String phone, String accountId) {
+    boolean issue(String source, String phone, String accountId, boolean graphic) {
+        if (graphic) {
+            var buckets =
+                    new ArrayList<>(
+                            List.of(
+                                    new Limit("GRAPHIC_GLOBAL", 2000, 3600),
+                                    new Limit("GRAPHIC_SOURCE:" + source, 180, 3600),
+                                    new Limit("GRAPHIC_PHONE:" + phone, 60, 3600)));
+            if (accountId != null) {
+                buckets.add(new Limit("GRAPHIC_ACCOUNT:" + accountId, 60, 3600));
+            }
+            return charge("ISSUE", buckets);
+        }
         var limits =
                 new ArrayList<>(
                         List.of(

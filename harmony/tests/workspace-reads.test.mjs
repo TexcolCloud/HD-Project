@@ -574,3 +574,31 @@ test('visitor search requires an explicit choice, verifies restored targets and 
   v.suspendReads();phone.resolve({phone:'test-only'});await revealing;
   assert.equal(shown,false);
 });
+
+test('repair suggestions use the current title and description, reject stale results and preserve the original on undo', async () => {
+  const pending = deferred();
+  const bodies = [];
+  const Api = {epoch: 1, token: 'session', post: async (_path, body) => {
+    bodies.push(body);
+    return pending.promise;
+  }};
+  const repairs = await controller(Api);
+  repairs.editRepairText('原始标题', '洗手池一直漏水');
+  repairs.state.aiConsent = true;
+  const active = repairs.suggest();
+  repairs.editRepairText('更新的标题', repairs.state.repairDescription);
+  const suggestion = {title: '建议标题', summary: '建议描述', category: 'UTILITIES'};
+  pending.resolve(suggestion);
+  await active;
+  assert.equal(bodies[0].description, '标题：原始标题\n现象描述：洗手池一直漏水');
+  assert.equal(repairs.state.ai, null);
+  await repairs.suggest();
+  repairs.adoptSuggestion();
+  repairs.editRepairText('采纳后修改', '更新的故障描述');
+  assert.equal(repairs.state.aiAdopted, false);
+  await repairs.suggest();
+  repairs.adoptSuggestion();
+  repairs.undoSuggestion();
+  assert.equal(repairs.state.repairTitle, '更新的标题');
+  assert.equal(repairs.state.repairDescription, '洗手池一直漏水');
+});

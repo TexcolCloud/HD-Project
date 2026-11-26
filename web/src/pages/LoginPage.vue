@@ -4,7 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import { login, session } from "../session";
 import { errorText, notify } from "../ui";
 import Icon from "../components/Icon.vue";
-import { isMobilePhone, mobilePhoneError } from "../phone";
+import { filterPhoneInput, isMobilePhone, mobilePhoneError } from "../phone";
 const username = ref(""),
   password = ref(""),
   busy = ref(false),
@@ -117,6 +117,7 @@ async function submit() {
             v-model="username"
             name="username"
             type="tel"
+            maxlength="11"
             inputmode="numeric"
             autocomplete="username"
             placeholder="请输入11位已绑定手机号"
@@ -124,7 +125,10 @@ async function submit() {
             :aria-describedby="
               error === mobilePhoneError ? 'login-phone-error' : undefined
             "
-            @input="error = ''"
+            @input="
+              username = filterPhoneInput($event);
+              error = '';
+            "
           />
           <small
             v-if="error === mobilePhoneError"

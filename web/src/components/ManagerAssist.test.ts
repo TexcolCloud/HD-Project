@@ -3,6 +3,8 @@ import { nextTick, reactive } from "vue";
 import ManagerAssist from "./ManagerAssist.vue";
 import { find, node, renderer, text } from "../test/renderer";
 
+const account = vi.hoisted(() => ({ user: { aiConfigured: true } }));
+vi.mock("../session", () => ({ session: account }));
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("../api/client", () => ({ ...api, ApiError: class extends Error {} }));
 vi.mock("../api/managerAssist", () => ({ generateManagerAdvice: vi.fn() }));
@@ -14,6 +16,7 @@ vi.mock("vue", async (original) => ({
 }));
 let unmount: (() => void) | undefined;
 afterEach(() => {
+  account.user.aiConfigured = true;
   unmount?.();
   vi.clearAllMocks();
 });
@@ -153,4 +156,22 @@ it("可对本人历史建议追加结果，换工单后的旧提交不能刷新�
   await nextTick();
   expect(api.get.mock.calls).toHaveLength(reads);
   expect(text(root)).not.toContain("最终人工核查已解决");
+});
+
+it("服务端缺少 AI 配置时在展开前说明原因并禁用生成", async () => {
+  account.user.aiConfigured = false;
+  const root = node("root");
+  const app = renderer.createApp(ManagerAssist);
+  app.mount(root);
+  unmount = () => app.unmount();
+  expect(text(root)).toContain("当前服务端未配置 AI 密钥");
+  (
+    find(root, (n) => n.tag === "button" && text(n).trim() === "展开")!.props
+      .onClick as () => void
+  )();
+  await nextTick();
+  expect(
+    find(root, (n) => n.tag === "button" && text(n).trim() === "生成值班简报")!
+      .props.disabled,
+  ).toBe(true);
 });

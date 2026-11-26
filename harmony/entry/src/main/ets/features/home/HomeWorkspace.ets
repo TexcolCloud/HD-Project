@@ -124,7 +124,7 @@ export struct HomeWorkspace {
       serviceSection({title: '待跟进工单', night: this.night, action: '查看全部', click: () => { this.onRepairListReset(); this.host.navigate('repairs'); }})
       if (!this.state.repairs.length) { serviceEmpty({message: '暂时没有工单。', night: this.night}) }
       ForEach(this.state.repairs.slice(0, 3), (item: Repair) => { this.RepairCard({order: item}) }, (item: Repair) => item.id + ':' + item.version)
-      ManagerAssist({night: this.night, onOpenRepair: (repair: Repair) => this.host.openRepair(repair), onUnauthorized: (error: Error) => this.host.fail(error)})
+      ManagerAssist({aiConfigured: this.user?.aiConfigured !== false, night: this.night, onOpenRepair: (repair: Repair) => this.host.openRepair(repair), onUnauthorized: (error: Error) => this.host.fail(error)})
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 

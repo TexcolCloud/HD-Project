@@ -7,6 +7,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERNS = {
+    'API secret key': re.compile(rb'\bsk-[A-Za-z0-9]{32,}\b'),
     'private key header': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----'),
     'GitHub token': re.compile(rb'\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}\b'),
     'GitHub fine-grained token': re.compile(rb'\bgithub_pat_[A-Za-z0-9_]{82}\b'),

@@ -96,6 +96,16 @@ onBeforeUnmount(() => {
   emit("busy", false);
   emit("editing", false);
 });
+function changeWindowStart(event: Event) {
+  form.windowStart = (event.target as HTMLInputElement).value;
+  const start = Date.parse(form.windowStart + "+08:00");
+  if (
+    Number.isFinite(start) &&
+    (!form.windowEnd || form.windowEnd <= form.windowStart)
+  ) {
+    form.windowEnd = datetimeInput(new Date(start + 2 * 3600000).toISOString());
+  }
+}
 function beginVisit() {
   orderVersion = props.repair.version;
   Object.assign(form, {
@@ -266,7 +276,8 @@ async function handoff() {
         <label>
           访问开始（北京时间）
           <input
-            v-model="form.windowStart"
+            :value="form.windowStart"
+            @input="changeWindowStart"
             type="datetime-local"
             :required="!!form.windowEnd || form.windowConfirmed"
             :disabled="busy"

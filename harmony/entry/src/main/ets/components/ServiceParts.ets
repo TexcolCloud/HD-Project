@@ -62,12 +62,14 @@ export function serviceField($$: FieldArgs) {
         .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).outline})
         .borderRadius(4).padding(12).height(112).maxLength(1000)
     } else {
-      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id($$.id || fieldInputId($$.label, $$.page)).type($$.inputType ?? InputType.Normal).onChange($$.change).fontSize(16).fontColor(palette($$.night).ink)
+      TextInput({text: $$.value, placeholder: $$.placeholder || ''}).id($$.id || fieldInputId($$.label, $$.page)).type($$.inputType ?? InputType.Normal)
+        .inputFilter($$.inputType === InputType.PhoneNumber ? '[0-9]' : '')
+        .onChange((value: string) => $$.change($$.inputType === InputType.PhoneNumber ? value.replace(/\D/g, '').slice(0, 11) : value)).fontSize(16).fontColor(palette($$.night).ink)
         .placeholderColor(palette($$.night).muted).backgroundColor(palette($$.night).surface).border({width: 1, color: palette($$.night).outline})
-        .borderRadius(4).padding({left: 12, right: 12}).height(50).maxLength(150)
+        .borderRadius(4).padding({left: 12, right: 12}).height(50).maxLength($$.inputType === InputType.PhoneNumber ? 11 : 150)
         .onPaste((content: string, event: PasteEvent): void => {
           const reject = $$.invalidPhonePaste;
-          if (reject && !/^[0-9]{1,11}$/.test(content.trim())) {
+          if (reject && !/^1[3-9][0-9]{9}$/.test(content.trim())) {
             event.preventDefault?.();
             reject();
           }

@@ -129,6 +129,17 @@ export class ServiceCenterController {
       this.host.navigate('remediation-detail');
     } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
   }
+  async refreshRemediation(manager: boolean): Promise<void> {
+    const previous = this.state.selected;
+    if (!previous || this.state.busy) return;
+    const ticket = this.reads.begin();
+    try {
+      const item = await Api.request<Remediation>('/hygiene-remediations/' + previous.id);
+      if (!this.reads.current(ticket) || this.state.selected !== previous) return;
+      this.state.selected = item;
+      if (manager && item.status === 'SUBMITTED') await this.loadRechecks();
+    } catch (error) { if (this.reads.shouldReport(ticket, error as Error)) this.host.fail(error as Error); }
+  }
   async beginRecheck(open: (source: Hygiene, taskId: string) => Promise<void>): Promise<void> {
     const task = this.state.selected;
     if (!task || task.status !== 'SUBMITTED' || this.state.busy) return;
