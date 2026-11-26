@@ -3,6 +3,7 @@ import { ref, nextTick, onBeforeUnmount } from "vue";
 import { post, request } from "../api/client";
 import type { FileAsset } from "../api/types";
 import { errorText, notify } from "../ui";
+import { randomId } from "../utils/randomId";
 const props = withDefaults(
   defineProps<{
     modelValue: FileAsset[];
@@ -109,7 +110,7 @@ function enqueue(files: File[]) {
   }
   for (const file of files) {
     const item: Pending = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       file,
       url: URL.createObjectURL(file),
       status: "waiting",

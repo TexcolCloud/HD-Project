@@ -5,6 +5,7 @@ import cn.dormlink.shared.api.ApiErrors;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,7 +38,13 @@ class SecurityConfig {
     private static final String RECOVERY_PATH = "/api/v1/auth/password-recovery/";
 
     @Bean
-    SecurityFilterChain security(HttpSecurity http, AuthService auth, JsonMapper json)
+    SecurityFilterChain security(
+            HttpSecurity http,
+            AuthService auth,
+            JsonMapper json,
+            @Value(
+                            "${app.cors.allowed-origin-patterns:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173}")
+                    List<String> allowedOriginPatterns)
             throws Exception {
         var filter =
                 new OncePerRequestFilter() {
@@ -93,7 +100,7 @@ class SecurityConfig {
                     }
                 };
         return http.csrf(c -> c.disable())
-                .cors(c -> c.configurationSource(cors()))
+                .cors(c -> c.configurationSource(cors(allowedOriginPatterns)))
                 .sessionManagement(c -> c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(c -> c.disable())
                 .formLogin(c -> c.disable())
@@ -152,14 +159,13 @@ class SecurityConfig {
         res.getWriter().write(json.writeValueAsString(ApiErrors.error(code, message, req)));
     }
 
-    CorsConfigurationSource cors() {
+    CorsConfigurationSource cors(List<String> allowedOriginPatterns) {
         var c = new CorsConfiguration();
-        c.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://localhost:4173",
-                        "http://127.0.0.1:4173"));
+        c.setAllowedOriginPatterns(
+                allowedOriginPatterns.stream()
+                        .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
+                        .toList());
         c.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         c.setAllowedHeaders(
                 List.of("Content-Type", "Authorization", "X-XSRF-TOKEN", "Idempotency-Key"));
