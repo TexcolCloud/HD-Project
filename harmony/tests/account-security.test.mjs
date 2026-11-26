@@ -20,3 +20,8 @@ test('resend countdown begins at 60 seconds and ends at the boundary', () => {
   assert.equal(cooldownSeconds(10_000, 69_999), 1);
   assert.equal(cooldownSeconds(10_000, 70_000), 0);
 });
+
+test('graphic answers accept lowercase and exclude ambiguous glyphs', () => {
+  assert.equal(accountCode(' a2q9 '), 'A2Q9');
+  for (const code of ['O2Q9', 'A1Q9', 'I2Q9', 'L2Q9', 'A2Q', 'A2Q93']) assert.equal(accountCode(code), '');
+});

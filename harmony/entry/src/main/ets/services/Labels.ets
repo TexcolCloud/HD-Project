@@ -13,7 +13,7 @@ export function statusLabel(value: string): string {
   }
 }
 export function isMobileNumber(value: string): boolean {
-  return /^[0-9]{11}$/.test(value.trim());
+  return /^1[3-9][0-9]{9}$/.test(value.trim());
 }
 export function categoryLabel(value: string): string {
   switch (value) {
@@ -122,6 +122,13 @@ export function appointment(repair: Repair, now: number = Date.now()): Appointme
   if (end <= now) return {label: '预约时段已过 · 可查看最新安排', window: window, calendar: false};
   return {label: '已确认上门', window: window, calendar: true};
 }
+export function suggestedVisitEnd(day: string, clock: string): LocalClock {
+  const start = Date.parse(beijingInstant(day, clock));
+  const end = beijingParts(new Date(start + 2 * 3600000).toISOString());
+  if (end.day !== day && clock < '23:59') return {day: day, clock: '23:59'};
+  return end;
+}
+
 export function visitWindowRange(enabled: boolean, startDay: string, startClock: string,
   endDay: string, endClock: string, now: number = Date.now()): LocalWindow | null {
   if (!enabled) return null;

@@ -31,7 +31,6 @@ interface RepairDraft {
   repairUrgentReason: string;
   contactName: string;
   contactPhone: string;
-  contactTime: string;
   visitDraft: VisitWindowDraft;
 }
 
@@ -58,7 +57,6 @@ export class RepairState {
   contactName: string = "";
   contactPhone: string = "";
   phoneError: string = "";
-  contactTime: string = "";
   visitDraft: VisitWindowDraft = new VisitWindowDraft();
   reportPhotos: UploadedPhoto[] = [];
   resultPhotos: UploadedPhoto[] = [];
@@ -68,6 +66,7 @@ export class RepairState {
   aiBusy: boolean = false;
   aiConsent: boolean = false;
   aiError: string = "";
+  manualRepair: ManualRepair | null = null;
   aiAdopted: boolean = false;
   action: string = "";
   actionNote: string = "";
@@ -77,12 +76,18 @@ interface ManualRepair { title: string; description: string; category: string; }
 
 export class RepairController {
   private defaultContact: string = "";
-  private manualRepair: ManualRepair | null = null;
   initializeContact(name: string): void { this.defaultContact = name; this.state.contactName = name; }
+  editRepairText(title: string, description: string): void {
+    this.state.repairTitle = title;
+    this.state.repairDescription = description;
+    this.state.aiAdopted = false;
+    this.state.ai = null;
+    this.saveDraft();
+  }
   adoptSuggestion(): void {
     const state = this.state;
     if (!state.ai || state.busy || state.draftBlocked || state.aiAdopted) return;
-    this.manualRepair = {title: state.repairTitle, description: state.repairDescription, category: state.repairCategory};
+    if (!state.manualRepair) state.manualRepair = {title: state.repairTitle, description: state.repairDescription, category: state.repairCategory};
     state.repairTitle = state.ai.title;
     state.repairDescription = state.ai.summary;
     state.repairCategory = state.ai.category;
@@ -90,12 +95,12 @@ export class RepairController {
     this.saveDraft();
   }
   undoSuggestion(): void {
-    if (!this.manualRepair || this.state.busy || this.state.draftBlocked) return;
-    this.state.repairTitle = this.manualRepair.title;
-    this.state.repairDescription = this.manualRepair.description;
-    this.state.repairCategory = this.manualRepair.category;
+    if (!this.state.manualRepair || this.state.busy || this.state.draftBlocked) return;
+    this.state.repairTitle = this.state.manualRepair.title;
+    this.state.repairDescription = this.state.manualRepair.description;
+    this.state.repairCategory = this.state.manualRepair.category;
     this.state.aiAdopted = false;
-    this.manualRepair = null;
+    this.state.manualRepair = null;
     this.saveDraft();
   }
   state: RepairState = new RepairState();
@@ -128,7 +133,6 @@ export class RepairController {
         if (typeof data.repairUrgentReason === "string") this.state.repairUrgentReason = data.repairUrgentReason;
         if (typeof data.contactName === "string") this.state.contactName = data.contactName;
         if (typeof data.contactPhone === "string") this.state.contactPhone = data.contactPhone;
-        if (typeof data.contactTime === "string") this.state.contactTime = data.contactTime;
         if (data.visitDraft) {
           const draft = new VisitWindowDraft();
           draft.enabled = data.visitDraft.enabled === true;
@@ -150,7 +154,6 @@ export class RepairController {
       repairUrgentReason: this.state.repairUrgentReason,
       contactName: this.state.contactName,
       contactPhone: this.state.contactPhone,
-      contactTime: this.state.contactTime,
       visitDraft: this.state.visitDraft
     };
     try { this.drafts.save("repair", JSON.stringify(draft)); }
@@ -166,14 +169,13 @@ export class RepairController {
     this.state.repairPriority = fresh.repairPriority;
     this.state.repairUrgentReason = fresh.repairUrgentReason;
     this.state.contactName = this.defaultContact;
-    this.manualRepair = null;
+    this.state.manualRepair = null;
     this.aiEpoch++;
     this.state.ai = null;
     this.state.aiBusy = this.state.aiAdopted = this.state.aiConsent = false;
     this.state.aiError = "";
     this.state.contactPhone = fresh.contactPhone;
     this.state.phoneError = "";
-    this.state.contactTime = fresh.contactTime;
     this.state.visitDraft = new VisitWindowDraft();
     this.photoDrafts.clear("REPORT");
     this.state.draftRestored = false;
@@ -186,7 +188,7 @@ export class RepairController {
     this.state.detailLoading = false;
   }
   reset(): void {
-    this.manualRepair = null;
+    this.state.manualRepair = null;
     this.defaultContact = '';
     this.listRead.invalidate();
     this.detailRead.invalidate();
@@ -297,7 +299,7 @@ export class RepairController {
       priority: this.state.repairPriority,
       contactName: this.state.contactName.trim(),
       contactPhone: this.state.contactPhone.trim(),
-      contactTimeSlot: this.state.contactTime.trim(),
+      contactTimeSlot: "",
       reportImageIds: this.state.reportPhotos.map(
         (p: UploadedPhoto): string => p.asset.id,
       ),
@@ -307,6 +309,9 @@ export class RepairController {
     try {
       const range = this.state.visitDraft.range();
       if (range) {
+        const visit = this.state.visitDraft;
+        request.contactTimeSlot = visit.startDay + ' ' + visit.startClock + '–' +
+          (visit.endDay === visit.startDay ? '' : visit.endDay + ' ') + visit.endClock;
         request.windowStart = range.start;
         request.windowEnd = range.end;
       }
@@ -361,8 +366,10 @@ export class RepairController {
       this.state.aiError = "请先描述故障现象，至少4个字";
       return;
     }
+    const title = this.state.repairTitle.trim();
+    const description = this.state.repairDescription;
     const request: AiRequest = {
-      description: this.state.repairDescription,
+      description: (title ? '标题：' + title + '\n现象描述：' + description : description).slice(0, 1000).replace(/[\uD800-\uDBFF]$/, ''),
       imageIds: this.state.reportPhotos
         .slice(0, 3)
         .map((p: UploadedPhoto): string => p.asset.id),
@@ -379,10 +386,10 @@ export class RepairController {
       );
       if (epoch !== this.aiEpoch || Api.token !== token) return;
       this.submissionKeys.complete("ai");
-      if (this.state.repairDescription === request.description) {
+      if (this.state.repairTitle.trim() === title && this.state.repairDescription === description) {
         this.state.ai = suggestion;
         this.state.aiAdopted = false;
-      } else this.state.aiError = "故障描述已修改，可按当前内容重新整理。";
+      } else this.state.aiError = "标题或故障描述已修改，可按当前内容重新整理。";
     } catch (error) {
       if (epoch !== this.aiEpoch) return;
       const apiError = error as ApiError;

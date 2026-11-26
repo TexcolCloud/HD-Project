@@ -6,7 +6,7 @@ import { stripTypeScriptTypes } from 'node:module';
 // Labels.ets is pure TypeScript. Exercise its actual source without a UI/mock copy.
 process.env.TZ = 'UTC';
 const source = (await readFile(new URL('../entry/src/main/ets/services/Labels.ets', import.meta.url), 'utf8')).replace(/^import .*;\s*/gm, '');
-const { dateText, inspectionTimestamp, beijingClock, visitWindowRange, availabilityTimestamp, appointment, isMobileNumber } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
+const { suggestedVisitEnd, dateText, inspectionTimestamp, beijingClock, visitWindowRange, availabilityTimestamp, appointment, isMobileNumber } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
 test('student appointment distinguishes confirmed, expired, unconfirmed and historical windows', () => {
   const order = {status: 'PROCESSING', visitRequired: true, windowConfirmed: true, windowStart: '2026-11-19T06:00:00Z', windowEnd: '2026-11-19T08:00:00Z'};
@@ -20,7 +20,7 @@ test('student appointment distinguishes confirmed, expired, unconfirmed and hist
 
 test('contact numbers accept eleven trimmed ASCII digits and reject short, long or mixed pasted numbers', () => {
   assert.equal(isMobileNumber(' 13800000000 '), true);
-  for (const value of ['', '1380000000', '138000000000', '138 00000000', '１３８００００００００']) assert.equal(isMobileNumber(value), false);
+  for (const value of ['', '00000000000', '12345678901', '1380000000', '138000000000', '138 00000000', '１３８００００００００']) assert.equal(isMobileNumber(value), false);
 });
 
 test('service timestamps use the school timezone even when the device is on UTC', () => {
@@ -61,4 +61,11 @@ test('visit and availability bounds reject reversed or expired local times', () 
   assert.throws(() => visitWindowRange(true, '2026-11-06', '09:00', '2026-11-06', '11:00', now), /已结束/);
   assert.equal(availabilityTimestamp('2026-11-07', '18:00', now), '2026-11-07T18:00:00+08:00');
   assert.throws(() => availabilityTimestamp('2026-11-07', '09:00', now), /晚于现在/);
+});
+
+test('visit end defaults two hours later and always remains after a late start', () => {
+  const day = '2026-12-31';
+  assert.deepEqual(suggestedVisitEnd(day, '15:30'), {day, clock: '17:30'});
+  assert.deepEqual(suggestedVisitEnd(day, '23:30'), {day, clock: '23:59'});
+  assert.deepEqual(suggestedVisitEnd(day, '23:59'), {day: '2027-01-01', clock: '01:59'});
 });

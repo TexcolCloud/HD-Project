@@ -26,6 +26,7 @@ import java.util.*;
 @Service
 public class AuthService {
     private static final SecureRandom RANDOM = new SecureRandom();
+    private final boolean aiConfigured;
     final Db db;
     final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder(10);
     final boolean secure;
@@ -37,11 +38,13 @@ public class AuthService {
             Db db,
             @Value("${app.cookie-secure}") boolean secure,
             PlatformTransactionManager transactions,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events,
+            @Value("${app.ai.api-key:}") String aiApiKey) {
         this.db = db;
         this.secure = secure;
         this.writes = new TransactionTemplate(transactions);
         this.events = events;
+        this.aiConfigured = !aiApiKey.isBlank();
     }
 
     void changePassword(Map<String, Object> body, HttpServletResponse response) {
@@ -340,9 +343,8 @@ public class AuthService {
         if (phone != null && verified != null) {
             u.put("phoneMasked", Inputs.mask(phone));
         }
-        if (a.manager()) {
-            u.put("recoveryCodeConfigured", recovery != null);
-        }
+        u.put("recoveryCodeConfigured", recovery != null);
+        u.put("aiConfigured", aiConfigured);
         u.put(
                 "buildingIds",
                 db

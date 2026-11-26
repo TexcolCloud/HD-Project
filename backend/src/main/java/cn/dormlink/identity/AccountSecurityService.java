@@ -27,6 +27,7 @@ class AccountSecurityService {
     private final PhoneVerificationStore verification;
     private final VerificationLimits limits;
     private final SmsDelivery sms;
+    private final CaptchaRenderer captcha;
     private final TransactionTemplate writes;
 
     AccountSecurityService(
@@ -35,12 +36,14 @@ class AccountSecurityService {
             PhoneVerificationStore verification,
             VerificationLimits limits,
             SmsDelivery sms,
+            CaptchaRenderer captcha,
             PlatformTransactionManager transactions) {
         this.auth = auth;
         this.db = db;
         this.verification = verification;
         this.limits = limits;
         this.sms = sms;
+        this.captcha = captcha;
         writes = new TransactionTemplate(transactions);
     }
 
@@ -67,7 +70,8 @@ class AccountSecurityService {
                 throw new ApiException(403, "CURRENT_PASSWORD_INVALID", "当前密码不正确");
             }
         }
-        if (!limits.issue(source, destination, actor.id())) {
+        boolean graphic = !sms.configured();
+        if (!limits.issue(source, destination, actor.id(), graphic)) {
             throw throttled();
         }
         var issued =
@@ -88,10 +92,10 @@ class AccountSecurityService {
                                     version(current),
                                     purpose.name(),
                                     destination,
-                                    actor.clientType());
+                                    actor.clientType(),
+                                    graphic);
                         });
-        sms.enqueue(destination, purpose.name(), issued.code());
-        return Map.of("challengeId", issued.id());
+        return deliver(issued, destination, purpose, graphic);
     }
 
     Map<String, String> submitPhone(
@@ -113,7 +117,9 @@ class AccountSecurityService {
                     var current = lockedAccount(actor);
                     Challenge challenge =
                             accountChallenge(actor, current, purpose, submission.id());
-                    if (challenge == null || !verification.accepts(challenge, submission.code())) {
+                    if (challenge == null
+                            || !verification.accepts(
+                                    challenge, submission.code(), !sms.configured())) {
                         return null;
                     }
                     String target = destination(current, purpose, challenge.phone());
@@ -128,14 +134,15 @@ class AccountSecurityService {
 
     Map<String, String> changePhone(Map<String, Object> body, HttpServletRequest request) {
         Actor actor = auth.current();
-        Submission old = submission(body, "oldChallengeId", "oldCode");
+        boolean graphic = !sms.configured();
+        Submission old = graphic ? null : submission(body, "oldChallengeId", "oldCode");
         Submission next = submission(body, "newChallengeId", "newCode");
-        if (old.id().equals(next.id())) {
+        if (old != null && old.id().equals(next.id())) {
             throw invalidVerification();
         }
-        Challenge oldHint = sessionChallenge(actor, old.id(), false);
+        Challenge oldHint = old == null ? null : sessionChallenge(actor, old.id(), false);
         Challenge nextHint = sessionChallenge(actor, next.id(), false);
-        if (!chargeAttempt(request, old.id(), oldHint)
+        if ((old != null && !chargeAttempt(request, old.id(), oldHint))
                 || !chargeAttempt(request, next.id(), nextHint)) {
             throw invalidVerification();
         }
@@ -143,25 +150,31 @@ class AccountSecurityService {
                 () -> {
                     var current = lockedAccount(actor);
                     Challenge oldChallenge =
-                            accountChallenge(actor, current, Purpose.CHANGE_PHONE_OLD, old.id());
+                            old == null
+                                    ? null
+                                    : accountChallenge(
+                                            actor, current, Purpose.CHANGE_PHONE_OLD, old.id());
                     Challenge nextChallenge =
                             accountChallenge(actor, current, Purpose.CHANGE_PHONE_NEW, next.id());
-                    if (oldChallenge == null || nextChallenge == null) {
+                    if ((old != null && oldChallenge == null) || nextChallenge == null) {
                         return null;
                     }
-                    boolean oldVerified = verification.accepts(oldChallenge, old.code());
-                    boolean newVerified = verification.accepts(nextChallenge, next.code());
+                    boolean oldVerified =
+                            old == null || verification.accepts(oldChallenge, old.code(), false);
+                    boolean newVerified = verification.accepts(nextChallenge, next.code(), graphic);
                     if (!oldVerified || !newVerified) {
                         return null;
                     }
                     String bound = destination(current, Purpose.CHANGE_PHONE_OLD, null);
                     String target =
                             destination(current, Purpose.CHANGE_PHONE_NEW, nextChallenge.phone());
-                    if (!bound.equals(oldChallenge.phone())) {
+                    if (oldChallenge != null && !bound.equals(oldChallenge.phone())) {
                         return null;
                     }
                     var result = updateAccount(current, Purpose.CHANGE_PHONE_NEW, target, null);
-                    verification.consume(oldChallenge);
+                    if (oldChallenge != null) {
+                        verification.consume(oldChallenge);
+                    }
                     verification.consume(nextChallenge);
                     return result;
                 });
@@ -171,9 +184,18 @@ class AccountSecurityService {
         String type = auth.clientType(body, request);
         String phone = phone(body);
         var candidate = db.find("SELECT * FROM sys_user WHERE login_phone=?", phone);
+        boolean graphic = !sms.configured();
         if (!limits.issue(
-                request.getRemoteAddr(), phone, candidate == null ? null : userId(candidate))) {
-            return Map.of("challengeId", auth.random());
+                request.getRemoteAddr(),
+                phone,
+                candidate == null ? null : userId(candidate),
+                graphic)) {
+            return deliver(
+                    new PhoneVerificationStore.Issued(
+                            auth.random(), graphic ? CaptchaRenderer.newCode() : null),
+                    phone,
+                    Purpose.PASSWORD_RECOVERY,
+                    graphic);
         }
         var issued =
                 writes.execute(
@@ -187,40 +209,65 @@ class AccountSecurityService {
                                     eligible ? version(current) : null,
                                     Purpose.PASSWORD_RECOVERY.name(),
                                     phone,
-                                    type);
+                                    type,
+                                    graphic);
                         });
-        if (issued.code() != null) {
-            sms.enqueue(phone, Purpose.PASSWORD_RECOVERY.name(), issued.code());
+        return deliver(issued, phone, Purpose.PASSWORD_RECOVERY, graphic);
+    }
+
+    private Map<String, String> deliver(
+            PhoneVerificationStore.Issued issued, String phone, Purpose purpose, boolean graphic) {
+        if (graphic) {
+            return Map.of(
+                    "challengeId",
+                    issued.id(),
+                    "delivery",
+                    "GRAPHIC",
+                    "captchaImage",
+                    captcha.render(issued.code()));
         }
-        return Map.of("challengeId", issued.id());
+        if (issued.code() != null) {
+            sms.enqueue(phone, purpose.name(), issued.code());
+        }
+        return Map.of("challengeId", issued.id(), "delivery", "SMS");
     }
 
     Map<String, Object> verifyRecovery(Map<String, Object> body, HttpServletRequest request) {
         String type = auth.clientType(body, request);
         Submission submission = submission(body, "challengeId", "code");
         Challenge hint = verification.challenge(submission.id(), false);
+        boolean graphic = !sms.configured();
         if (!chargeAttempt(request, submission.id(), hint)
                 || hint == null
-                || hint.userId() == null) {
+                || (hint.userId() == null && !graphic)) {
             throw invalidVerification();
         }
         var result =
                 writes.execute(
                         status -> {
-                            var account = account(hint.userId(), true);
+                            var account =
+                                    hint.userId() == null ? null : account(hint.userId(), true);
                             Challenge challenge = verification.challenge(submission.id(), true);
                             if (challenge == null
                                     || !Purpose.PASSWORD_RECOVERY.name().equals(challenge.purpose())
                                     || !type.equals(challenge.clientType())
-                                    || !recoverable(account, type, challenge.phone())
-                                    || version(account) != challenge.version()
-                                    || !verification.accepts(challenge, submission.code())) {
+                                    || (hint.userId() != null
+                                            && (!recoverable(account, type, challenge.phone())
+                                                    || version(account) != challenge.version()))
+                                    || !verification.accepts(
+                                            challenge, submission.code(), graphic)) {
                                 return null;
                             }
                             verification.consume(challenge);
+                            // A solved anonymous graphic challenge gets an indistinguishable,
+                            // unusable token. Only an eligible account receives a persisted reset.
                             return Map.<String, Object>of(
-                                    "resetToken", verification.resetToken(challenge),
-                                    "recoveryCodeRequired", manager(account));
+                                    "resetToken",
+                                    hint.userId() == null
+                                            ? auth.random()
+                                            : verification.resetToken(challenge),
+                                    "recoveryCodeRequired",
+                                    true);
                         });
         if (result == null) {
             throw invalidVerification();
@@ -289,8 +336,8 @@ class AccountSecurityService {
     private Map<String, String> updateAccount(
             Map<String, Object> current, Purpose purpose, String phone, String passwordHash) {
         String id = userId(current);
-        String recoveryCode = manager(current) ? auth.random() : null;
-        String recoveryHash = recoveryCode == null ? null : Digests.sha256(recoveryCode);
+        String recoveryCode = auth.random();
+        String recoveryHash = Digests.sha256(recoveryCode);
         Timestamp now = Timestamp.from(Instant.now());
         String action;
         switch (purpose) {
@@ -332,7 +379,7 @@ class AccountSecurityService {
             auth.revokeSessions(id);
         }
         auth.auditAccount(id, current.get("displayName").toString(), action);
-        return recoveryCode == null ? Map.of() : Map.of("recoveryCode", recoveryCode);
+        return Map.of("recoveryCode", recoveryCode);
     }
 
     private Map<String, String> writePhone(Supplier<Map<String, String>> operation) {
@@ -394,9 +441,6 @@ class AccountSecurityService {
         if (bound == null) {
             throw new ApiException(409, "PHONE_NOT_BOUND", "请先绑定手机号");
         }
-        if (purpose == Purpose.REPLACE_RECOVERY_CODE && !manager(account)) {
-            throw new ApiException(403, "FORBIDDEN", "此操作仅限宿管");
-        }
         if (purpose == Purpose.CHANGE_PHONE_NEW) {
             if (bound.equals(proposed)) {
                 throw ApiException.bad("新手机号不能与原手机号相同");
@@ -420,13 +464,12 @@ class AccountSecurityService {
                 && !temporary(account)
                 && phone != null
                 && phone.equals(boundPhone(account))
-                && (!manager(account) || account.get("recoveryCodeHash") != null);
+                && account.get("recoveryCodeHash") != null;
     }
 
     private static boolean acceptsRecoveryCode(Map<String, Object> account, String recoveryHash) {
-        return !manager(account)
-                || PhoneVerificationStore.secureEquals(
-                        (String) account.get("recoveryCodeHash"), recoveryHash);
+        return PhoneVerificationStore.secureEquals(
+                (String) account.get("recoveryCodeHash"), recoveryHash);
     }
 
     private Map<String, Object> lockedAccount(Actor actor) {
@@ -451,12 +494,11 @@ class AccountSecurityService {
     }
 
     private static Submission submission(Map<String, Object> body, String idKey, String codeKey) {
-        return new Submission(
-                Inputs.text(body, idKey, 64, true), Inputs.text(body, codeKey, 6, true));
-    }
-
-    private static boolean manager(Map<String, Object> account) {
-        return "MANAGER".equals(account.get("role"));
+        String code = Inputs.text(body, codeKey, 6, true);
+        if (code.length() < 4) {
+            throw invalidVerification();
+        }
+        return new Submission(Inputs.text(body, idKey, 64, true), code);
     }
 
     private static boolean temporary(Map<String, Object> account) {

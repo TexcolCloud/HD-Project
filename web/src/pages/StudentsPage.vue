@@ -9,7 +9,7 @@ import Pagination from "../components/Pagination.vue";
 import LookupSelect from "../components/LookupSelect.vue";
 import Icon from "../components/Icon.vue";
 import { useLatestQuery } from "../composables/useLatestQuery";
-import { isMobilePhone, mobilePhoneError } from "../phone";
+import { filterPhoneInput, isMobilePhone, mobilePhoneError } from "../phone";
 import { useRoute, useRouter } from "vue-router";
 const route = useRoute(),
   router = useRouter();
@@ -440,11 +440,15 @@ watch(
           <input
             v-model.trim="studentForm.phone"
             type="tel"
+            maxlength="11"
             inputmode="numeric"
             aria-required="true"
             :aria-invalid="!!phoneError"
             aria-describedby="student-phone-note"
-            @input="phoneError = ''"
+            @input="
+              studentForm.phone = filterPhoneInput($event);
+              phoneError = '';
+            "
           />
           <small
             id="student-phone-note"

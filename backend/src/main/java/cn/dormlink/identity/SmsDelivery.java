@@ -58,6 +58,10 @@ public class SmsDelivery {
         this.json = json;
     }
 
+    public boolean configured() {
+        return gateway != null;
+    }
+
     public void enqueue(String phone, String purpose, String code) {
         if (gateway == null) {
             return;

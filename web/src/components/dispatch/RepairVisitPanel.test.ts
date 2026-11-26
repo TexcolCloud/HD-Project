@@ -4,17 +4,22 @@ import type { Repair } from "../../api/types";
 import type { DispatchBoard, DispatchTask } from "../../api/dispatch";
 import RepairVisitPanel from "./RepairVisitPanel.vue";
 
-const mocks = vi.hoisted(() => ({ board: vi.fn(), handoff: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  board: vi.fn(),
+  handoff: vi.fn(),
+  visit: vi.fn(),
+}));
 vi.mock("../../api/dispatch", () => ({
   getDispatchBoard: mocks.board,
   handoffDispatchTask: mocks.handoff,
-  saveRepairVisit: vi.fn(),
+  saveRepairVisit: mocks.visit,
 }));
 vi.mock("../../session", () => ({ session: { user: { id: "manager-1" } } }));
 vi.mock("vue", async (original) => ({
   ...(await original<typeof import("vue")>()),
   vModelText: {},
   vModelSelect: {},
+  vModelCheckbox: {},
 }));
 
 import {
@@ -227,3 +232,32 @@ it("本人已接单的未锁定ASSIGNED或BLOCKED任务可交接，提交保留�
   );
   await nextTick();
 });
+
+it.each([
+  [null, "2027-01-01T01:30:00.000Z"],
+  ["2026-12-31T12:00:00.000Z", "2027-01-01T01:30:00.000Z"],
+  ["2027-01-01T03:00:00.000Z", "2027-01-01T03:00:00.000Z"],
+])(
+  "修改预约起点自动顺延无效终点，同时保留有效终点 %s",
+  async (end, expected) => {
+    const { root } = mount({ ...repair, windowEnd: end });
+    (button(root, "设置访问安排")!.props.onClick as () => void)();
+    await nextTick();
+    const start = find(root, (n) => n.props.type === "datetime-local")!;
+    (start.props.onInput as (event: unknown) => void)({
+      target: { value: "2027-01-01T07:30" },
+    });
+    mocks.visit.mockResolvedValue(repair);
+    (
+      find(root, (n) => n.tag === "form")!.props.onSubmit as (
+        e: unknown,
+      ) => void
+    )({ preventDefault() {} });
+    await vi.waitFor(() =>
+      expect(mocks.visit).toHaveBeenCalledWith(
+        repair.id,
+        expect.objectContaining({ windowEnd: expected }),
+      ),
+    );
+  },
+);

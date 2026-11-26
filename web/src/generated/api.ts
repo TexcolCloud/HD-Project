@@ -1660,6 +1660,7 @@ export interface components {
             mustChangePassword?: boolean;
             phoneMasked?: string;
             recoveryCodeConfigured?: boolean;
+            aiConfigured?: boolean;
         };
         LoginRequest: {
             username: string;
@@ -1685,6 +1686,9 @@ export interface components {
         };
         PhoneChallengeResult: {
             challengeId: string;
+            /** @enum {string} */
+            delivery?: "GRAPHIC" | "SMS";
+            captchaImage?: string;
         };
         PhoneCodeRequest: {
             challengeId: string;
@@ -1696,8 +1700,8 @@ export interface components {
             newPassword: string;
         };
         PhoneChangeRequest: {
-            oldChallengeId: string;
-            oldCode: string;
+            oldChallengeId?: string;
+            oldCode?: string;
             newChallengeId: string;
             newCode: string;
         };

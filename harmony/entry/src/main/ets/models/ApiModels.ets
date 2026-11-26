@@ -180,6 +180,7 @@ export interface User {
   mustChangePassword?: boolean;
   phoneMasked?: string;
   recoveryCodeConfigured?: boolean;
+  aiConfigured?: boolean;
 }
 export interface LoginRequest {
   username: string;
@@ -202,6 +203,8 @@ export interface PhoneChallengeRequest {
 }
 export interface PhoneChallengeResult {
   challengeId: string;
+  delivery?: string;
+  captchaImage?: string;
 }
 export interface PhoneCodeRequest {
   challengeId: string;
@@ -213,8 +216,8 @@ export interface ActivateRequest {
   newPassword: string;
 }
 export interface PhoneChangeRequest {
-  oldChallengeId: string;
-  oldCode: string;
+  oldChallengeId?: string;
+  oldCode?: string;
   newChallengeId: string;
   newCode: string;
 }

@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 import cn.dormlink.identity.AuthService;
+import cn.dormlink.identity.CaptchaRenderer;
 import cn.dormlink.identity.SmsDelivery;
 import cn.dormlink.shared.crypto.Digests;
 import cn.dormlink.shared.jdbc.Db;
@@ -65,6 +67,7 @@ class AccountLifecycleIntegrationTest {
     @LocalServerPort int port;
     @MockitoSpyBean Db db;
     @MockitoBean SmsDelivery sms;
+    @MockitoSpyBean CaptchaRenderer captcha;
     @Autowired AuthService auth;
     final JsonMapper json = JsonMapper.builder().build();
     final HttpClient client = HttpClient.newHttpClient();
@@ -76,12 +79,15 @@ class AccountLifecycleIntegrationTest {
         // This suite owns its database. Keep per-number and per-account windows intact while
         // retiring the shared windows left by earlier tests or Maven invocations.
         db.update(
-                "UPDATE auth_verification_limit SET expires_at=? WHERE bucket_key IN (?,?,?,?)",
+                "UPDATE auth_verification_limit SET expires_at=? WHERE bucket_key IN (?,?,?,?,?,?)",
                 expiredWindow(),
+                Digests.sha256("GRAPHIC_GLOBAL"),
+                Digests.sha256("GRAPHIC_SOURCE:127.0.0.1"),
                 Digests.sha256("SMS_GLOBAL"),
                 Digests.sha256("SMS_SOURCE:127.0.0.1"),
                 Digests.sha256("VERIFY_GLOBAL"),
                 Digests.sha256("VERIFY_SOURCE:127.0.0.1"));
+        when(sms.configured()).thenReturn(true);
         doAnswer(
                         call -> {
                             deliveries.put(
@@ -138,6 +144,169 @@ class AccountLifecycleIntegrationTest {
     }
 
     @Test
+    void graphicChallengesRefreshWithoutSmsAndStudentsRecoverWithTheirOfflineCode()
+            throws Exception {
+        when(sms.configured()).thenReturn(false);
+        var answer = new java.util.concurrent.atomic.AtomicReference<String>();
+        doAnswer(
+                        invocation -> {
+                            answer.set(invocation.getArgument(0));
+                            return invocation.callRealMethod();
+                        })
+                .when(captcha)
+                .render(anyString());
+        Account student = account("STUDENT", false);
+        String phone = unusedPhone();
+        var bind = Map.of("purpose", "BIND", "phone", phone, "currentPassword", PASSWORD);
+        var challenge = data(post(student.token(), "/auth/phone/challenges", bind));
+        assertGraphic(challenge);
+        String original = answer.get();
+        String id = challenge.path("challengeId").asText();
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThat(
+                            post(
+                                            student.token(),
+                                            "/auth/phone/bind",
+                                            Map.of("challengeId", id, "code", "0000"))
+                                    .statusCode())
+                    .isEqualTo(400);
+        }
+        assertThat(
+                        post(
+                                        student.token(),
+                                        "/auth/phone/bind",
+                                        Map.of("challengeId", id, "code", original))
+                                .statusCode())
+                .isEqualTo(400);
+        var refreshed = data(post(student.token(), "/auth/phone/challenges", bind));
+        assertThat(refreshed.path("challengeId")).isNotEqualTo(challenge.path("challengeId"));
+        String offline =
+                data(post(
+                                student.token(),
+                                "/auth/phone/bind",
+                                Map.of(
+                                        "challengeId", refreshed.path("challengeId").asText(),
+                                        "code", answer.get().toLowerCase(java.util.Locale.ROOT))))
+                        .path("recoveryCode")
+                        .asText();
+        assertThat(offline).isNotBlank();
+        var profile = data(request(student.token(), "GET", "/auth/me", null));
+        assertThat(profile.path("aiConfigured").isBoolean()).isTrue();
+        assertThat(profile.path("recoveryCodeConfigured").asBoolean()).isTrue();
+        var replace =
+                data(
+                        post(
+                                student.token(),
+                                "/auth/phone/challenges",
+                                Map.of(
+                                        "purpose",
+                                        "REPLACE_RECOVERY_CODE",
+                                        "currentPassword",
+                                        PASSWORD)));
+        String rotated =
+                data(post(
+                                student.token(),
+                                "/auth/recovery-code/replace",
+                                Map.of(
+                                        "challengeId",
+                                        replace.path("challengeId").asText(),
+                                        "code",
+                                        answer.get())))
+                        .path("recoveryCode")
+                        .asText();
+        assertThat(rotated).isNotBlank().isNotEqualTo(offline);
+        var unknown =
+                data(
+                        post(
+                                null,
+                                "/auth/password-recovery/challenges",
+                                Map.of("clientType", "MOBILE", "phone", unusedPhone())));
+        assertGraphic(unknown);
+        var unusable =
+                recoverVerify(
+                        new Code(unknown.path("challengeId").asText(), answer.get()), "MOBILE");
+        assertThat(unusable.path("recoveryCodeRequired").asBoolean()).isTrue();
+        assertThat(
+                        post(
+                                        null,
+                                        "/auth/password-recovery/complete",
+                                        Map.of(
+                                                "clientType",
+                                                "MOBILE",
+                                                "resetToken",
+                                                unusable.path("resetToken").asText(),
+                                                "recoveryCode",
+                                                offline,
+                                                "newPassword",
+                                                NEW_PASSWORD))
+                                .statusCode())
+                .isEqualTo(400);
+        var recovery =
+                data(
+                        post(
+                                null,
+                                "/auth/password-recovery/challenges",
+                                Map.of("clientType", "MOBILE", "phone", phone)));
+        var proof =
+                recoverVerify(
+                        new Code(recovery.path("challengeId").asText(), answer.get()), "MOBILE");
+        assertThat(proof.path("recoveryCodeRequired").asBoolean()).isTrue();
+        var resetRequest =
+                new java.util.HashMap<String, String>(
+                        Map.of(
+                                "clientType",
+                                "MOBILE",
+                                "resetToken",
+                                proof.path("resetToken").asText(),
+                                "newPassword",
+                                NEW_PASSWORD));
+        assertThat(post(null, "/auth/password-recovery/complete", resetRequest).statusCode())
+                .isEqualTo(400);
+        resetRequest.put("recoveryCode", offline);
+        assertThat(post(null, "/auth/password-recovery/complete", resetRequest).statusCode())
+                .isEqualTo(400);
+        resetRequest.put("recoveryCode", rotated);
+        data(post(null, "/auth/password-recovery/complete", resetRequest));
+        String token = loginByPhone(phone, NEW_PASSWORD);
+        var next =
+                data(
+                        post(
+                                token,
+                                "/auth/phone/challenges",
+                                Map.of(
+                                        "purpose",
+                                        "CHANGE_PHONE_NEW",
+                                        "phone",
+                                        unusedPhone(),
+                                        "currentPassword",
+                                        NEW_PASSWORD)));
+        assertThat(
+                        data(post(
+                                        token,
+                                        "/auth/phone/change",
+                                        Map.of(
+                                                "newChallengeId",
+                                                next.path("challengeId").asText(),
+                                                "newCode",
+                                                answer.get())))
+                                .path("recoveryCode")
+                                .asText())
+                .isNotBlank();
+        assertThat(deliveries).isEmpty();
+    }
+
+    private static void assertGraphic(JsonNode challenge) throws java.io.IOException {
+        assertThat(challenge.path("delivery").asText()).isEqualTo("GRAPHIC");
+        String image = challenge.path("captchaImage").asText();
+        String prefix = "data:image/png;base64,";
+        assertThat(image).startsWith(prefix);
+        byte[] png = java.util.Base64.getDecoder().decode(image.substring(prefix.length()));
+        var bitmap = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(png));
+        assertThat(bitmap.getWidth()).isEqualTo(160);
+        assertThat(bitmap.getHeight()).isEqualTo(56);
+    }
+
+    @Test
     void temporaryStudentActivatesThePreprovisionedAccountAndSignsInByPhone() throws Exception {
         Account student = account("STUDENT", true);
         String phone = unusedPhone();
@@ -158,7 +327,7 @@ class AccountLifecycleIntegrationTest {
         var payload =
                 Map.of("challengeId", code.id(), "code", code.value(), "newPassword", NEW_PASSWORD);
         assertThat(data(post(student.token(), "/auth/activate", payload)).has("recoveryCode"))
-                .isFalse();
+                .isTrue();
         assertThat(request(student.token(), "GET", "/auth/me", null).statusCode()).isEqualTo(401);
         assertThat(post(student.token(), "/auth/activate", payload).statusCode()).isEqualTo(401);
         String token = loginByPhone(phone, NEW_PASSWORD);
@@ -166,7 +335,7 @@ class AccountLifecycleIntegrationTest {
         assertThat(me.path("id").asText()).isEqualTo(student.id());
         assertThat(me.path("phoneMasked").asText()).isEqualTo("139****" + phone.substring(7));
         assertThat(me.has("phone")).isFalse();
-        assertThat(me.has("recoveryCodeConfigured")).isFalse();
+        assertThat(me.path("recoveryCodeConfigured").asBoolean()).isTrue();
         assertThat(login(student.username(), NEW_PASSWORD)).isNotBlank();
 
         String csrf = data(request(null, "GET", "/auth/csrf", null)).path("token").asText();

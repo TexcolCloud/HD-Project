@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from "vue";
+import { computed, ref, watch, onBeforeUnmount } from "vue";
+import { session } from "../session";
 import type { Model } from "../api/types";
 import { generateManagerAdvice } from "../api/managerAssist";
 import { dateTime, errorText } from "../ui";
@@ -10,6 +11,7 @@ const props = defineProps<{
   imageCount?: number;
   contextVersion?: number;
 }>();
+const aiAvailable = computed(() => session.user?.aiConfigured !== false);
 const consent = ref(false),
   includeImages = ref(false),
   busy = ref(false),
@@ -19,6 +21,7 @@ const consent = ref(false),
 let controller: AbortController | undefined,
   generation = 0;
 async function generate() {
+  if (!aiAvailable.value) return;
   if (!consent.value) {
     error.value = "请先勾选同意本次外部分析";
     return;
@@ -83,7 +86,10 @@ onBeforeUnmount(() => {
         {{ opened ? "收起" : "展开" }}
       </button>
     </header>
-    <p v-if="opened" class="manager-assist-intro">
+    <p v-if="!aiAvailable" class="form-note">
+      当前服务端未配置 AI 密钥，请直接人工办理。
+    </p>
+    <p v-else-if="opened" class="manager-assist-intro">
       {{
         repairId
           ? "整理可见故障现象、沟通问题与办理建议。"
@@ -93,7 +99,11 @@ onBeforeUnmount(() => {
     <div v-if="opened" class="manager-assist-body">
       <form class="manager-assist-form" @submit.prevent="generate">
         <label class="manager-assist-consent">
-          <input v-model="consent" type="checkbox" :disabled="busy" />
+          <input
+            v-model="consent"
+            type="checkbox"
+            :disabled="busy || !aiAvailable"
+          />
           同意将{{
             repairId ? "本次工单摘要" : "负责范围内的工单摘要"
           }}发送给外部 AI 服务分析
@@ -102,13 +112,17 @@ onBeforeUnmount(() => {
           v-if="repairId && (imageCount || 0) > 0"
           class="manager-assist-consent"
         >
-          <input v-model="includeImages" type="checkbox" :disabled="busy" />
+          <input
+            v-model="includeImages"
+            type="checkbox"
+            :disabled="busy || !aiAvailable"
+          />
           同时分析前 {{ Math.min(imageCount || 0, 3) }} 张学生故障图片（可选）
         </label>
         <p>
           默认不发送图片。建议需人工核对，不自动接单、派单、改状态或替代路线规则。
         </p>
-        <button class="btn" :disabled="busy || !consent">
+        <button class="btn" :disabled="busy || !consent || !aiAvailable">
           {{
             busy
               ? "正在生成…"

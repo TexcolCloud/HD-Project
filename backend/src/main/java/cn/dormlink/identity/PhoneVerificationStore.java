@@ -44,9 +44,13 @@ class PhoneVerificationStore {
             Integer version,
             String purpose,
             String phone,
-            String clientType) {
+            String clientType,
+            boolean graphic) {
         String id = auth.random();
-        String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
+        String code =
+                graphic
+                        ? CaptchaRenderer.newCode()
+                        : String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
         Instant now = Instant.now();
         if (userId != null) {
             db.update(
@@ -67,9 +71,9 @@ class PhoneVerificationStore {
                 purpose,
                 userId == null ? null : phone,
                 clientType,
-                codeHash(id, code),
+                codeHash(id, code, graphic),
                 Timestamp.from(now.plusSeconds(LIFETIME_SECONDS)));
-        return new Issued(id, userId == null ? null : code);
+        return new Issued(id, userId == null && !graphic ? null : code);
     }
 
     Challenge challenge(String id, boolean lock) {
@@ -106,12 +110,12 @@ class PhoneVerificationStore {
                 active(row));
     }
 
-    boolean accepts(Challenge challenge, String code) {
+    boolean accepts(Challenge challenge, String code, boolean graphic) {
         if (!challenge.active()) {
             return false;
         }
         db.update("UPDATE auth_phone_challenge SET attempts=attempts+1 WHERE id=?", challenge.id());
-        return secureEquals(challenge.codeHash(), codeHash(challenge.id(), code));
+        return secureEquals(challenge.codeHash(), codeHash(challenge.id(), code, graphic));
     }
 
     void consume(Challenge challenge) {
@@ -180,12 +184,17 @@ class PhoneVerificationStore {
                         supplied.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String codeHash(String id, String code) {
+    private String codeHash(String id, String code, boolean graphic) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(signingKey);
             return HexFormat.of()
-                    .formatHex(mac.doFinal((id + ":" + code).getBytes(StandardCharsets.UTF_8)));
+                    .formatHex(
+                            mac.doFinal(
+                                    (id
+                                                    + (graphic ? ":graphic:" : ":")
+                                                    + code.trim().toUpperCase(Locale.ROOT))
+                                            .getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Cannot authenticate verification code", e);
         }

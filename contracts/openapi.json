@@ -8413,6 +8413,9 @@
           },
           "recoveryCodeConfigured": {
             "type": "boolean"
+          },
+          "aiConfigured": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -8513,6 +8516,16 @@
         "properties": {
           "challengeId": {
             "type": "string"
+          },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "GRAPHIC",
+              "SMS"
+            ]
+          },
+          "captchaImage": {
+            "type": "string"
           }
         },
         "required": [
@@ -8570,8 +8583,6 @@
           }
         },
         "required": [
-          "oldChallengeId",
-          "oldCode",
           "newChallengeId",
           "newCode"
         ]
