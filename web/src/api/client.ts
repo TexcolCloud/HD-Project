@@ -9,6 +9,7 @@ export function queryString(
   return params.size ? `?${params}` : "";
 }
 import type { Model } from "./types";
+import { randomId } from "../utils/randomId";
 const prefix = "/api/v1";
 let csrf: Model<"Csrf"> | null = null;
 let sessionEpoch = 0;
@@ -74,10 +75,9 @@ export async function request<T>(
   const isForm = options.body instanceof FormData;
   if (options.body !== undefined && !isForm)
     headers.set("Content-Type", "application/json");
-  const fingerprint = `${method}:${path}:${isForm ? crypto.randomUUID() : JSON.stringify(options.body)}`;
+  const fingerprint = `${method}:${path}:${isForm ? randomId() : JSON.stringify(options.body)}`;
   if (write && options.idempotent !== false && !path.startsWith("/auth/")) {
-    if (!pendingKeys.has(fingerprint))
-      pendingKeys.set(fingerprint, crypto.randomUUID());
+    if (!pendingKeys.has(fingerprint)) pendingKeys.set(fingerprint, randomId());
     headers.set("Idempotency-Key", pendingKeys.get(fingerprint)!);
   }
   let response: Response;
